@@ -1,8 +1,32 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
+
+Route::get('/', function (): Response {
+    return Inertia::render('Home', [
+        'appName' => config('app.name', 'Laravel'),
+    ]);
+})->name('home');
+
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+});
+
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
+
+Route::middleware(['auth', 'role:superadmin'])->group(function () {
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+});
 
 Route::prefix('template')->group(function () {
     Route::get('/', function () {
@@ -59,7 +83,7 @@ Route::prefix('template')->group(function () {
 
     Route::get('login', function () {
         return view('auth.login');
-    })->name('login');
+    })->name('template.login');
 
     Route::get('register-as', function () {
         return view('auth.register-as');
