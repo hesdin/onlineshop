@@ -105,7 +105,7 @@
 
         <!-- footer kecil -->
         <div class="mt-8 border-t border-slate-100 pt-6 text-center text-xs sm:text-sm text-slate-500">
-          Sudah punya akun PaDi UMKM?
+          Sudah punya akun TP-PKK Marketplace?
           <a href="{{ route('login') }}" class="font-semibold text-sky-600 hover:underline">Masuk</a>
         </div>
       </div>
@@ -117,13 +117,13 @@
             Belanja Efisien Kemana Saja
           </h2>
           <p class="mt-4 text-sm leading-relaxed text-white/90">
-            Dengan berbagai kemudahan berbelanja di PaDi UMKM, proses transaksi pembelanjaan menjadi cepat dan efisien
+            Dengan berbagai kemudahan berbelanja di TP-PKK Marketplace, proses transaksi pembelanjaan menjadi cepat dan efisien
             tanpa harus melewati proses yang merepotkan. Barang akan sampai kemana pun yang Anda inginkan dengan aman.
           </p>
         </div>
 
         <div class="mt-10 flex flex-1 items-center justify-center">
-          <img src="https://padiumkm.id/_next/static/media/login-card.5fbc3bf9.svg" alt="Belanja di PaDi UMKM"
+          <img src="https://padiumkm.id/_next/static/media/login-card.5fbc3bf9.svg" alt="Belanja di TP-PKK Marketplace"
             class="w-56 sm:w-64 lg:w-72" />
         </div>
       </div>

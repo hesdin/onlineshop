@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'PaDi UMKM - Marketplace B2B')
+@section('title', 'TP-PKK Marketplace - Marketplace B2B')
 
 @section('content')
     @include('sections.hero')

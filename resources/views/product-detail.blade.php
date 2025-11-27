@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Bubuk Cokelat Klasik - PaDi UMKM')
+@section('title', 'Bubuk Cokelat Klasik - TP-PKK Marketplace')
 
 @section('content')
   <section class="py-6 lg:py-8">

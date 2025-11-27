@@ -69,7 +69,7 @@
         </div>
 
         <div class="mt-8 border-t border-slate-100 pt-6 text-center text-xs sm:text-sm text-slate-500">
-          Sudah punya akun PaDi UMKM?
+          Sudah punya akun TP-PKK Marketplace?
           <a href="{{ route('login') }}" class="font-semibold text-sky-600 hover:underline">Masuk</a>
         </div>
       </div>
@@ -77,13 +77,13 @@
       {{-- KANAN: ILLUSTRASI + TEKS --}}
       <div class="flex w-1/2 flex-col bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 px-8 py-14">
         <div class="flex flex-1 flex-col items-center justify-center">
-          <img src="https://padiumkm.id/_next/static/media/register-as.cf421d13.svg" alt="Daftar PaDi UMKM"
+          <img src="https://padiumkm.id/_next/static/media/register-as.cf421d13.svg" alt="Daftar TP-PKK Marketplace"
             class="w-56 sm:w-64 lg:w-72" />
         </div>
 
         <div class="mt-6 text-center text-white">
           <h2 class="text-xl sm:text-2xl font-bold">
-            Bersama PaDi UMKM
+            Bersama TP-PKK Marketplace
           </h2>
           <p class="mt-3 text-sm leading-relaxed text-white/90">
             Mari tingkatkan pertumbuhan ekonomi UMKM untuk Indonesia yang lebih maju.
