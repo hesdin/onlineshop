@@ -19,10 +19,10 @@ class ProductPageController extends Controller
         }
 
         $cityId = CustomerLocationResolver::resolveCityId($request);
+        $isAuthenticated = $request->user() !== null;
 
-        if (! $product->isVisibleForCity($cityId)) {
-            abort(404);
-        }
+        // Check visibility tapi jangan abort - biarkan frontend handle
+        $isProductAvailable = $product->isVisibleForCityAuth($cityId, $isAuthenticated);
 
         $product->load([
             'store:id,name,slug,is_umkm,tax_status,rating,transactions_count,bumn_partner,response_time_label,province_id,city_id,district_id',
@@ -30,16 +30,19 @@ class ProductPageController extends Controller
             'store.cityRegion:id,name',
             'store.districtRegion:id,name',
             'category:id,name,slug',
+            'locationProvince:id,name',
+            'locationCity:id,name',
         ]);
 
         return Inertia::render('ProductDetail', [
             'appName' => config('app.name', 'TP-PKK Marketplace'),
-            'product' => $this->transformProduct($product, $cityId),
+            'product' => $this->transformProduct($product, $cityId, $isAuthenticated),
             'customerAddress' => $this->customerAddress($request),
+            'isProductAvailable' => $isProductAvailable,
         ]);
     }
 
-    protected function transformProduct(Product $product, ?int $customerCityId = null): array
+    protected function transformProduct(Product $product, ?int $customerCityId = null, bool $isAuthenticated = false): array
     {
         $price = $product->sale_price ?? $product->price ?? 0;
         $originalPrice = $product->sale_price ? $product->price : null;
@@ -51,6 +54,7 @@ class ProductPageController extends Controller
             'code' => (string) $product->getKey(),
             'name' => $product->name,
             'category' => $product->category?->name,
+            'category_slug' => $product->category?->slug,
             'categoryUrl' => $product->category ? route('category.show', $product->category) : null,
             'price' => $price,
             'originalPrice' => $originalPrice,
@@ -71,7 +75,9 @@ class ProductPageController extends Controller
             'gallery' => $this->buildGallery($product),
             'info' => $this->buildInfo($product),
             'store' => $this->buildStore($product, $location),
-            'otherProducts' => $this->buildOtherProducts($product, $customerCityId),
+            'otherProducts' => $this->buildOtherProducts($product, $customerCityId, $isAuthenticated),
+            'visibility_scope' => $product->visibility_scope,
+            'city_name' => $product->location_city,
         ];
     }
 
@@ -155,7 +161,7 @@ class ProductPageController extends Controller
         ];
     }
 
-    protected function buildOtherProducts(Product $product, ?int $customerCityId): array
+    protected function buildOtherProducts(Product $product, ?int $customerCityId, bool $isAuthenticated): array
     {
         if (! $product->store_id) {
             return [];
@@ -165,7 +171,7 @@ class ProductPageController extends Controller
             ->select(['id', 'name', 'slug', 'price', 'sale_price', 'location_city_id', 'location_province_id', 'location_district_id', 'location_postal_code', 'is_pdn', 'is_pkp', 'is_tkdn', 'store_id'])
             ->where('store_id', $product->store_id)
             ->whereKeyNot($product->getKey())
-            ->visibleForCity($customerCityId)
+            ->visibleForCityAuth($customerCityId, $isAuthenticated)
             ->latest()
             ->limit(7)
             ->with(['store:id,is_umkm', 'media'])

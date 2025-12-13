@@ -53,7 +53,7 @@ class AddressController extends Controller
 
         Address::create($data);
 
-        return Redirect::route('customer.dashboard.address')->with('success', 'Alamat berhasil ditambahkan.');
+        return back()->with('success', 'Alamat berhasil ditambahkan.');
     }
 
     public function update(Request $request, Address $address): RedirectResponse

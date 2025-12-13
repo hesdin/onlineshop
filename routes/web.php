@@ -87,7 +87,7 @@ Route::post('/reset-password/{id}/{hash}', [PasswordResetController::class, 'upd
     ->middleware('signed')
     ->name('password.reset.update');
 
-Route::middleware('auth')->prefix('regions')->name('regions.')->group(function () {
+Route::prefix('regions')->name('regions.')->group(function () {
     Route::get('provinces', [RegionController::class, 'provinces'])->name('provinces');
     Route::get('cities', [RegionController::class, 'cities'])->name('cities');
     Route::get('districts', [RegionController::class, 'districts'])->name('districts');

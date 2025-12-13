@@ -32,7 +32,25 @@ const state = reactive({
   notificationsOpen: false,
   cartOpen: false,
   activeIndex: 0,
+  showLogoutConfirmation: false,
 });
+
+const handleLogout = () => {
+  state.showLogoutConfirmation = true;
+  state.profileOpen = false;
+};
+
+const confirmLogout = () => {
+  router.post('/logout', {}, {
+    onSuccess: () => {
+      router.visit('/', { replace: true });
+    }
+  });
+};
+
+const cancelLogout = () => {
+  state.showLogoutConfirmation = false;
+};
 
 const cartItems = computed(() => props.cartItems ?? []);
 
@@ -151,11 +169,11 @@ onBeforeUnmount(() => {
         </button>
         <Link href="/" aria-label="Kembali ke halaman utama"
           class="hidden h-10 w-24 items-center justify-center rounded-md bg-sky-50 p-2 text-xs font-bold text-sky-600 sm:flex">
-        TP-PKK Marketplace
+          TP-PKK Marketplace
         </Link>
         <Link href="/" aria-label="Kembali ke halaman utama"
           class="flex h-10 w-10 items-center justify-center rounded-md bg-sky-50 text-xs font-bold text-sky-600 sm:hidden">
-        TP
+          TP
         </Link>
       </div>
 
@@ -342,7 +360,7 @@ onBeforeUnmount(() => {
                   </div>
                   <Link href="/customer/dashboard/profile"
                     class="inline-flex items-center rounded-lg bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700">
-                  Lihat Profile
+                    Lihat Profile
                   </Link>
                 </div>
               </div>
@@ -374,67 +392,68 @@ onBeforeUnmount(() => {
             <div class="divide-y divide-slate-100">
               <Link href="/customer/dashboard/payment"
                 class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
-              <svg class="h-6 w-6 text-slate-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path opacity="0.4"
-                  d="M16.6667 5.86669V14.1334C16.6667 15.4 16.55 16.3 16.25 16.9417C16.25 16.95 16.2416 16.9667 16.2333 16.975C16.05 17.2084 15.8083 17.325 15.525 17.325C15.0833 17.325 14.55 17.0334 13.975 16.4167C13.2917 15.6834 12.2416 15.7417 11.6416 16.5417L10.8 17.6584C10.4667 18.1084 10.025 18.3334 9.58333 18.3334C9.14167 18.3334 8.69998 18.1084 8.36665 17.6584L7.51668 16.5334C6.92502 15.7417 5.88333 15.6834 5.19999 16.4084L5.19165 16.4167C4.24998 17.425 3.41668 17.575 2.93335 16.975C2.92502 16.9667 2.91667 16.95 2.91667 16.9417C2.61667 16.3 2.5 15.4 2.5 14.1334V5.86669C2.5 4.60002 2.61667 3.70002 2.91667 3.05835C2.91667 3.05002 2.91668 3.04169 2.93335 3.03335C3.40835 2.42502 4.24998 2.57502 5.19165 3.58335L5.19999 3.59169C5.88333 4.31669 6.92502 4.25835 7.51668 3.46669L8.36665 2.34169C8.69998 1.89169 9.14167 1.66669 9.58333 1.66669C10.025 1.66669 10.4667 1.89169 10.8 2.34169L11.6416 3.45835C12.2416 4.25835 13.2917 4.31669 13.975 3.58335C14.55 2.96669 15.0833 2.67502 15.525 2.67502C15.8083 2.67502 16.05 2.80002 16.2333 3.03335C16.25 3.04169 16.25 3.05002 16.25 3.05835C16.55 3.70002 16.6667 4.60002 16.6667 5.86669Z"
-                  fill="currentColor" />
-                <path
-                  d="M13.3333 9.16669H6.66666C6.32499 9.16669 6.04166 8.88335 6.04166 8.54169C6.04166 8.20002 6.32499 7.91669 6.66666 7.91669H13.3333C13.675 7.91669 13.9583 8.20002 13.9583 8.54169C13.9583 8.88335 13.675 9.16669 13.3333 9.16669Z"
-                  fill="currentColor" />
-                <path
-                  d="M11.6667 12.0833H6.66666C6.32499 12.0833 6.04166 11.8 6.04166 11.4583C6.04166 11.1166 6.32499 10.8333 6.66666 10.8333H11.6667C12.0083 10.8333 12.2917 11.1166 12.2917 11.4583C12.2917 11.8 12.0083 12.0833 11.6667 12.0833Z"
-                  fill="currentColor" />
-              </svg>
-              <span class="text-sm font-semibold">Pembayaran</span>
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path opacity="0.4"
+                    d="M16.6667 5.86669V14.1334C16.6667 15.4 16.55 16.3 16.25 16.9417C16.25 16.95 16.2416 16.9667 16.2333 16.975C16.05 17.2084 15.8083 17.325 15.525 17.325C15.0833 17.325 14.55 17.0334 13.975 16.4167C13.2917 15.6834 12.2416 15.7417 11.6416 16.5417L10.8 17.6584C10.4667 18.1084 10.025 18.3334 9.58333 18.3334C9.14167 18.3334 8.69998 18.1084 8.36665 17.6584L7.51668 16.5334C6.92502 15.7417 5.88333 15.6834 5.19999 16.4084L5.19165 16.4167C4.24998 17.425 3.41668 17.575 2.93335 16.975C2.92502 16.9667 2.91667 16.95 2.91667 16.9417C2.61667 16.3 2.5 15.4 2.5 14.1334V5.86669C2.5 4.60002 2.61667 3.70002 2.91667 3.05835C2.91667 3.05002 2.91668 3.04169 2.93335 3.03335C3.40835 2.42502 4.24998 2.57502 5.19165 3.58335L5.19999 3.59169C5.88333 4.31669 6.92502 4.25835 7.51668 3.46669L8.36665 2.34169C8.69998 1.89169 9.14167 1.66669 9.58333 1.66669C10.025 1.66669 10.4667 1.89169 10.8 2.34169L11.6416 3.45835C12.2416 4.25835 13.2917 4.31669 13.975 3.58335C14.55 2.96669 15.0833 2.67502 15.525 2.67502C15.8083 2.67502 16.05 2.80002 16.2333 3.03335C16.25 3.04169 16.25 3.05002 16.25 3.05835C16.55 3.70002 16.6667 4.60002 16.6667 5.86669Z"
+                    fill="currentColor" />
+                  <path
+                    d="M13.3333 9.16669H6.66666C6.32499 9.16669 6.04166 8.88335 6.04166 8.54169C6.04166 8.20002 6.32499 7.91669 6.66666 7.91669H13.3333C13.675 7.91669 13.9583 8.20002 13.9583 8.54169C13.9583 8.88335 13.675 9.16669 13.3333 9.16669Z"
+                    fill="currentColor" />
+                  <path
+                    d="M11.6667 12.0833H6.66666C6.32499 12.0833 6.04166 11.8 6.04166 11.4583C6.04166 11.1166 6.32499 10.8333 6.66666 10.8333H11.6667C12.0083 10.8333 12.2917 11.1166 12.2917 11.4583C12.2917 11.8 12.0083 12.0833 11.6667 12.0833Z"
+                    fill="currentColor" />
+                </svg>
+                <span class="text-sm font-semibold">Pembayaran</span>
               </Link>
               <Link href="/customer/dashboard/transactions"
                 class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
-              <svg class="h-6 w-6 text-slate-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M18.3334 5.00002V7.01669C18.3334 8.33335 17.5 9.16669 16.1834 9.16669H13.3334V3.34169C13.3334 2.41669 14.0917 1.66669 15.0167 1.66669C15.925 1.67502 16.7584 2.04169 17.3584 2.64169C17.9584 3.25002 18.3334 4.08335 18.3334 5.00002Z"
-                  fill="currentColor" />
-                <path opacity="0.4"
-                  d="M1.66663 5.83335V17.5C1.66663 18.1917 2.44996 18.5834 2.99996 18.1667L4.42496 17.1C4.75829 16.85 5.22496 16.8834 5.52496 17.1834L6.90829 18.575C7.23329 18.9 7.76663 18.9 8.09163 18.575L9.49163 17.175C9.78329 16.8834 10.25 16.85 10.575 17.1L12 18.1667C12.55 18.575 13.3333 18.1834 13.3333 17.5V3.33335C13.3333 2.41669 14.0833 1.66669 15 1.66669H5.83329H4.99996C2.49996 1.66669 1.66663 3.15835 1.66663 5.00002V5.83335Z"
-                  fill="currentColor" />
-                <path
-                  d="M10 8.125H5C4.65833 8.125 4.375 7.84167 4.375 7.5C4.375 7.15833 4.65833 6.875 5 6.875H10C10.3417 6.875 10.625 7.15833 10.625 7.5C10.625 7.84167 10.3417 8.125 10 8.125Z"
-                  fill="currentColor" />
-                <path
-                  d="M9.375 11.4583H5.625C5.28333 11.4583 5 11.175 5 10.8333C5 10.4916 5.28333 10.2083 5.625 10.2083H9.375C9.71667 10.2083 10 10.4916 10 10.8333C10 11.175 9.71667 11.4583 9.375 11.4583Z"
-                  fill="currentColor" />
-              </svg>
-              <span class="text-sm font-semibold">Daftar Transaksi</span>
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M18.3334 5.00002V7.01669C18.3334 8.33335 17.5 9.16669 16.1834 9.16669H13.3334V3.34169C13.3334 2.41669 14.0917 1.66669 15.0167 1.66669C15.925 1.67502 16.7584 2.04169 17.3584 2.64169C17.9584 3.25002 18.3334 4.08335 18.3334 5.00002Z"
+                    fill="currentColor" />
+                  <path opacity="0.4"
+                    d="M1.66663 5.83335V17.5C1.66663 18.1917 2.44996 18.5834 2.99996 18.1667L4.42496 17.1C4.75829 16.85 5.22496 16.8834 5.52496 17.1834L6.90829 18.575C7.23329 18.9 7.76663 18.9 8.09163 18.575L9.49163 17.175C9.78329 16.8834 10.25 16.85 10.575 17.1L12 18.1667C12.55 18.575 13.3333 18.1834 13.3333 17.5V3.33335C13.3333 2.41669 14.0833 1.66669 15 1.66669H5.83329H4.99996C2.49996 1.66669 1.66663 3.15835 1.66663 5.00002V5.83335Z"
+                    fill="currentColor" />
+                  <path
+                    d="M10 8.125H5C4.65833 8.125 4.375 7.84167 4.375 7.5C4.375 7.15833 4.65833 6.875 5 6.875H10C10.3417 6.875 10.625 7.15833 10.625 7.5C10.625 7.84167 10.3417 8.125 10 8.125Z"
+                    fill="currentColor" />
+                  <path
+                    d="M9.375 11.4583H5.625C5.28333 11.4583 5 11.175 5 10.8333C5 10.4916 5.28333 10.2083 5.625 10.2083H9.375C9.71667 10.2083 10 10.4916 10 10.8333C10 11.175 9.71667 11.4583 9.375 11.4583Z"
+                    fill="currentColor" />
+                </svg>
+                <span class="text-sm font-semibold">Daftar Transaksi</span>
               </Link>
               <Link href="/customer/dashboard/address"
                 class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
-              <svg class="h-6 w-6 text-slate-500" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path opacity="0.4"
-                  d="M15.5666 16.4499C14.775 17.0333 13.7333 17.3333 12.4916 17.3333H5.50829C5.30829 17.3333 5.10829 17.3249 4.91663 17.2999L10.6666 11.5499L15.5666 16.4499Z"
-                  fill="currentColor" />
-                <path opacity="0.4"
-                  d="M17.3333 5.50829V12.4916C17.3333 13.7333 17.0333 14.775 16.4499 15.5666L11.5499 10.6666L17.2999 4.91663C17.3249 5.10829 17.3333 5.30829 17.3333 5.50829Z"
-                  fill="currentColor" />
-                <path opacity="0.4"
-                  d="M11.55 10.6666L16.45 15.5666C16.2083 15.9166 15.9166 16.2083 15.5666 16.45L10.6666 11.55L4.91663 17.3C4.3833 17.2666 3.89996 17.1583 3.4583 16.9916C1.67496 16.3416 0.666626 14.7583 0.666626 12.4916V5.50829C0.666626 2.47496 2.47496 0.666626 5.50829 0.666626H12.4916C14.7583 0.666626 16.3416 1.67496 16.9916 3.45829C17.1583 3.89996 17.2666 4.38329 17.3 4.91663L11.55 10.6666Z"
-                  fill="currentColor" />
-                <path
-                  d="M11.5499 10.6666L16.4499 15.5666C16.2083 15.9166 15.9166 16.2083 15.5666 16.4499L10.6666 11.5499L4.91659 17.2999C4.38325 17.2666 3.89992 17.1582 3.45825 16.9916L3.78324 16.6666L16.9916 3.45825C17.1582 3.89992 17.2666 4.38325 17.2999 4.91659L11.5499 10.6666Z"
-                  fill="currentColor" />
-                <path
-                  d="M9.19996 5.60828C8.88329 4.23328 7.66663 3.61661 6.59996 3.60828C5.5333 3.60828 4.31663 4.22494 3.99997 5.59994C3.64997 7.12494 4.58329 8.39994 5.42496 9.19994C5.75829 9.51661 6.17496 9.66661 6.59996 9.66661C7.02496 9.66661 7.44163 9.50828 7.77496 9.19994C8.61663 8.39994 9.54996 7.12494 9.19996 5.60828ZM6.62496 6.90828C6.16663 6.90828 5.79163 6.53328 5.79163 6.07494C5.79163 5.61661 6.15829 5.24161 6.62496 5.24161H6.6333C7.09164 5.24161 7.46664 5.61661 7.46664 6.07494C7.46664 6.53328 7.08329 6.90828 6.62496 6.90828Z"
-                  fill="currentColor" />
-              </svg>
-              <span class="text-sm font-semibold">Alamat Pengiriman</span>
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path opacity="0.4"
+                    d="M15.5666 16.4499C14.775 17.0333 13.7333 17.3333 12.4916 17.3333H5.50829C5.30829 17.3333 5.10829 17.3249 4.91663 17.2999L10.6666 11.5499L15.5666 16.4499Z"
+                    fill="currentColor" />
+                  <path opacity="0.4"
+                    d="M17.3333 5.50829V12.4916C17.3333 13.7333 17.0333 14.775 16.4499 15.5666L11.5499 10.6666L17.2999 4.91663C17.3249 5.10829 17.3333 5.30829 17.3333 5.50829Z"
+                    fill="currentColor" />
+                  <path opacity="0.4"
+                    d="M11.55 10.6666L16.45 15.5666C16.2083 15.9166 15.9166 16.2083 15.5666 16.45L10.6666 11.55L4.91663 17.3C4.3833 17.2666 3.89996 17.1583 3.4583 16.9916C1.67496 16.3416 0.666626 14.7583 0.666626 12.4916V5.50829C0.666626 2.47496 2.47496 0.666626 5.50829 0.666626H12.4916C14.7583 0.666626 16.3416 1.67496 16.9916 3.45829C17.1583 3.89996 17.2666 4.38329 17.3 4.91663L11.55 10.6666Z"
+                    fill="currentColor" />
+                  <path
+                    d="M11.5499 10.6666L16.4499 15.5666C16.2083 15.9166 15.9166 16.2083 15.5666 16.4499L10.6666 11.5499L4.91659 17.2999C4.38325 17.2666 3.89992 17.1582 3.45825 16.9916L3.78324 16.6666L16.9916 3.45825C17.1582 3.89992 17.2666 4.38325 17.2999 4.91659L11.5499 10.6666Z"
+                    fill="currentColor" />
+                  <path
+                    d="M9.19996 5.60828C8.88329 4.23328 7.66663 3.61661 6.59996 3.60828C5.5333 3.60828 4.31663 4.22494 3.99997 5.59994C3.64997 7.12494 4.58329 8.39994 5.42496 9.19994C5.75829 9.51661 6.17496 9.66661 6.59996 9.66661C7.02496 9.66661 7.44163 9.50828 7.77496 9.19994C8.61663 8.39994 9.54996 7.12494 9.19996 5.60828ZM6.62496 6.90828C6.16663 6.90828 5.79163 6.53328 5.79163 6.07494C5.79163 5.61661 6.15829 5.24161 6.62496 5.24161H6.6333C7.09164 5.24161 7.46664 5.61661 7.46664 6.07494C7.46664 6.53328 7.08329 6.90828 6.62496 6.90828Z"
+                    fill="currentColor" />
+                </svg>
+                <span class="text-sm font-semibold">Alamat Pengiriman</span>
               </Link>
-              <Link href="/logout" method="post" as="button"
-                class="flex items-center gap-3 px-5 py-3 text-left text-red-600 transition hover:bg-red-50">
-              <svg class="h-6 w-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <path d="M16 17l5-5-5-5" />
-                <path d="M21 12H9" />
-              </svg>
-              <span class="text-sm font-semibold">Keluar</span>
-              </Link>
+              <button type="button" @click="handleLogout"
+                class="flex w-full items-center gap-3 px-5 py-3 text-left text-red-600 transition hover:bg-red-50">
+                <svg class="h-6 w-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+                <span class="text-sm font-semibold">Keluar</span>
+              </button>
             </div>
           </div>
         </div>
@@ -444,7 +463,7 @@ onBeforeUnmount(() => {
       <div class="flex items-center gap-3" v-else>
         <Link href="/login"
           class="rounded-lg border border-sky-500 bg-white px-5 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50">
-        Masuk
+          Masuk
         </Link>
         <a href="/register-as"
           class="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-600">
@@ -462,7 +481,7 @@ onBeforeUnmount(() => {
               <div class="flex items-center justify-between text-[13px] font-semibold text-slate-600">
                 <span>Kategori Produk & Jasa</span>
                 <Link :href="megaMenuData[state.activeIndex]?.url || '#'" class="text-sky-600 hover:text-sky-700">
-                Lihat Semua
+                  Lihat Semua
                 </Link>
               </div>
               <div class="mt-4 space-y-1.5 text-sm">
@@ -473,11 +492,11 @@ onBeforeUnmount(() => {
                     ? 'bg-sky-50 font-semibold text-sky-700'
                     : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                     ">
-                <span>{{ category.label ?? category }}</span>
-                <svg class="h-4 w-4 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  v-if="state.activeIndex === index">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
+                  <span>{{ category.label ?? category }}</span>
+                  <svg class="h-4 w-4 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" v-if="state.activeIndex === index">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
                 </Link>
               </div>
             </div>
@@ -495,12 +514,48 @@ onBeforeUnmount(() => {
                   <Link v-for="(item, itemIndex) in column"
                     :key="item.slug ?? item.label ?? `item-${columnIndex}-${itemIndex}`" :href="item.url || '#'"
                     class="block transition hover:text-sky-700">
-                  {{ item.label ?? item }}
+                    {{ item.label ?? item }}
                   </Link>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div v-if="state.showLogoutConfirmation"
+      class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
+      @click.self="cancelLogout">
+      <div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex items-center gap-3">
+          <div class="grid h-12 w-12 place-items-center rounded-full bg-red-100">
+            <svg class="h-6 w-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <path d="M16 17l5-5-5-5" />
+              <path d="M21 12H9" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-900">Konfirmasi Keluar</h3>
+            <p class="text-sm text-slate-600">Apakah Anda yakin ingin keluar?</p>
+          </div>
+        </div>
+
+        <p class="mb-6 text-sm text-slate-600">
+          Anda akan diarahkan ke halaman utama dan perlu login kembali untuk mengakses akun Anda.
+        </p>
+
+        <div class="flex gap-3">
+          <button type="button" @click="cancelLogout"
+            class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            Batal
+          </button>
+          <button type="button" @click="confirmLogout"
+            class="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700">
+            Ya, Keluar
+          </button>
         </div>
       </div>
     </div>

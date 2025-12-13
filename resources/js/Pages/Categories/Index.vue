@@ -37,6 +37,7 @@ const hasCategories = computed(() => (activeGroup.value?.categories?.length ?? 0
 
 <template>
   <LandingLayout>
+
     <Head :title="`Semua Kategori - ${props.appName}`" />
 
     <section class="space-y-6">
@@ -53,45 +54,30 @@ const hasCategories = computed(() => (activeGroup.value?.categories?.length ?? 0
       </header>
 
       <div class="flex flex-wrap gap-2 rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-100 sm:p-4">
-        <button
-          v-for="letter in letters"
-          :key="letter"
-          type="button"
-          class="min-w-[32px] rounded-md px-3 py-2 text-sm font-semibold transition"
-          :class="activeLetter === letter
+        <button v-for="letter in letters" :key="letter" type="button"
+          class="min-w-[32px] rounded-md px-3 py-2 text-sm font-semibold transition" :class="activeLetter === letter
             ? 'bg-sky-100 text-sky-700 ring-1 ring-sky-200'
-            : 'text-slate-600 hover:bg-slate-50'"
-          @click="selectLetter(letter)"
-        >
+            : 'text-slate-600 hover:bg-slate-50'" @click="selectLetter(letter)">
           {{ letter }}
         </button>
       </div>
 
       <div v-if="activeGroup" class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <div class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-md bg-sky-100 text-lg font-bold text-sky-700">
+        <div
+          class="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-md bg-sky-100 text-lg font-bold text-sky-700">
           {{ activeGroup.letter }}
         </div>
 
         <div v-if="hasCategories" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div
-            v-for="category in activeGroup.categories"
-            :key="category.id"
-            class="space-y-3 border-b border-slate-100 pb-4 last:border-none"
-          >
-            <Link
-              class="text-base font-semibold text-slate-800 hover:text-sky-700"
-              :href="`/c/${category.slug}`"
-            >
+          <div v-for="category in activeGroup.categories" :key="category.id"
+            class="space-y-3 border-b border-slate-100 pb-4 last:border-none">
+            <Link class="text-base font-semibold text-slate-800 hover:text-sky-700" :href="`/c/${category.slug}`">
               {{ category.name }}
             </Link>
 
             <div class="grid gap-2 text-sm text-slate-700">
-              <Link
-                v-for="child in category.children"
-                :key="child.id"
-                class="hover:text-sky-700"
-                :href="`/c/${child.slug}`"
-              >
+              <Link v-for="child in category.children" :key="child.id" class="hover:text-sky-700"
+                :href="`/c/${child.slug}`">
                 {{ child.name }}
               </Link>
               <p v-if="!category.children || category.children.length === 0" class="text-slate-400">

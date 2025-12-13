@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import CustomerCareButton from '@/Components/CustomerCareButton.vue';
 import LoginHeroSlider from '@/Components/Auth/LoginHeroSlider.vue';
 
@@ -8,6 +8,12 @@ const form = useForm({
   email: '',
   password: '',
 });
+
+const showPassword = ref(false);
+
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value;
+};
 
 const slides = [
   {
@@ -38,6 +44,7 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
 </script>
 
 <template>
+
   <Head title="Login Pembeli" />
 
   <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-sky-600 text-white">
@@ -81,13 +88,23 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
               <label class="text-sm font-semibold text-slate-600" for="password">Kata Sandi</label>
               <div
                 class="flex items-center rounded-md border border-slate-200 bg-slate-50 px-3 focus-within:border-sky-400 focus-within:bg-white">
-                <input id="password" v-model="form.password" type="password" autocomplete="current-password"
+                <input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
                   class="w-full bg-transparent py-3 text-sm sm:text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   placeholder="Masukan Kata Sandi" :disabled="form.processing" />
-                <button type="button" class="p-1 text-slate-400 hover:text-slate-600">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <button type="button" @click="togglePasswordVisibility" class="p-1 text-slate-400 hover:text-slate-600">
+                  <!-- Eye Icon (Show) -->
+                  <svg v-if="!showPassword" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.8">
                     <path d="M1 12s3.5-7 11-7 11 7 11 7-3.5 7-11 7S1 12 1 12Z" />
                     <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <!-- Eye Off Icon (Hide) -->
+                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7.5 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s3.5 7 11 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" y1="2" x2="22" y2="22" />
                   </svg>
                 </button>
               </div>

@@ -146,6 +146,34 @@ class Product extends Model implements HasMedia
         });
     }
 
+    public function scopeVisibleForCityAuth(Builder $query, ?int $cityId, bool $isAuthenticated): Builder
+    {
+        // Jika user belum login, tampilkan semua produk (global + local)
+        if (! $isAuthenticated) {
+            return $query;
+        }
+
+        // Jika user sudah login tapi tidak punya alamat, tampilkan semua produk
+        // karena sudah ada flag alert visibility_scope di frontend
+        if (! $cityId) {
+            return $query;
+        }
+
+        // Jika user sudah login dan punya alamat, filter berdasarkan visibility scope dan city
+        return $query->where(function (Builder $q) use ($cityId) {
+            // Produk global selalu tampil
+            $q->where('visibility_scope', self::VISIBILITY_GLOBAL)
+                // Produk local tampil jika city cocok
+                ->orWhere(function (Builder $localQuery) use ($cityId) {
+                    $localQuery->where('visibility_scope', self::VISIBILITY_LOCAL)
+                        ->where(function (Builder $matchQuery) use ($cityId) {
+                            $matchQuery->where('location_city_id', $cityId)
+                                ->orWhereHas('store', fn (Builder $storeQuery) => $storeQuery->where('city_id', $cityId));
+                        });
+                });
+        });
+    }
+
     public function isVisibleForCity(?int $cityId): bool
     {
         if ($this->visibility_scope === self::VISIBILITY_GLOBAL) {
@@ -156,6 +184,31 @@ class Product extends Model implements HasMedia
             return false;
         }
 
+        $productCity = $this->location_city_id;
+        $storeCity = $this->store?->city_id;
+
+        return (int) $productCity === (int) $cityId || (int) $storeCity === (int) $cityId;
+    }
+
+    public function isVisibleForCityAuth(?int $cityId, bool $isAuthenticated): bool
+    {
+        // Jika user belum login, tampilkan semua produk (global + local)
+        if (! $isAuthenticated) {
+            return true;
+        }
+
+        // Produk global selalu tampil
+        if ($this->visibility_scope === self::VISIBILITY_GLOBAL) {
+            return true;
+        }
+
+        // Jika user login tapi tidak punya alamat, tetap tampilkan
+        // karena sudah ada flag alert visibility_scope di frontend
+        if (! $cityId) {
+            return true;
+        }
+
+        // Produk local tampil jika city cocok
         $productCity = $this->location_city_id;
         $storeCity = $this->store?->city_id;
 

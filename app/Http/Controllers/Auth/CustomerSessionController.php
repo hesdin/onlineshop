@@ -57,6 +57,6 @@ class CustomerSessionController extends Controller
             return redirect()->route('password.force');
         }
 
-        return redirect()->intended(route('customer.dashboard.profile'));
+        return redirect()->intended(route('home'));
     }
 }

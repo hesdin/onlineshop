@@ -15,6 +15,7 @@ class CategoryPageController extends Controller
     public function __invoke(Request $request, Category $category): Response
     {
         $cityId = CustomerLocationResolver::resolveCityId($request);
+        $isAuthenticated = $request->user() !== null;
         $search = $request->string('search')->toString();
         $location = $request->string('location')->toString();
         $status = $request->string('status')->toString();
@@ -41,7 +42,7 @@ class CategoryPageController extends Controller
             'locationProvince:id,name',
             'media',
         ])
-            ->visibleForCity($cityId)
+            ->visibleForCityAuth($cityId, $isAuthenticated)
             ->whereIn('category_id', $categoryIds)
             ->when($search, fn ($query) => $query->search($search))
             ->when($location, function ($query) use ($location) {
@@ -102,7 +103,7 @@ class CategoryPageController extends Controller
             ]);
 
         $locations = Product::query()
-            ->visibleForCity($cityId)
+            ->visibleForCityAuth($cityId, $isAuthenticated)
             ->whereIn('category_id', $categoryIds)
             ->whereNotNull('location_province_id')
             ->distinct()

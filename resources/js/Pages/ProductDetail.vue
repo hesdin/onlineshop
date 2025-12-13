@@ -2,6 +2,11 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
+import RegionSelector from '@/Components/RegionSelector.vue';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const props = defineProps({
   appName: {
@@ -11,6 +16,10 @@ const props = defineProps({
   product: {
     type: Object,
     default: () => ({}),
+  },
+  isProductAvailable: {
+    type: Boolean,
+    default: true,
   },
 });
 
@@ -198,6 +207,94 @@ const cartLoadingStartedAt = ref(0);
 const cartLoadingHideTimeout = ref(null);
 const MIN_CART_LOADING_MS = 700;
 const isBuyingNow = ref(false);
+
+// Address Modal State
+const showAddressModal = ref(false);
+const showAddressAlert = ref(false);
+const showLocationMismatchAlert = ref(false);
+const locationMismatchMessage = ref('');
+const hasAddress = computed(() => Boolean(page.props.customerAddress));
+
+// Watch isProductAvailable prop - jika false, tampilkan alert
+watch(() => props.isProductAvailable, (available) => {
+  if (available === false && hasAddress.value) {
+    // Produk tidak tersedia di lokasi user setelah save address
+    locationMismatchMessage.value = `Maaf, produk ini hanya tersedia untuk wilayah ${props.product?.city_name || 'tertentu'}. Anda akan diarahkan ke halaman kategori untuk melihat produk lain yang tersedia di lokasi Anda.`;
+    showLocationMismatchAlert.value = true;
+  }
+}, { immediate: true });
+
+const addressForm = useForm({
+  label: '',
+  recipient_name: '',
+  phone: '',
+  province_id: null,
+  city_id: null,
+  district_id: null,
+  postal_code: '',
+  address_line: '',
+  is_default: true,
+  note: '',
+});
+
+// Computed untuk memastikan tipe yang benar untuk RegionSelector
+const regionProvinceId = computed({
+  get: () => addressForm.province_id ? Number(addressForm.province_id) : null,
+  set: (val) => { addressForm.province_id = val; }
+});
+
+const regionCityId = computed({
+  get: () => addressForm.city_id ? Number(addressForm.city_id) : null,
+  set: (val) => { addressForm.city_id = val; }
+});
+
+const regionDistrictId = computed({
+  get: () => addressForm.district_id ? Number(addressForm.district_id) : null,
+  set: (val) => { addressForm.district_id = val; }
+});
+
+const openAddressModal = () => {
+  showAddressAlert.value = false;
+  addressForm.reset();
+  addressForm.clearErrors();
+  addressForm.is_default = true;
+  showAddressModal.value = true;
+};
+
+const submitAddress = () => {
+  addressForm.post('/customer/dashboard/address', {
+    preserveScroll: true,
+    preserveState: true,
+    replace: true,
+    onSuccess: (response) => {
+      showAddressModal.value = false;
+
+      // Cek isProductAvailable dari response - jika false, watch akan handle alert
+      const isAvailable = response.props?.isProductAvailable;
+
+      if (isAvailable === false) {
+        // Watch akan menampilkan alert, tidak perlu lanjutkan ke checkout
+        return;
+      }
+
+      // Setelah validasi OK, lanjutkan ke checkout
+      setTimeout(() => {
+        goToCheckout();
+      }, 100);
+    },
+  });
+};
+
+const handleLocationMismatchOk = () => {
+  showLocationMismatchAlert.value = false;
+  // Redirect ke kategori produk yang diakses
+  const categorySlug = props.product?.category_slug;
+  if (categorySlug) {
+    window.location.href = `/c/${categorySlug}`;
+  } else {
+    window.location.href = '/';
+  }
+};
 const forceHideCartLoadingOverlay = () => {
   if (cartLoadingHideTimeout.value) {
     clearTimeout(cartLoadingHideTimeout.value);
@@ -393,6 +490,18 @@ const addToCart = () => {
 
 const goToCheckout = () => {
   if (isBuyingNow.value) {
+    return;
+  }
+
+  // Cek apakah user sudah login
+  if (!isAuthenticated.value) {
+    router.visit('/customer/login');
+    return;
+  }
+
+  // Cek apakah user sudah punya alamat
+  if (!hasAddress.value) {
+    showAddressAlert.value = true;
     return;
   }
 
@@ -631,6 +740,22 @@ onBeforeUnmount(() => {
 
                 <div class="space-y-4 lg:space-y-6">
                   <div class="space-y-3 border-b border-slate-200 pb-4">
+                    <!-- Visibility Scope Alert -->
+                    <div v-if="product.visibility_scope === 'local' && product.city_name"
+                      class="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                      <svg class="h-5 w-5 flex-shrink-0 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                          d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                          clip-rule="evenodd" />
+                      </svg>
+                      <div class="flex-1">
+                        <p class="text-sm font-semibold text-red-800">Produk Wilayah Terbatas</p>
+                        <p class="mt-0.5 text-xs text-red-700">
+                          Produk hanya tersedia di wilayah <span class="font-semibold">{{ product.city_name }}</span>
+                        </p>
+                      </div>
+                    </div>
+
                     <h1 class="text-xl font-bold text-slate-900 sm:text-2xl">
                       {{ product.name }}
                     </h1>
@@ -1066,7 +1191,7 @@ onBeforeUnmount(() => {
 
               <div class="grid gap-3 pt-1">
                 <button type="button"
-                  class="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-600 py-2.5 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
                   :disabled="isOutOfStock || isBuyingNow || isAddingToCart" @click="goToCheckout">
                   <template v-if="isBuyingNow">
                     <svg class="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1190,8 +1315,7 @@ onBeforeUnmount(() => {
     </section>
 
     <Teleport to="body">
-      <div v-if="cartLoadingVisible"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35">
+      <div v-if="cartLoadingVisible" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35">
         <div
           class="flex items-center gap-3 rounded-xl bg-white/95 px-4 py-3 text-slate-800 shadow-xl ring-1 ring-slate-200">
           <svg class="h-5 w-5 animate-spin text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1211,13 +1335,12 @@ onBeforeUnmount(() => {
         enter-to-class="translate-y-0 opacity-100 scale-100" leave-active-class="duration-200 ease-in"
         leave-from-class="translate-y-0 opacity-100 scale-100" leave-to-class="translate-y-3 opacity-0 scale-[0.97]"
         move-class="transition-transform duration-200">
-        <div v-for="notification in cartNotifications" :key="notification.id"
-          :class="[
-            'pointer-events-auto flex w-full items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl ring-1 transition hover:scale-[1.005]',
-            notification.type === 'error'
-              ? 'border-red-100 bg-white ring-red-100'
-              : 'border-slate-100 bg-white ring-slate-900/5'
-          ]">
+        <div v-for="notification in cartNotifications" :key="notification.id" :class="[
+          'pointer-events-auto flex w-full items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl ring-1 transition hover:scale-[1.005]',
+          notification.type === 'error'
+            ? 'border-red-100 bg-white ring-red-100'
+            : 'border-slate-100 bg-white ring-slate-900/5'
+        ]">
           <template v-if="notification.type === 'success'">
             <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-slate-50">
               <img v-if="notification.image" :src="notification.image" :alt="notification.name"
@@ -1312,5 +1435,155 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </Teleport>
+
+    <!-- Address Required Alert Modal -->
+    <Teleport to="body">
+      <div v-if="showAddressAlert"
+        class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
+        @click.self="showAddressAlert = false">
+        <div class="relative w-full max-w-md animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl">
+          <!-- Icon -->
+          <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+            <svg class="h-8 w-8 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
+              <circle cx="12" cy="9.5" r="2.3" />
+            </svg>
+          </div>
+
+          <!-- Content -->
+          <div class="mb-6 text-center">
+            <h3 class="text-xl font-bold text-slate-900">Alamat Pengiriman Diperlukan</h3>
+            <p class="mt-2 text-sm text-slate-600">
+              Anda belum memiliki alamat pengiriman. Silakan tambahkan alamat terlebih dahulu untuk melanjutkan
+              pembelian.
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button type="button" @click="showAddressAlert = false"
+              class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              Nanti Saja
+            </button>
+            <button type="button" @click="openAddressModal"
+              class="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
+              Tambah Alamat
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Location Mismatch Alert Modal -->
+    <Teleport to="body">
+      <div v-if="showLocationMismatchAlert"
+        class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
+        @click.self="handleLocationMismatchOk">
+        <div class="relative w-full max-w-md animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl">
+          <!-- Icon -->
+          <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <svg class="h-8 w-8 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+
+          <!-- Content -->
+          <div class="mb-6 text-center">
+            <h3 class="text-xl font-bold text-slate-900">Produk Tidak Tersedia</h3>
+            <p class="mt-2 text-sm text-slate-600">
+              {{ locationMismatchMessage }}
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button type="button" @click="handleLocationMismatchOk"
+              class="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
+              Lihat Produk Lain
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Address Form Modal -->
+    <Dialog :open="showAddressModal" @update:open="(val) => showAddressModal = val">
+      <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Tambah Alamat Pengiriman</DialogTitle>
+          <DialogDescription>Lengkapi data alamat pengiriman Anda untuk melanjutkan pembelian.</DialogDescription>
+        </DialogHeader>
+
+        <form class="space-y-4" @submit.prevent="submitAddress">
+          <!-- Row 1: Label & Recipient Name -->
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <Label>Label Alamat</Label>
+              <Input v-model="addressForm.label" placeholder="Rumah / Kantor" :disabled="addressForm.processing" />
+              <p v-if="addressForm.errors.label" class="text-sm text-red-500">{{ addressForm.errors.label }}</p>
+            </div>
+            <div class="space-y-2">
+              <Label>Nama Penerima</Label>
+              <Input v-model="addressForm.recipient_name" placeholder="Nama lengkap"
+                :disabled="addressForm.processing" />
+              <p v-if="addressForm.errors.recipient_name" class="text-sm text-red-500">{{
+                addressForm.errors.recipient_name
+              }}</p>
+            </div>
+          </div>
+
+          <!-- Phone -->
+          <div class="space-y-2">
+            <Label>Nomor Telepon</Label>
+            <Input v-model="addressForm.phone" placeholder="08xxxxxxxxxx" :disabled="addressForm.processing" />
+            <p v-if="addressForm.errors.phone" class="text-sm text-red-500">{{ addressForm.errors.phone }}</p>
+          </div>
+
+          <!-- Region Selector -->
+          <RegionSelector v-model:provinceId="regionProvinceId" v-model:cityId="regionCityId"
+            v-model:districtId="regionDistrictId" :show-district="true" :disabled="addressForm.processing" :errors="{
+              provinceId: addressForm.errors.province_id,
+              cityId: addressForm.errors.city_id,
+              districtId: addressForm.errors.district_id,
+            }" />
+
+          <!-- Postal Code -->
+          <div class="space-y-2">
+            <Label>Kode Pos</Label>
+            <Input v-model="addressForm.postal_code" placeholder="Kode pos" :disabled="addressForm.processing" />
+            <p v-if="addressForm.errors.postal_code" class="text-sm text-red-500">{{ addressForm.errors.postal_code }}
+            </p>
+          </div>
+
+          <!-- Address Line -->
+          <div class="space-y-2">
+            <Label>Alamat Lengkap</Label>
+            <Input v-model="addressForm.address_line" placeholder="Jalan, nomor rumah, RT/RW"
+              :disabled="addressForm.processing" />
+            <p v-if="addressForm.errors.address_line" class="text-sm text-red-500">{{ addressForm.errors.address_line }}
+            </p>
+          </div>
+
+          <!-- Note -->
+          <div class="space-y-2">
+            <Label>Catatan untuk Kurir (Opsional)</Label>
+            <Input v-model="addressForm.note" placeholder="Patokan, warna rumah, dll"
+              :disabled="addressForm.processing" />
+          </div>
+
+          <DialogFooter class="flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" @click="showAddressModal = false"
+              :disabled="addressForm.processing">
+              Batal
+            </Button>
+            <Button type="submit" :disabled="addressForm.processing">
+              {{ addressForm.processing ? 'Menyimpan...' : 'Simpan & Lanjutkan' }}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   </LandingLayout>
 </template>
