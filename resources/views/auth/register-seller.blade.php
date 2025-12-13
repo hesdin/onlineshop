@@ -193,7 +193,7 @@
 
         <div class="rounded-lg bg-white/90 py-4 text-center text-sm text-slate-700 shadow-md">
           Sudah punya akun?
-          <a href="{{ route('login') }}" class="font-semibold text-sky-600 hover:underline">Login</a>
+          <a href="{{ route('portal.login') }}" class="font-semibold text-sky-600 hover:underline">Login</a>
         </div>
       </div>
     </div>

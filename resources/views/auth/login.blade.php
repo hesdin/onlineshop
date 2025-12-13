@@ -9,6 +9,9 @@
 </head>
 
 <body class="bg-sky-600 font-sans text-slate-900">
+  @php
+    $roleLabel = $roleLabel ?? 'Pengguna';
+  @endphp
   <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-sky-600 text-white">
     {{-- dekorasi background tipis --}}
     <div class="pointer-events-none absolute inset-0">
@@ -61,7 +64,7 @@
                   <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </button>
-              <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login Pembeli</h3>
+              <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login {{ $roleLabel }}</h3>
             </div>
             <div
               class="flex h-10 w-28 items-center justify-center rounded-lg border border-slate-200 text-[11px] font-bold text-sky-600 p-3">

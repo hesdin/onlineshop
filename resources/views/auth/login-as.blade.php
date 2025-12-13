@@ -103,7 +103,7 @@
 
           <div class="space-y-4">
             {{-- Penjual --}}
-            <a href="{{ route('login', ['role' => 'seller']) }}"
+            <a href="{{ route('seller.login') }}"
               class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 p-5 transition hover:border-sky-300 hover:bg-white hover:shadow-sm">
               <div class="flex items-center gap-4">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
@@ -127,7 +127,7 @@
             </a>
 
             {{-- Pembeli --}}
-            <a href="{{ route('login', ['role' => 'buyer']) }}"
+            <a href="{{ route('customer.login') }}"
               class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 p-5 transition hover:border-sky-300 hover:bg-white hover:shadow-sm">
               <div class="flex items-center gap-4">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
@@ -152,6 +152,11 @@
               </svg>
             </a>
           </div>
+          <p class="mt-8 text-center text-xs text-slate-400">
+            Admin marketplace?
+            <a href="{{ route('login') }}" class="font-semibold text-sky-600 hover:underline">Masuk sebagai Super
+              Admin</a>
+          </p>
         </div>
       </div>
     </div>

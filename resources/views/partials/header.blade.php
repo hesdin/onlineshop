@@ -444,7 +444,7 @@
       @else
         {{-- MODE BELUM LOGIN --}}
         <div class="flex items-center gap-3">
-          <a href="{{ route('login.as') }}"
+          <a href="{{ route('portal.login') }}"
             class="rounded-lg border border-sky-500 bg-white px-5 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50">
             Masuk
           </a>

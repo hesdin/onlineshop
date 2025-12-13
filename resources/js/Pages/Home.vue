@@ -1,12 +1,20 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 
 const props = defineProps({
     appName: {
         type: String,
         default: 'TP-PKK Marketplace',
+    },
+    categories: {
+        type: Array,
+        default: () => [],
+    },
+    collections: {
+        type: Array,
+        default: () => [],
     },
 });
 
@@ -41,22 +49,49 @@ const heroPromos = [
     },
 ];
 
-const categories = [
-    { name: 'ATK Kantor', color: 'bg-amber-50 text-amber-700' },
-    { name: 'Pangan Segar', color: 'bg-rose-50 text-rose-700' },
-    { name: 'Fashion', color: 'bg-emerald-50 text-emerald-700' },
-    { name: 'Elektronik', color: 'bg-indigo-50 text-indigo-700' },
-    { name: 'Jasa Kreatif', color: 'bg-sky-50 text-sky-700' },
-    { name: 'Gadget', color: 'bg-purple-50 text-purple-700' },
-    { name: 'Kesehatan', color: 'bg-cyan-50 text-cyan-700' },
-    { name: 'Hampers', color: 'bg-pink-50 text-pink-700' },
-    { name: 'Maintenance', color: 'bg-teal-50 text-teal-700' },
-    { name: 'Dekorasi', color: 'bg-lime-50 text-lime-700' },
-    { name: 'Furniture', color: 'bg-slate-50 text-slate-700' },
-    { name: 'Percetakan', color: 'bg-orange-50 text-orange-700' },
+const categoryPalette = [
+    'bg-amber-50 text-amber-700',
+    'bg-rose-50 text-rose-700',
+    'bg-emerald-50 text-emerald-700',
+    'bg-indigo-50 text-indigo-700',
+    'bg-sky-50 text-sky-700',
+    'bg-purple-50 text-purple-700',
+    'bg-cyan-50 text-cyan-700',
+    'bg-pink-50 text-pink-700',
+    'bg-teal-50 text-teal-700',
+    'bg-lime-50 text-lime-700',
+    'bg-slate-50 text-slate-700',
+    'bg-orange-50 text-orange-700',
 ];
 
-const collections = [
+const categoryTiles = computed(() => {
+    const baseCategories = (props.categories ?? [])
+        .slice(0, 17)
+        .map((category, index) => {
+            const name = category?.name ?? '';
+            return {
+                ...category,
+            color: categoryPalette[index % categoryPalette.length],
+            imageUrl: category?.image_url ?? null,
+            initial: name.trim().charAt(0).toUpperCase() || '?',
+            };
+        });
+
+    return [
+        ...baseCategories,
+        {
+            id: 'see-all',
+            name: 'Lihat Semua',
+            slug: 'lihat-semua',
+            color: categoryPalette[baseCategories.length % categoryPalette.length],
+            imageUrl:
+                'data:image/png;base64,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',
+            initial: '>>',
+        },
+    ];
+});
+
+const fallbackCollections = [
     { title: 'SUPERDEAL Road to PaDi Business Forum', color: 'from-sky-600 to-sky-500' },
     { title: 'Koleksi PAR4DE Jasa Percetakan', color: 'from-amber-500 to-orange-400' },
     { title: 'Koleksi Andalan Perjalanan Bisnis', color: 'from-emerald-500 to-teal-400' },
@@ -65,7 +100,7 @@ const collections = [
     { title: 'Koleksi Hampers Premium', color: 'from-pink-500 to-rose-400' },
 ];
 
-const products = [
+const fallbackProducts = [
     {
         title: 'Stop Kontak Industri 4 Lubang',
         vendor: 'CENTRIN AFATEC SUPPLIES',
@@ -127,6 +162,31 @@ const products = [
         image: 'https://images.unsplash.com/photo-1519677100203-a0e668c92439?auto=format&fit=crop&w=640&q=80',
     },
 ];
+
+const collectionList = computed(() => {
+    if (props.collections?.length) {
+        return props.collections.map((item) => ({
+            ...item,
+            products: item.products ?? [],
+        }));
+    }
+    return fallbackCollections.map((item) => ({
+        ...item,
+        products: fallbackProducts,
+        banner:
+            'https://smb-padiumkm-images-public-prod.oss-ap-southeast-5.aliyuncs.com/product-collection/image_section_banner/24112025/superdeal-road-to-padi-business-forum-and-showcase/ed27e7533e0ae63bb045d2520334d1.jpg',
+        url: '/template/collection/superdeal-road-to-pa-di-business-forum-and-showcase',
+    }));
+});
+
+const formatPrice = (value) => {
+    if (value == null) return 'Rp0';
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0,
+    }).format(value);
+};
 
 const benefits = [
     {
@@ -303,21 +363,32 @@ const scrollCollection = (index, direction) => {
             <header class="flex items-center justify-between">
                 <h3 class="text-2xl font-bold text-slate-900">Kategori</h3>
             </header>
-            <div class="grid gap-3 rounded-lg bg-white p-6 shadow-sm sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-                <button
-                    v-for="category in categories"
-                    :key="category.name"
+            <div class="grid gap-3 rounded-lg bg-white p-6 shadow-sm grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9">
+                <a
+                    v-for="category in categoryTiles"
+                    :key="category.id ?? category.slug ?? category.name"
                     class="flex flex-col items-center rounded-lg border border-slate-100 p-4 text-center transition hover:-translate-y-0.5 hover:border-sky-100 hover:shadow-sm"
+                    :href="category.slug === 'lihat-semua' ? '/c' : category.slug ? `/c/${category.slug}` : '/c'"
                 >
-                    <div class="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-md text-lg font-bold" :class="category.color">
-                        {{ category.name.charAt(0) }}
+                    <div
+                        class="mb-3 inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-md text-base font-semibold"
+                        :class="category.color"
+                    >
+                        <img
+                            v-if="category.imageUrl"
+                            :src="category.imageUrl"
+                            :alt="category.name"
+                            class="h-full w-full object-cover"
+                            loading="lazy"
+                        />
+                        <span v-else>{{ category.initial }}</span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-900">{{ category.name }}</p>
-                </button>
+                    <p class="text-xs font-semibold text-slate-900">{{ category.name }}</p>
+                </a>
             </div>
         </section>
 
-        <section v-for="(collection, index) in collections" :key="collection.title">
+        <section v-for="(collection, index) in collectionList" :key="collection.title">
             <div
                 class="overflow-hidden rounded-lg bg-linear-to-r p-6 text-white shadow-xl ring-1 ring-black/5"
                 :class="collection.color"
@@ -325,7 +396,7 @@ const scrollCollection = (index, direction) => {
                 <header class="flex flex-wrap items-center gap-3">
                     <h3 class="text-2xl font-bold">{{ collection.title }}</h3>
                     <a
-                        href="/template/collection/superdeal-road-to-pa-di-business-forum-and-showcase"
+                        :href="collection.url || '/search'"
                         class="ml-auto inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow transition hover:-translate-y-0.5 hover:shadow-md"
                     >
                         Lihat Semua
@@ -335,7 +406,7 @@ const scrollCollection = (index, direction) => {
                 <div class="mt-5 flex flex-col gap-4 lg:flex-row lg:items-start">
                     <div class="max-w-sm overflow-hidden rounded-lg ring-1 ring-white/20 backdrop-blur-sm lg:min-h-full">
                         <img
-                            src="https://smb-padiumkm-images-public-prod.oss-ap-southeast-5.aliyuncs.com/product-collection/image_section_banner/24112025/superdeal-road-to-padi-business-forum-and-showcase/ed27e7533e0ae63bb045d2520334d1.jpg"
+                            :src="collection.banner"
                             :alt="`Koleksi pilihan ${collection.title}`"
                             class="h-full w-full object-cover"
                             loading="lazy"
@@ -349,8 +420,8 @@ const scrollCollection = (index, direction) => {
                             :ref="(el) => setCollectionScroller(index, el)"
                         >
                             <article
-                                v-for="product in products"
-                                :key="product.title"
+                                v-for="product in collection.products || []"
+                                :key="product.id ?? product.title"
                                 class="product-card flex h-full flex-col overflow-hidden rounded-lg border border-white/40 bg-white p-4 text-slate-900 shadow transition hover:-translate-y-0.5 hover:shadow-lg"
                             >
                                 <div class="-mx-4 -mt-4">
@@ -399,7 +470,7 @@ const scrollCollection = (index, direction) => {
                                         {{ product.title }}
                                     </h5>
                                     <p class="text-sm font-bold text-slate-900">
-                                        {{ product.price }}
+                                        {{ typeof product.price === 'number' ? formatPrice(product.price) : product.price }}
                                     </p>
                                     <div class="flex items-center gap-1 text-[11px] text-slate-500">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-sky-600" viewBox="0 0 20 20" fill="currentColor">

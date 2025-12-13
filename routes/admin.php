@@ -1,0 +1,22 @@
+<?php
+
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CollectionController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\PromoCodeController;
+use App\Http\Controllers\Admin\StoreController;
+use App\Http\Controllers\Admin\UserController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('dashboard', DashboardController::class)->name('dashboard');
+Route::resource('users', UserController::class)->except(['show']);
+Route::resource('stores', StoreController::class)->except(['show']);
+Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+Route::resource('products', ProductController::class)->except(['show']);
+Route::resource('collections', CollectionController::class)->except(['show']);
+Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
+Route::resource('payment-methods', PaymentMethodController::class)->except(['show']);
+Route::resource('promo-codes', PromoCodeController::class)->except(['show']);

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\VerifyAndSetPasswordMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -32,6 +34,15 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        if (! $request->user()->hasVerifiedEmail()) {
+            Mail::to($request->user())->send(new VerifyAndSetPasswordMail($request->user()));
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => __('Email belum terverifikasi. Cek email untuk verifikasi & setel password.'),
+            ]);
+        }
+
         if (! $request->user()->hasRole('superadmin')) {
             Auth::logout();
 
@@ -42,7 +53,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        if (is_null($request->user()->password_changed_at)) {
+            return redirect()->route('password.force');
+        }
+
+        return redirect()->intended(route('admin.dashboard'));
     }
 
     public function destroy(Request $request): RedirectResponse

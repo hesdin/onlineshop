@@ -26,8 +26,11 @@ return new class extends Migration
             $table->decimal('height', 10, 2)->unsigned()->nullable();
             $table->string('item_type')->default('product'); // product / service
             $table->string('status')->default('ready'); // ready / pre_order / inactive
-            $table->string('location_city')->nullable();
-            $table->string('location_province')->nullable();
+            $table->string('visibility_scope')->default('global'); // global / local
+            $table->foreignId('location_province_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'provinces');
+            $table->foreignId('location_city_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'cities');
+            $table->foreignId('location_district_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'districts');
+            $table->string('location_postal_code', 10)->nullable();
             $table->boolean('is_pdn')->default(false);
             $table->boolean('is_pkp')->default(false);
             $table->boolean('is_tkdn')->default(false);

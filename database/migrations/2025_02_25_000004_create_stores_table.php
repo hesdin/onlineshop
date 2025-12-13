@@ -18,8 +18,10 @@ return new class extends Migration
             $table->string('type')->default('umkm'); // umkm, vendor, koperasi, premium
             $table->string('tax_status')->default('non_pkp'); // pkp / non_pkp
             $table->string('bumn_partner')->nullable();
-            $table->string('city')->nullable();
-            $table->string('province')->nullable();
+            $table->foreignId('province_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'provinces');
+            $table->foreignId('city_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'cities');
+            $table->foreignId('district_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'districts');
+            $table->string('postal_code', 10)->nullable();
             $table->string('address_line')->nullable();
             $table->boolean('is_verified')->default(false);
             $table->boolean('is_umkm')->default(true);

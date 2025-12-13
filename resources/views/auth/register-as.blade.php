@@ -71,7 +71,7 @@
 
         <div class="mt-8 border-t border-slate-100 pt-6 text-center text-xs sm:text-sm text-slate-500">
           Sudah punya akun TP-PKK Marketplace?
-          <a href="{{ route('login') }}" class="font-semibold text-sky-600 hover:underline">Masuk</a>
+          <a href="{{ route('portal.login') }}" class="font-semibold text-sky-600 hover:underline">Masuk</a>
         </div>
       </div>
 

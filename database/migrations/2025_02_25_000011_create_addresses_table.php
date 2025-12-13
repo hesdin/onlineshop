@@ -14,9 +14,9 @@ return new class extends Migration
             $table->string('label');
             $table->string('recipient_name');
             $table->string('phone', 30);
-            $table->string('province')->nullable();
-            $table->string('city')->nullable();
-            $table->string('district')->nullable();
+            $table->foreignId('province_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'provinces');
+            $table->foreignId('city_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'cities');
+            $table->foreignId('district_id')->nullable()->constrained(config('laravolt.indonesia.table_prefix').'districts');
             $table->string('postal_code', 10)->nullable();
             $table->string('address_line');
             $table->decimal('latitude', 10, 7)->nullable();
