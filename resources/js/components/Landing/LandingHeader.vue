@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
   isAuthenticated: Boolean,
@@ -42,8 +42,10 @@ const handleLogout = () => {
 
 const confirmLogout = () => {
   router.post('/logout', {}, {
+    preserveScroll: true,
     onSuccess: () => {
-      router.visit('/', { replace: true });
+      // Stay on current page by reloading instead of redirecting to home
+      window.location.reload();
     }
   });
 };
@@ -152,6 +154,33 @@ const closeCartWithDelay = () => {
 onBeforeUnmount(() => {
   Object.keys(timers).forEach((key) => clearTimer(key));
 });
+
+// Handle browser back button - reload page if loaded from bfcache
+onMounted(() => {
+  const handlePageShow = (event) => {
+    // persisted = true means page was loaded from back-forward cache
+    if (event.persisted) {
+      window.location.reload();
+    }
+  };
+
+  window.addEventListener('pageshow', handlePageShow);
+
+  // Cleanup on unmount is handled via component lifecycle
+});
+
+
+// Computed login URL with intended redirect
+const loginUrl = computed(() => {
+  if (typeof window === 'undefined') return '/customer/login';
+  const currentPath = window.location.pathname + window.location.search;
+  return `/customer/login?intended=${encodeURIComponent(currentPath)}`;
+});
+
+// Navigate to login with replace to avoid login page in history
+const goToLogin = () => {
+  router.visit(loginUrl.value, { replace: true });
+};
 </script>
 
 <template>
@@ -461,10 +490,10 @@ onBeforeUnmount(() => {
 
       <!-- Guest Actions -->
       <div class="flex items-center gap-3" v-else>
-        <Link href="/login"
+        <button type="button" @click="goToLogin"
           class="rounded-lg border border-sky-500 bg-white px-5 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50">
           Masuk
-        </Link>
+        </button>
         <a href="/register-as"
           class="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-600">
           Daftar

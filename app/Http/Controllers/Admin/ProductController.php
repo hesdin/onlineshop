@@ -56,8 +56,6 @@ class ProductController extends Controller
                 'location_district_id' => $product->location_district_id,
                 'location_postal_code' => $product->location_postal_code,
                 'is_pdn' => $product->is_pdn,
-                'is_pkp' => $product->is_pkp,
-                'is_tkdn' => $product->is_tkdn,
                 'store' => $product->store ? [
                     'id' => $product->store->id,
                     'name' => $product->store->name,
@@ -189,8 +187,6 @@ class ProductController extends Controller
             'location_district_id' => $product->location_district_id,
             'location_postal_code' => $product->location_postal_code,
             'is_pdn' => $product->is_pdn,
-            'is_pkp' => $product->is_pkp,
-            'is_tkdn' => $product->is_tkdn,
             'store' => $product->store ? [
                 'id' => $product->store->id,
                 'name' => $product->store->name,

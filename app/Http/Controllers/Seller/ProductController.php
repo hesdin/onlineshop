@@ -74,6 +74,7 @@ class ProductController extends Controller
             'statuses' => Product::statuses(),
             'itemTypes' => Product::itemTypes(),
             'visibilityOptions' => Product::visibilityScopes(),
+            'shippingMethods' => Product::shippingMethods(),
             'storeLocation' => $this->storeLocationPayload($store),
         ]);
     }
@@ -120,6 +121,7 @@ class ProductController extends Controller
             'statuses' => Product::statuses(),
             'itemTypes' => Product::itemTypes(),
             'visibilityOptions' => Product::visibilityScopes(),
+            'shippingMethods' => Product::shippingMethods(),
             'storeLocation' => $this->storeLocationPayload($store),
         ]);
     }
@@ -133,7 +135,24 @@ class ProductController extends Controller
 
         abort_if($product->store_id !== $store->id, 403);
 
+        // Debug: Log raw request data
+        \Log::info('Raw request data for product update', [
+            'product_id' => $product->id,
+            'shipping_pickup_raw' => $request->input('shipping_pickup'),
+            'shipping_delivery_raw' => $request->input('shipping_delivery'),
+            'all_input' => $request->only(['shipping_pickup', 'shipping_delivery', 'is_pdn']),
+        ]);
+
         $data = $request->validated();
+
+        // Debug logging - remove after fix
+        \Log::info('Product update data', [
+            'product_id' => $product->id,
+            'is_pdn' => $data['is_pdn'] ?? 'NOT SET',
+            'shipping_pickup' => $data['shipping_pickup'] ?? 'NOT SET',
+            'shipping_delivery' => $data['shipping_delivery'] ?? 'NOT SET',
+            'all_data_keys' => array_keys($data),
+        ]);
 
         $product->update($data);
 
@@ -205,8 +224,8 @@ class ProductController extends Controller
             'location_district_id' => $product->location_district_id,
             'location_postal_code' => $product->location_postal_code,
             'is_pdn' => $product->is_pdn,
-            'is_pkp' => $product->is_pkp,
-            'is_tkdn' => $product->is_tkdn,
+            'shipping_pickup' => $product->shipping_pickup,
+            'shipping_delivery' => $product->shipping_delivery,
             'category' => $product->category ? [
                 'id' => $product->category->id,
                 'name' => $product->category->name,

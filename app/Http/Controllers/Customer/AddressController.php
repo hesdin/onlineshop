@@ -68,7 +68,7 @@ class AddressController extends Controller
 
         $address->update($data);
 
-        return Redirect::route('customer.dashboard.address')->with('success', 'Alamat berhasil diperbarui.');
+        return back()->with('success', 'Alamat berhasil diperbarui.');
     }
 
     public function destroy(Address $address): RedirectResponse
@@ -78,6 +78,16 @@ class AddressController extends Controller
         $address->delete();
 
         return Redirect::route('customer.dashboard.address')->with('success', 'Alamat berhasil dihapus.');
+    }
+
+    public function select(Request $request, Address $address): RedirectResponse
+    {
+        $this->authorizeOwner($address);
+
+        $this->unsetDefault($request->user()->id, $address->id);
+        $address->update(['is_default' => true]);
+
+        return back()->with('success', 'Alamat utama diperbarui.');
     }
 
     private function validateData(Request $request): array

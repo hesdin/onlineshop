@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, reactive } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 import RegionSelector from '@/Components/RegionSelector.vue';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -182,6 +182,9 @@ const handleKeydown = (event) => {
 
 const page = usePage();
 const isAuthenticated = computed(() => Boolean(page.props.auth?.user));
+const hasOtherProducts = computed(
+  () => Array.isArray(product.value.otherProducts) && product.value.otherProducts.length > 0
+);
 
 const minOrderQuantity = computed(() => {
   const raw = product.value.minOrderQuantity ?? product.value.min_order ?? 1;
@@ -207,6 +210,15 @@ const cartLoadingStartedAt = ref(0);
 const cartLoadingHideTimeout = ref(null);
 const MIN_CART_LOADING_MS = 700;
 const isBuyingNow = ref(false);
+const addressLoadingVisible = ref(false);
+const addressLoadingStartedAt = ref(0);
+const addressLoadingHideTimeout = ref(null);
+const MIN_ADDRESS_LOADING_MS = 700;
+const addressSuccessVisible = ref(false);
+const addressSuccessMessage = ref('');
+const ADDRESS_SUCCESS_DURATION = 3500;
+const addressSuccessHideTimeout = ref(null);
+const addressSuccessPendingMessage = ref('');
 
 // Address Modal State
 const showAddressModal = ref(false);
@@ -214,6 +226,48 @@ const showAddressAlert = ref(false);
 const showLocationMismatchAlert = ref(false);
 const locationMismatchMessage = ref('');
 const hasAddress = computed(() => Boolean(page.props.customerAddress));
+
+// Address Management Modal State
+const showAddressManagementModal = ref(false);
+const isEditingAddress = ref(false);
+const editingAddressId = ref(null);
+
+// Shipping Method Modal State
+const showShippingMethodModal = ref(false);
+const selectedShippingMethod = ref(null); // 'pickup' | 'delivery' | null
+
+// Available shipping methods based on product configuration
+const availableShippingMethods = computed(() => {
+  const methods = [];
+  if (props.product?.shipping_pickup) {
+    methods.push({
+      value: 'pickup',
+      label: 'Ambil di Toko',
+      description: 'Ambil produk langsung di lokasi toko penjual.',
+      icon: 'store',
+    });
+  }
+  if (props.product?.shipping_delivery) {
+    methods.push({
+      value: 'delivery',
+      label: 'Diantar ke Tempat',
+      description: 'Penjual mengirim produk ke alamat Anda.',
+      icon: 'truck',
+    });
+  }
+  return methods;
+});
+
+const hasShippingMethods = computed(() => availableShippingMethods.value.length > 0);
+
+const openShippingMethodModal = () => {
+  showShippingMethodModal.value = true;
+};
+
+const selectShippingMethod = (method) => {
+  selectedShippingMethod.value = method;
+  showShippingMethodModal.value = false;
+};
 
 // Watch isProductAvailable prop - jika false, tampilkan alert
 watch(() => props.isProductAvailable, (available) => {
@@ -237,6 +291,12 @@ const addressForm = useForm({
   note: '',
 });
 
+const regionInitialNames = reactive({
+  province: '',
+  city: '',
+  district: '',
+});
+
 // Computed untuk memastikan tipe yang benar untuk RegionSelector
 const regionProvinceId = computed({
   get: () => addressForm.province_id ? Number(addressForm.province_id) : null,
@@ -253,21 +313,124 @@ const regionDistrictId = computed({
   set: (val) => { addressForm.district_id = val; }
 });
 
-const openAddressModal = () => {
+const otherAddresses = computed(() => {
+  const all = page.props.customerAddresses || [];
+  const currentId = page.props.customerAddress?.id;
+  if (!currentId) return all;
+  return all.filter(a => a.id !== currentId);
+});
+
+const openAddressManagementModal = () => {
+  showAddressManagementModal.value = true;
+};
+
+const openAddressModal = (addressId = null) => {
+  const normalizedId = typeof addressId === 'object' ? null : addressId;
   showAddressAlert.value = false;
+  showAddressManagementModal.value = false;
   addressForm.reset();
   addressForm.clearErrors();
   addressForm.is_default = true;
+  regionInitialNames.province = '';
+  regionInitialNames.city = '';
+  regionInitialNames.district = '';
+
+  if (normalizedId) {
+    isEditingAddress.value = true;
+    editingAddressId.value = normalizedId;
+
+    // Cari data alamat dari page props
+    const currentAddress = page.props.customerAddress;
+    const addressList = page.props.customerAddresses || [];
+
+    let targetAddress = null;
+
+    if (currentAddress && currentAddress.id === normalizedId) {
+      targetAddress = currentAddress;
+    } else {
+      targetAddress = addressList.find(a => a.id === normalizedId);
+    }
+
+    if (targetAddress) {
+      addressForm.label = targetAddress.label;
+      addressForm.recipient_name = targetAddress.recipient_name;
+      addressForm.phone = targetAddress.phone;
+      addressForm.province_id = targetAddress.province_id;
+      addressForm.city_id = targetAddress.city_id;
+      addressForm.district_id = targetAddress.district_id;
+      addressForm.postal_code = targetAddress.postal_code;
+      addressForm.address_line = targetAddress.address_line;
+      addressForm.is_default = Boolean(targetAddress.is_default);
+      addressForm.note = targetAddress.note;
+      regionInitialNames.province = targetAddress.province || '';
+      regionInitialNames.city = targetAddress.city || '';
+      regionInitialNames.district = targetAddress.district || '';
+    }
+  } else {
+    isEditingAddress.value = false;
+    editingAddressId.value = null;
+  }
+
   showAddressModal.value = true;
 };
 
+const ADDRESS_REQUIRED_FIELDS = [
+  { key: 'label', message: 'Label alamat wajib diisi.' },
+  { key: 'recipient_name', message: 'Nama penerima wajib diisi.' },
+  { key: 'phone', message: 'Nomor telepon wajib diisi.' },
+  { key: 'province_id', message: 'Provinsi wajib dipilih.' },
+  { key: 'city_id', message: 'Kota/Kabupaten wajib dipilih.' },
+  { key: 'district_id', message: 'Kecamatan wajib dipilih.' },
+  { key: 'postal_code', message: 'Kode pos wajib diisi.' },
+  { key: 'address_line', message: 'Alamat lengkap wajib diisi.' },
+];
+
+const isEmptyAddressField = (value) => {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  if (typeof value === 'string') {
+    return value.trim().length === 0;
+  }
+  return false;
+};
+
+const validateAddressForm = () => {
+  addressForm.clearErrors();
+  let valid = true;
+
+  ADDRESS_REQUIRED_FIELDS.forEach(({ key, message }) => {
+    if (isEmptyAddressField(addressForm[key])) {
+      addressForm.setError(key, message);
+      valid = false;
+    }
+  });
+
+  return valid;
+};
+
 const submitAddress = () => {
-  addressForm.post('/customer/dashboard/address', {
+  if (!validateAddressForm()) {
+    return;
+  }
+
+  const wasEditingAddress = Boolean(isEditingAddress.value && editingAddressId.value);
+  const endpoint = isEditingAddress.value && editingAddressId.value
+    ? `/customer/dashboard/address/${editingAddressId.value}`
+    : '/customer/dashboard/address';
+
+  const method = isEditingAddress.value ? 'put' : 'post';
+
+  startAddressLoading();
+  addressForm[method](endpoint, {
     preserveScroll: true,
     preserveState: true,
     replace: true,
     onSuccess: (response) => {
       showAddressModal.value = false;
+      isEditingAddress.value = false;
+      editingAddressId.value = null;
+      showAddressSuccess(wasEditingAddress ? 'Alamat berhasil diperbarui.' : 'Alamat berhasil disimpan.');
 
       // Cek isProductAvailable dari response - jika false, watch akan handle alert
       const isAvailable = response.props?.isProductAvailable;
@@ -277,10 +440,29 @@ const submitAddress = () => {
         return;
       }
 
-      // Setelah validasi OK, lanjutkan ke checkout
-      setTimeout(() => {
-        goToCheckout();
-      }, 100);
+      // Setelah validasi OK, lanjutkan ke checkout jika bukan dari management modal
+      if (!hasAddress.value) {
+        setTimeout(() => {
+          goToCheckout();
+        }, 100);
+      }
+    },
+    onFinish: () => {
+      stopAddressLoading();
+    },
+  });
+};
+
+const selectAddress = (addressId) => {
+  startAddressLoading();
+  router.post(`/customer/dashboard/address/${addressId}/select`, {}, {
+    preserveScroll: true,
+    onSuccess: () => {
+      showAddressManagementModal.value = false;
+      showAddressSuccess('Alamat utama berhasil diperbarui.');
+    },
+    onFinish: () => {
+      stopAddressLoading();
     },
   });
 };
@@ -301,6 +483,53 @@ const forceHideCartLoadingOverlay = () => {
     cartLoadingHideTimeout.value = null;
   }
   cartLoadingVisible.value = false;
+};
+
+const startAddressLoading = () => {
+  if (addressLoadingHideTimeout.value) {
+    clearTimeout(addressLoadingHideTimeout.value);
+    addressLoadingHideTimeout.value = null;
+  }
+  addressLoadingStartedAt.value = Date.now();
+  addressLoadingVisible.value = true;
+};
+
+const forceHideAddressLoadingOverlay = () => {
+  if (addressLoadingHideTimeout.value) {
+    clearTimeout(addressLoadingHideTimeout.value);
+    addressLoadingHideTimeout.value = null;
+  }
+  addressLoadingVisible.value = false;
+};
+
+const stopAddressLoading = () => {
+  const elapsed = Date.now() - addressLoadingStartedAt.value;
+  const remaining = Math.max(0, MIN_ADDRESS_LOADING_MS - elapsed);
+  addressLoadingHideTimeout.value = setTimeout(() => {
+    forceHideAddressLoadingOverlay();
+    if (addressSuccessPendingMessage.value) {
+      showAddressSuccess(addressSuccessPendingMessage.value);
+      addressSuccessPendingMessage.value = '';
+    }
+  }, remaining);
+};
+
+const showAddressSuccess = (message = 'Alamat berhasil disimpan.') => {
+  if (addressLoadingVisible.value) {
+    addressSuccessPendingMessage.value = message;
+    return;
+  }
+
+  addressSuccessMessage.value = message;
+  addressSuccessVisible.value = true;
+  if (addressSuccessHideTimeout.value) {
+    clearTimeout(addressSuccessHideTimeout.value);
+  }
+  addressSuccessHideTimeout.value = setTimeout(() => {
+    addressSuccessVisible.value = false;
+    addressSuccessMessage.value = '';
+    addressSuccessHideTimeout.value = null;
+  }, ADDRESS_SUCCESS_DURATION);
 };
 
 // loading hanya mengandalkan state bawaan Inertia form
@@ -365,6 +594,10 @@ watch(
       forceHideCartLoadingOverlay();
     }, remaining);
   }
+);
+
+const globalLoadingMessage = computed(() =>
+  addressLoadingVisible.value ? 'Menyimpan alamat...' : 'Loading...'
 );
 
 const changeQuantity = (delta) => {
@@ -495,7 +728,10 @@ const goToCheckout = () => {
 
   // Cek apakah user sudah login
   if (!isAuthenticated.value) {
-    router.visit('/customer/login');
+    // Redirect ke login dengan intended URL agar kembali ke halaman ini setelah login
+    // replace: true ensures login page replaces current history entry, so back button returns to previous page, not login
+    const currentUrl = window.location.pathname + window.location.search;
+    router.visit(`/customer/login?intended=${encodeURIComponent(currentUrl)}`, { replace: true });
     return;
   }
 
@@ -546,6 +782,51 @@ const shareLinks = computed(() => {
   };
 });
 
+const whatsappChatUrl = computed(() => {
+  const phone = product.value.store?.phone;
+
+  // Debug logging
+  console.log('🐛 WhatsApp Debug:', {
+    storeExists: !!product.value.store,
+    phone: phone,
+    phoneType: typeof phone,
+    phoneLength: phone?.length,
+    trimmed: phone?.trim(),
+  });
+
+  // Check if phone exists and is not empty
+  if (!phone || phone.trim() === '') {
+    console.log('❌ No phone or empty phone');
+    return null;
+  }
+
+  // Remove all non-numeric characters from phone number
+  const cleanPhone = phone.replace(/\D/g, '');
+
+  console.log('🧹 Cleaned phone:', cleanPhone);
+
+  // If cleanPhone is empty after removing non-numeric, return null
+  if (!cleanPhone) {
+    console.log('❌ Clean phone is empty');
+    return null;
+  }
+
+  // If phone doesn't start with country code, assume Indonesia (+62)
+  const formattedPhone = cleanPhone.startsWith('62') ? cleanPhone : `62${cleanPhone.replace(/^0+/, '')}`;
+
+  console.log('✅ Formatted phone:', formattedPhone);
+
+  // Pre-filled message
+  const message = encodeURIComponent(
+    `Halo, saya tertarik dengan produk "${product.value.name || 'ini'}". Apakah masih tersedia?`
+  );
+
+  const url = `https://wa.me/${formattedPhone}?text=${message}`;
+  console.log('✅ WhatsApp URL:', url);
+
+  return url;
+});
+
 const copyStatus = ref(false);
 const formattedProductLocation = computed(() => {
   const location = product.value.location ?? '';
@@ -566,17 +847,30 @@ const formattedProductLocation = computed(() => {
 
 const shippingSummary = computed(() => {
   const address = page.props.customerAddress ?? null;
-  const shipping = page.props.customerShipping ?? null;
   const normalizeRegion = (value) => (value ? toTitleCase(value) : '');
   const regionDetail =
     [address?.district, address?.city, address?.province].map(normalizeRegion).filter(Boolean).join(', ') || null;
 
+  // Get shipping method title
+  let shippingTitle = 'Pilih metode pengiriman';
+  let shippingDescription = null;
+
+  if (selectedShippingMethod.value) {
+    const method = availableShippingMethods.value.find((m) => m.value === selectedShippingMethod.value);
+    if (method) {
+      shippingTitle = method.label;
+      shippingDescription = method.description;
+    }
+  } else if (!hasShippingMethods.value) {
+    shippingTitle = 'Tidak ada metode pengiriman';
+    shippingDescription = 'Produk ini belum memiliki metode pengiriman';
+  }
+
   return {
     addressTitle: address?.label ?? 'Alamat pengiriman belum dipilih',
     addressDetail: regionDetail,
-    courierTitle: shipping?.courier ?? shipping?.service ?? 'Pilih kurir pengiriman',
-    courierCost: shipping?.cost != null ? formatPrice(shipping.cost) : null,
-    courierEstimate: shipping?.estimate ?? shipping?.etd ?? null,
+    shippingTitle,
+    shippingDescription,
   };
 });
 
@@ -703,17 +997,17 @@ onBeforeUnmount(() => {
 
         <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,2.2fr)_minmax(320px,0.8fr)]">
           <div class="space-y-4 lg:space-y-6">
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div class="rounded-md border border-slate-200 bg-white p-4 sm:p-6">
               <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
                 <div>
-                  <div class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+                  <div class="group relative overflow-hidden rounded-md border border-slate-200 bg-slate-50"
                     :class="hasProductImage ? 'cursor-zoom-in' : 'cursor-default'" @mouseenter="handleImageEnter"
                     @mouseleave="handleImageLeave" @mousemove="updateZoomFromEvent" @click="openModal">
                     <template v-if="hasProductImage">
                       <img :src="activeImage" :alt="product.name" :style="zoomImageStyle"
                         class="h-[320px] w-full object-cover transition-transform duration-200 ease-out md:h-[420px]" />
                       <div
-                        class="pointer-events-none absolute right-3 top-3 hidden items-center gap-2 rounded-full bg-white/80 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200/70 sm:flex">
+                        class="pointer-events-none absolute right-3 top-3 hidden items-center gap-2 rounded-full bg-white/80 px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200/70 sm:flex">
                         <svg class="h-3.5 w-3.5 text-slate-500" viewBox="0 0 20 20" fill="none" stroke="currentColor"
                           stroke-width="1.6">
                           <circle cx="9" cy="9" r="5.5" />
@@ -730,7 +1024,7 @@ onBeforeUnmount(() => {
 
                   <div v-if="product.gallery?.length" class="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
                     <button v-for="(thumb, index) in product.gallery" :key="thumb + index" type="button"
-                      class="overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-sky-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                      class="overflow-hidden rounded-md border bg-white transition hover:-translate-y-0.5 hover:border-sky-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                       :class="activeIndex === index ? 'border-sky-500' : 'border-slate-200'"
                       @click="selectImage(index)">
                       <img :src="thumb" :alt="`Galeri ${index + 1}`" class="h-16 w-full object-cover" />
@@ -742,7 +1036,7 @@ onBeforeUnmount(() => {
                   <div class="space-y-3 border-b border-slate-200 pb-4">
                     <!-- Visibility Scope Alert -->
                     <div v-if="product.visibility_scope === 'local' && product.city_name"
-                      class="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                      class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3">
                       <svg class="h-5 w-5 flex-shrink-0 text-red-600" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd"
                           d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
@@ -756,12 +1050,12 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
 
-                    <h1 class="text-xl font-bold text-slate-900 sm:text-2xl">
+                    <h1 class="text-lg font-bold text-slate-900 sm:text-xl">
                       {{ product.name }}
                     </h1>
 
                     <div class="space-y-1">
-                      <p class="text-3xl font-bold text-sky-600 sm:text-4xl">
+                      <p class="text-2xl font-extrabold sm:text-3xl">
                         {{ formatPrice(product.price) }}
                       </p>
                       <div v-if="product.originalPrice && product.originalPrice > product.price"
@@ -820,7 +1114,7 @@ onBeforeUnmount(() => {
             </div>
 
             <div
-              class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:gap-4 sm:px-5">
+              class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 sm:gap-4 sm:px-5">
               <div class="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800">
                 <span>Bagikan Produk:</span>
                 <div class="flex items-center gap-2 sm:gap-3">
@@ -890,7 +1184,7 @@ onBeforeUnmount(() => {
 
             <!-- Store -->
             <component :is="product.store.url ? Link : 'div'" :href="product.store.url || undefined"
-              class="block space-y-4 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-sky-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 sm:px-5 sm:py-5">
+              class="block space-y-4 rounded-md border border-slate-200 bg-white px-4 py-4 transition hover:border-sky-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 sm:px-5 sm:py-5">
               <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                 <div class="relative">
                   <img class="h-12 w-12 rounded-full border border-slate-200 object-cover" :src="product.store.avatar"
@@ -948,7 +1242,7 @@ onBeforeUnmount(() => {
               </div>
             </component>
 
-            <div class="rounded-lg border border-slate-300 bg-white">
+            <div class="rounded-md border border-slate-200 bg-white">
               <div
                 class="flex gap-6 border-b border-slate-200 px-4 py-4 text-sm font-semibold text-slate-500 sm:px-5 sm:py-5">
                 <button type="button" class="border-b-2 px-1 pb-1 transition"
@@ -972,8 +1266,8 @@ onBeforeUnmount(() => {
               </div>
 
               <div v-else class="space-y-4 px-4 pb-5 pt-4 text-sm text-slate-700 sm:px-5 sm:pb-6">
-                <div class="grid gap-4 rounded-lg border border-slate-100 bg-slate-50 p-4 sm:grid-cols-[180px_1fr]">
-                  <div class="flex flex-col items-center justify-center rounded-lg bg-white p-4 text-center">
+                <div class="grid gap-4 rounded-md border border-slate-100 bg-slate-50 p-4 sm:grid-cols-[180px_1fr]">
+                  <div class="flex flex-col items-center justify-center rounded-md bg-white p-4 text-center">
                     <p class="text-3xl font-bold text-slate-900">{{ reviewStats.average }}</p>
                     <div class="flex items-center gap-0.5 text-amber-400">
                       <svg v-for="(star, index) in ratingStars(reviewStats.average)" :key="'avg-star-' + index"
@@ -1001,7 +1295,7 @@ onBeforeUnmount(() => {
 
                 <div class="space-y-3">
                   <article v-for="review in reviews" :key="review.id ?? review.user"
-                    class="rounded-lg border border-slate-100 bg-white p-4 shadow-sm">
+                    class="rounded-md border border-slate-100 bg-white p-4">
                     <div class="flex items-center gap-3">
                       <div
                         class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
@@ -1047,7 +1341,7 @@ onBeforeUnmount(() => {
           </div>
 
           <aside class="space-y-4 lg:sticky lg:top-32 lg:z-20 lg:max-h-[calc(100vh-8rem)]">
-            <div class="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div class="space-y-5 rounded-md border border-slate-200 bg-white p-4 sm:p-6">
               <div class="flex items-center justify-between">
                 <p class="text-base font-semibold text-slate-900">Atur Pembelian</p>
                 <p class="text-xs font-semibold" :class="isOutOfStock ? 'text-red-600' : 'text-slate-500'">
@@ -1058,7 +1352,7 @@ onBeforeUnmount(() => {
               <div class="space-y-2">
                 <p class="text-sm font-semibold text-slate-500">Jumlah Pembelian</p>
 
-                <div class="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                <div class="inline-flex overflow-hidden rounded-md border border-slate-300 bg-slate-50">
                   <button type="button"
                     class="px-4 py-1 text-lg text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="isOutOfStock || quantity <= minOrderQuantity" @click="changeQuantity(-1)">
@@ -1066,7 +1360,7 @@ onBeforeUnmount(() => {
                   </button>
 
                   <input type="number" :value="quantity" :min="minOrderQuantity" :disabled="isOutOfStock"
-                    class="w-16 border-x border-slate-200 bg-white px-3 py-1 text-center text-sm font-semibold text-slate-800 focus:outline-none disabled:cursor-not-allowed"
+                    class="qty-input w-16 border-x border-slate-300 bg-white px-3 py-1 text-center text-sm font-semibold text-slate-800 focus:outline-none disabled:cursor-not-allowed"
                     @input="handleQuantityInput" />
 
                   <button type="button"
@@ -1089,7 +1383,7 @@ onBeforeUnmount(() => {
 
               <div class="space-y-1 pt-2">
                 <p class="text-sm font-semibold text-slate-500">Total Harga</p>
-                <p class="text-xl font-bold text-sky-600 sm:text-2xl">
+                <p class="text-xl font-bold sm:text-2xl">
                   {{ formatPrice(totalPrice) }}
                 </p>
               </div>
@@ -1102,7 +1396,24 @@ onBeforeUnmount(() => {
 
               <div class="space-y-4 border-t border-slate-200 pt-4">
                 <p class="text-sm font-semibold text-slate-500">Informasi Pengiriman</p>
-                <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+
+                <!-- Login Alert for Unauthenticated Users -->
+                <div v-if="!isAuthenticated"
+                  class="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+                  <svg class="h-5 w-5 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-xs font-semibold text-amber-800">
+                      Login untuk melihat informasi pengiriman dan melanjutkan pembelian
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Shipping Information for Authenticated Users -->
+                <div v-else class="space-y-3 rounded-md border border-slate-200 bg-slate-50/60 p-3">
                   <div class="flex items-start gap-3">
                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
                       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -1120,8 +1431,9 @@ onBeforeUnmount(() => {
                   </div>
 
                   <button type="button"
-                    class="flex w-full items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:border-sky-400">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500">
+                    class="flex w-full items-start gap-3 rounded-md border border-slate-200 bg-white/90 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-sky-400"
+                    @click="openAddressManagementModal">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
                       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                         <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
                         <circle cx="12" cy="9.5" r="2.3" />
@@ -1141,25 +1453,25 @@ onBeforeUnmount(() => {
                   </button>
 
                   <button type="button"
-                    class="flex w-full items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:border-sky-400">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-500">
+                    class="flex w-full items-start gap-3 rounded-md border border-slate-200 bg-white/90 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-sky-400"
+                    :class="{ 'opacity-50 cursor-not-allowed': !hasShippingMethods }" :disabled="!hasShippingMethods"
+                    @click="openShippingMethodModal">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
                       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                        <path d="M3 6h11v9H3z" />
-                        <path d="M14 10h4l2 3v2h-6z" />
-                        <circle cx="7" cy="17" r="1.4" />
-                        <circle cx="17" cy="17" r="1.4" />
+                        <path d="M10 17h4V5H2v12h3" />
+                        <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+                        <circle cx="7.5" cy="17.5" r="2.5" />
+                        <circle cx="17.5" cy="17.5" r="2.5" />
                       </svg>
                     </span>
                     <div class="flex-1">
-                      <p class="font-semibold text-slate-800">{{ shippingSummary.courierTitle }}</p>
+                      <p class="font-semibold text-slate-800">{{ shippingSummary.shippingTitle }}</p>
                       <p class="text-xs text-slate-500">
-                        {{ shippingSummary.courierCost || 'Belum ada biaya' }}
-                        <span v-if="shippingSummary.courierEstimate" class="text-slate-400">·
-                          {{ shippingSummary.courierEstimate }}</span>
+                        {{ shippingSummary.shippingDescription || 'Pilih metode pengiriman' }}
                       </p>
                     </div>
-                    <svg class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-                      stroke-width="1.8">
+                    <svg v-if="hasShippingMethods" class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="none"
+                      stroke="currentColor" stroke-width="1.8">
                       <path d="M7 4.5 12 10l-5 5.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                   </button>
@@ -1168,21 +1480,48 @@ onBeforeUnmount(() => {
 
               <div class="border-t border-slate-200 pt-4">
                 <div class="flex items-center gap-4 text-xs font-semibold text-slate-500">
-                  <button type="button"
+                  <button v-if="isAuthenticated" type="button"
                     class="inline-flex items-center gap-2 text-slate-500 transition hover:text-slate-700">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                      <path d="M9 13.5 16.5 6a3 3 0 1 1 4.2 4.2l-7.5 7.5a4 4 0 0 1-5.6-5.6L15 4.7"
-                        stroke-linecap="round" stroke-linejoin="round" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-pencil-square" viewBox="0 0 16 16">
+                      <path
+                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                      <path fill-rule="evenodd"
+                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                    </svg>
+                    <span>Catatan Penjual</span>
+                  </button>
+                  <button v-else type="button" disabled
+                    class="inline-flex items-center gap-2 text-slate-300 cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-pencil-square" viewBox="0 0 16 16">
+                      <path
+                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                      <path fill-rule="evenodd"
+                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
                     </svg>
                     <span>Catatan Penjual</span>
                   </button>
                   <span class="text-base text-slate-300">•</span>
-                  <button type="button"
-                    class="inline-flex items-center gap-2 text-slate-500 transition hover:text-slate-700">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                      <path d="M20 13.5a6.5 6.5 0 0 1-8 6.3L7 21l1.3-3.3a6.5 6.5 0 1 1 11.7-4.2Z" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                      <path d="M10 11h.01M13 11h.01M16 11h.01" stroke-linecap="round" stroke-linejoin="round" />
+                  <a v-if="whatsappChatUrl" :href="whatsappChatUrl" target="_blank" rel="noopener noreferrer"
+                    class="inline-flex items-center gap-2 text-slate-500 transition hover:text-emerald-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-chat-dots" viewBox="0 0 16 16">
+                      <path
+                        d="M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
+                      <path
+                        d="m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.4 10.4 0 0 1-.524 2.318l-.003.011a11 11 0 0 1-.244.637c-.079.186.074.394.273.362a22 22 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a11 11 0 0 0 .398-2" />
+                    </svg>
+                    <span>Chat Penjual</span>
+                  </a>
+                  <button v-else type="button" disabled
+                    class="inline-flex items-center gap-2 text-slate-300 cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-chat-dots" viewBox="0 0 16 16">
+                      <path
+                        d="M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
+                      <path
+                        d="m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.4 10.4 0 0 1-.524 2.318l-.003.011a11 11 0 0 1-.244.637c-.079.186.074.394.273.362a22 22 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a11 11 0 0 0 .398-2" />
                     </svg>
                     <span>Chat Penjual</span>
                   </button>
@@ -1191,7 +1530,7 @@ onBeforeUnmount(() => {
 
               <div class="grid gap-3 pt-1">
                 <button type="button"
-                  class="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex items-center justify-center gap-2 rounded-md bg-sky-600 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
                   :disabled="isOutOfStock || isBuyingNow || isAddingToCart" @click="goToCheckout">
                   <template v-if="isBuyingNow">
                     <svg class="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1204,7 +1543,7 @@ onBeforeUnmount(() => {
                 </button>
 
                 <button type="button"
-                  class="inline-flex items-center justify-center gap-2 rounded-lg border border-sky-500 bg-white py-2.5 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex items-center justify-center gap-2 rounded-md border border-sky-500 bg-white py-2.5 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
                   :disabled="isOutOfStock || isAddingToCart" @click="addToCart">
                   <template v-if="isAddingToCart">
                     <svg class="h-4 w-4 animate-spin text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1223,109 +1562,132 @@ onBeforeUnmount(() => {
           </aside>
         </div>
 
+        <!-- Lainnya Di Toko ini Section - Constrained to match Deskripsi Produk width -->
         <section class="mt-6 lg:mt-8">
-          <div class="mb-4 flex items-center justify-between px-1 sm:px-0">
-            <h2 class="text-lg font-semibold text-slate-900">
-              Lainnya Di Toko ini
-            </h2>
-            <Link v-if="product.store.url" :href="product.store.url"
-              class="inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-700">
-              <span>Lihat Semua</span>
-              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M7.25 4.75L12.5 10l-5.25 5.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                  stroke-linejoin="round" fill="none" />
-              </svg>
-            </Link>
-            <button v-else type="button" class="inline-flex items-center gap-1 text-sm font-semibold text-slate-400"
-              disabled>
-              <span>Lihat Semua</span>
-              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M7.25 4.75L12.5 10l-5.25 5.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                  stroke-linejoin="round" fill="none" />
-              </svg>
-            </button>
-          </div>
+          <div class="grid gap-6 lg:grid-cols-[minmax(0,2.2fr)_minmax(320px,0.8fr)]">
+            <div class="space-y-4">
+              <div class="mb-4 flex items-center justify-between px-1 sm:px-0">
+                <h2 class="text-lg font-semibold text-slate-900">
+                  Lainnya Di Toko ini
+                </h2>
+                <Link v-if="product.store.url" :href="product.store.url"
+                  class="inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-700">
+                  <span>Lihat Semua</span>
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M7.25 4.75L12.5 10l-5.25 5.25" stroke="currentColor" stroke-width="1.6"
+                      stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                  </svg>
+                </Link>
+                <button v-else type="button" class="inline-flex items-center gap-1 text-sm font-semibold text-slate-400"
+                  disabled>
+                  <span>Lihat Semua</span>
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M7.25 4.75L12.5 10l-5.25 5.25" stroke="currentColor" stroke-width="1.6"
+                      stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                  </svg>
+                </button>
+              </div>
 
-          <div class="relative -mx-4 overflow-x-auto pb-4">
-            <div class="flex gap-4 px-4">
-              <Link v-for="item in product.otherProducts" :key="item.id" :href="productUrl(item)"
-                class="min-w-[210px] max-w-[230px] flex-1 group block">
-                <article
-                  class="h-full rounded-lg border border-slate-200 bg-white transition hover:border-sky-300 hover:shadow-md">
-                  <div class="overflow-hidden rounded-t-lg h-40 bg-slate-50 flex items-center justify-center">
-                    <img v-if="item.image" :src="item.image" :alt="item.name" class="h-full w-full object-cover" />
-                    <span v-else class="text-xs text-slate-400 font-medium">No Image</span>
-                  </div>
-
-                  <div class="space-y-2 p-3">
-                    <span v-if="item.badge"
-                      class="inline-block rounded-sm bg-sky-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                      {{ item.badge }}
-                    </span>
-
-                    <p class="line-clamp-2 text-sm font-semibold text-slate-900">
-                      {{ item.name }}
-                    </p>
-
-                    <div class="space-y-0.5 text-xs">
-                      <p class="text-sm font-bold text-slate-900">
-                        {{ formatPrice(item.price) }}
-                      </p>
-                      <div class="flex items-center gap-2">
-                        <span v-if="item.originalPrice" class="text-[11px] text-slate-400 line-through">
-                          {{ formatPrice(item.originalPrice) }}
-                        </span>
-                        <span v-if="item.discountPercent" class="text-[11px] font-semibold text-sky-600">
-                          {{ item.discountPercent }}%
-                        </span>
+              <div v-if="hasOtherProducts" class="relative overflow-x-auto pb-4">
+                <div class="flex gap-4">
+                  <Link v-for="item in product.otherProducts" :key="item.id" :href="productUrl(item)"
+                    class="min-w-[210px] max-w-[230px] flex-1 group block">
+                    <article
+                      class="h-full rounded-md border border-slate-200 bg-white transition hover:border-sky-300 hover:shadow-md">
+                      <div class="overflow-hidden rounded-t-lg h-40 bg-slate-50 flex items-center justify-center">
+                        <img v-if="item.image" :src="item.image" :alt="item.name" class="h-full w-full object-cover" />
+                        <span v-else class="text-xs text-slate-400 font-medium">No Image</span>
                       </div>
-                    </div>
 
-                    <div class="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
-                      <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                          d="M10 2.5a5.25 5.25 0 00-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 00.72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0010 2.5zm0 7.25a2 2 0 110-4 2 2 0 010 4z" />
-                      </svg>
-                      <span>{{ item.location }}</span>
-                    </div>
+                      <div class="space-y-2 p-3">
+                        <span v-if="item.badge"
+                          class="inline-block rounded-sm bg-sky-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                          {{ item.badge }}
+                        </span>
 
-                    <div class="mt-2 flex flex-wrap gap-1">
-                      <span v-for="tag in item.tags" :key="tag"
-                        class="inline-block rounded-md border border-sky-100 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                        {{ tag }}
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              </Link>
+                        <p class="line-clamp-2 text-sm font-semibold text-slate-900">
+                          {{ item.name }}
+                        </p>
+
+                        <div class="space-y-0.5 text-xs">
+                          <p class="text-sm font-bold text-slate-900">
+                            {{ formatPrice(item.price) }}
+                          </p>
+                          <div class="flex items-center gap-2">
+                            <span v-if="item.originalPrice" class="text-[11px] text-slate-400 line-through">
+                              {{ formatPrice(item.originalPrice) }}
+                            </span>
+                            <span v-if="item.discountPercent" class="text-[11px] font-semibold text-sky-600">
+                              {{ item.discountPercent }}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div class="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
+                          <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                              d="M10 2.5a5.25 5.25 0 00-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 00.72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0010 2.5zm0 7.25a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
+                          <span>{{ item.location }}</span>
+                        </div>
+
+                        <div class="mt-2 flex flex-wrap gap-1">
+                          <span v-for="tag in item.tags" :key="tag"
+                            class="inline-block rounded-md border border-sky-100 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                            {{ tag }}
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  </Link>
+                </div>
+
+                <div class="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-3 sm:flex">
+                  <span
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M7.25 4.75L12.5 10l-5.25 5.25" stroke="currentColor" stroke-width="1.6"
+                        stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+              <div v-else
+                class="rounded-md border border-dashed border-slate-200 bg-white/80 px-4 py-6 text-center text-sm font-semibold text-slate-500">
+                Belum ada produk lain dari toko ini.
+              </div>
             </div>
-
-            <div class="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-3 sm:flex">
-              <span
-                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md">
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M7.25 4.75L12.5 10l-5.25 5.25" stroke="currentColor" stroke-width="1.6"
-                    stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                </svg>
-              </span>
-            </div>
+            <!-- Empty column to maintain grid alignment -->
+            <div class="hidden lg:block"></div>
           </div>
         </section>
       </div>
     </section>
 
     <Teleport to="body">
-      <div v-if="cartLoadingVisible" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35">
+      <div v-if="cartLoadingVisible || addressLoadingVisible"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35">
         <div
-          class="flex items-center gap-3 rounded-xl bg-white/95 px-4 py-3 text-slate-800 shadow-xl ring-1 ring-slate-200">
+          class="flex items-center gap-3 rounded-md bg-white/95 px-4 py-3 text-slate-800 shadow-xl ring-1 ring-slate-200">
           <svg class="h-5 w-5 animate-spin text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2">
             <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
             <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round"></path>
           </svg>
-          <span class="text-sm font-semibold">Loading...</span>
+          <span class="text-sm font-semibold">{{ globalLoadingMessage }}</span>
         </div>
       </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="-translate-y-2 opacity-0"
+        enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-150 ease-in"
+        leave-from-class="translate-y-0 opacity-100" leave-to-class="-translate-y-2 opacity-0">
+        <div v-if="addressSuccessVisible"
+          class="fixed top-0 left-0 z-[70] w-full bg-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-md">
+          {{ addressSuccessMessage || 'Alamat berhasil disimpan.' }}
+        </div>
+      </Transition>
     </Teleport>
 
     <Teleport to="body">
@@ -1336,13 +1698,13 @@ onBeforeUnmount(() => {
         leave-from-class="translate-y-0 opacity-100 scale-100" leave-to-class="translate-y-3 opacity-0 scale-[0.97]"
         move-class="transition-transform duration-200">
         <div v-for="notification in cartNotifications" :key="notification.id" :class="[
-          'pointer-events-auto flex w-full items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl ring-1 transition hover:scale-[1.005]',
+          'pointer-events-auto flex w-full items-center gap-3 rounded-md px-4 py-3 shadow-2xl ring-1 transition hover:scale-[1.005]',
           notification.type === 'error'
             ? 'border-red-100 bg-white ring-red-100'
             : 'border-slate-100 bg-white ring-slate-900/5'
         ]">
           <template v-if="notification.type === 'success'">
-            <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-slate-50">
+            <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md bg-slate-50">
               <img v-if="notification.image" :src="notification.image" :alt="notification.name"
                 class="h-full w-full object-cover" />
               <span v-else class="text-xs font-semibold text-slate-400">No Image</span>
@@ -1419,7 +1781,7 @@ onBeforeUnmount(() => {
         </button>
 
         <div class="w-full max-w-5xl space-y-4">
-          <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+          <div class="overflow-hidden rounded-md bg-white ring-1 ring-slate-200">
             <img :src="modalImage" :alt="product.name" class="mx-auto max-h-[70vh] w-full object-contain bg-white"
               @click.stop="nextModalImage" />
           </div>
@@ -1441,7 +1803,7 @@ onBeforeUnmount(() => {
       <div v-if="showAddressAlert"
         class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
         @click.self="showAddressAlert = false">
-        <div class="relative w-full max-w-md animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="relative w-full max-w-md animate-in fade-in zoom-in-95 rounded-md bg-white p-6 shadow-2xl">
           <!-- Icon -->
           <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
             <svg class="h-8 w-8 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1462,11 +1824,11 @@ onBeforeUnmount(() => {
           <!-- Actions -->
           <div class="flex gap-3">
             <button type="button" @click="showAddressAlert = false"
-              class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              class="flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
               Nanti Saja
             </button>
             <button type="button" @click="openAddressModal"
-              class="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
+              class="flex-1 rounded-md bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
               Tambah Alamat
             </button>
           </div>
@@ -1479,7 +1841,7 @@ onBeforeUnmount(() => {
       <div v-if="showLocationMismatchAlert"
         class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
         @click.self="handleLocationMismatchOk">
-        <div class="relative w-full max-w-md animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="relative w-full max-w-md animate-in fade-in zoom-in-95 rounded-md bg-white p-6 shadow-2xl">
           <!-- Icon -->
           <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
             <svg class="h-8 w-8 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1500,7 +1862,7 @@ onBeforeUnmount(() => {
           <!-- Actions -->
           <div class="flex gap-3">
             <button type="button" @click="handleLocationMismatchOk"
-              class="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
+              class="flex-1 rounded-md bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
               Lihat Produk Lain
             </button>
           </div>
@@ -1512,8 +1874,12 @@ onBeforeUnmount(() => {
     <Dialog :open="showAddressModal" @update:open="(val) => showAddressModal = val">
       <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Tambah Alamat Pengiriman</DialogTitle>
-          <DialogDescription>Lengkapi data alamat pengiriman Anda untuk melanjutkan pembelian.</DialogDescription>
+          <DialogTitle>{{ isEditingAddress ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Pengiriman' }}</DialogTitle>
+          <DialogDescription>
+            {{ isEditingAddress
+              ? 'Perbarui data alamat pengiriman Anda.'
+              : 'Lengkapi data alamat pengiriman Anda untuk melanjutkan pembelian.' }}
+          </DialogDescription>
         </DialogHeader>
 
         <form class="space-y-4" @submit.prevent="submitAddress">
@@ -1521,13 +1887,14 @@ onBeforeUnmount(() => {
           <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
               <Label>Label Alamat</Label>
-              <Input v-model="addressForm.label" placeholder="Rumah / Kantor" :disabled="addressForm.processing" />
+              <Input v-model="addressForm.label" placeholder="Rumah / Kantor" :disabled="addressForm.processing"
+                required />
               <p v-if="addressForm.errors.label" class="text-sm text-red-500">{{ addressForm.errors.label }}</p>
             </div>
             <div class="space-y-2">
               <Label>Nama Penerima</Label>
-              <Input v-model="addressForm.recipient_name" placeholder="Nama lengkap"
-                :disabled="addressForm.processing" />
+              <Input v-model="addressForm.recipient_name" placeholder="Nama lengkap" :disabled="addressForm.processing"
+                required />
               <p v-if="addressForm.errors.recipient_name" class="text-sm text-red-500">{{
                 addressForm.errors.recipient_name
               }}</p>
@@ -1537,22 +1904,25 @@ onBeforeUnmount(() => {
           <!-- Phone -->
           <div class="space-y-2">
             <Label>Nomor Telepon</Label>
-            <Input v-model="addressForm.phone" placeholder="08xxxxxxxxxx" :disabled="addressForm.processing" />
+            <Input v-model="addressForm.phone" placeholder="08xxxxxxxxxx" :disabled="addressForm.processing" required />
             <p v-if="addressForm.errors.phone" class="text-sm text-red-500">{{ addressForm.errors.phone }}</p>
           </div>
 
           <!-- Region Selector -->
           <RegionSelector v-model:provinceId="regionProvinceId" v-model:cityId="regionCityId"
-            v-model:districtId="regionDistrictId" :show-district="true" :disabled="addressForm.processing" :errors="{
+            v-model:districtId="regionDistrictId" :show-district="true" :disabled="addressForm.processing"
+            :province-required="true" :city-required="true" :district-required="true" :errors="{
               provinceId: addressForm.errors.province_id,
               cityId: addressForm.errors.city_id,
               districtId: addressForm.errors.district_id,
-            }" />
+            }" :initial-province-name="regionInitialNames.province" :initial-city-name="regionInitialNames.city"
+            :initial-district-name="regionInitialNames.district" />
 
           <!-- Postal Code -->
           <div class="space-y-2">
             <Label>Kode Pos</Label>
-            <Input v-model="addressForm.postal_code" placeholder="Kode pos" :disabled="addressForm.processing" />
+            <Input v-model="addressForm.postal_code" placeholder="Kode pos" :disabled="addressForm.processing"
+              required />
             <p v-if="addressForm.errors.postal_code" class="text-sm text-red-500">{{ addressForm.errors.postal_code }}
             </p>
           </div>
@@ -1561,7 +1931,7 @@ onBeforeUnmount(() => {
           <div class="space-y-2">
             <Label>Alamat Lengkap</Label>
             <Input v-model="addressForm.address_line" placeholder="Jalan, nomor rumah, RT/RW"
-              :disabled="addressForm.processing" />
+              :disabled="addressForm.processing" required />
             <p v-if="addressForm.errors.address_line" class="text-sm text-red-500">{{ addressForm.errors.address_line }}
             </p>
           </div>
@@ -1585,5 +1955,206 @@ onBeforeUnmount(() => {
         </form>
       </DialogContent>
     </Dialog>
+
+    <!-- Address Management Modal -->
+    <Dialog :open="showAddressManagementModal" @update:open="(val) => showAddressManagementModal = val">
+      <DialogContent class="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Alamat Pengiriman</DialogTitle>
+          <DialogDescription>Pilih alamat pengiriman atau tambah alamat baru</DialogDescription>
+        </DialogHeader>
+
+        <div class="flex-1 overflow-y-auto py-4">
+          <div class="flex items-center justify-end mb-4 px-1">
+            <button type="button" @click="openAddressModal()"
+              class="text-sm font-semibold text-sky-600 border border-sky-600 rounded-md px-4 py-2 hover:bg-sky-50 transition">
+              Tambah Alamat
+            </button>
+          </div>
+          <!-- Address List -->
+          <div class="space-y-3">
+            <!-- Current Selected Address -->
+            <div v-if="hasAddress"
+              class="relative rounded-md border-2 border-emerald-500 bg-emerald-50/30 p-4 transition hover:bg-emerald-50/50">
+              <!-- Terpilih Badge -->
+              <div class="absolute right-4 top-4">
+                <span
+                  class="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  Terpilih
+                </span>
+              </div>
+
+              <div class="flex items-start gap-4 pr-24">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                  <svg class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
+                    <circle cx="12" cy="9.5" r="2.3" />
+                  </svg>
+                </div>
+
+                <div class="flex-1 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold text-slate-900">{{ page.props.customerAddress?.label || 'Alamat' }}
+                    </p>
+                    <span class="text-xs text-slate-400">•</span>
+                    <p class="text-sm font-semibold text-emerald-600">{{ page.props.customerAddress?.recipient_name }}
+                    </p>
+                  </div>
+
+                  <div class="space-y-1 text-sm text-slate-700">
+                    <p>{{ page.props.customerAddress?.address_line }}</p>
+                    <p>{{ toTitleCase(page.props.customerAddress?.district) }}, {{
+                      toTitleCase(page.props.customerAddress?.city) }}</p>
+                    <p>{{ toTitleCase(page.props.customerAddress?.province) }}, {{
+                      page.props.customerAddress?.postal_code }}</p>
+                    <p class="text-slate-600">{{ page.props.customerAddress?.phone }}</p>
+                  </div>
+
+                  <button type="button" @click="openAddressModal(page.props.customerAddress?.id)"
+                    class="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-50">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
+                      <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Ubah Alamat
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Other Addresses - You can loop through other addresses here -->
+            <div v-for="address in otherAddresses" :key="address.id"
+              class="relative rounded-md border border-slate-200 bg-white p-4 transition hover:border-sky-300 hover:shadow-md">
+              <button type="button" @click.stop="selectAddress(address.id)"
+                class="absolute right-4 top-4 inline-flex items-center gap-1 rounded-md border border-sky-500 bg-white px-3 py-1.5 text-xs font-semibold text-sky-600 transition hover:bg-sky-50">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M7 10l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M5 5h10v10H5z" />
+                </svg>
+                Pilih
+              </button>
+              <div class="flex items-start gap-4 pr-20">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <svg class="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
+                    <circle cx="12" cy="9.5" r="2.3" />
+                  </svg>
+                </div>
+
+                <div class="flex-1 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold text-slate-900">{{ address.label }}</p>
+                    <span class="text-xs text-slate-400">•</span>
+                    <p class="text-sm font-semibold text-slate-700">{{ address.recipient_name }}</p>
+                  </div>
+
+                  <div class="space-y-1 text-sm text-slate-700">
+                    <p>{{ address.address_line }}</p>
+                    <p>{{ toTitleCase(address.district) }}, {{ toTitleCase(address.city) }}</p>
+                    <p>{{ toTitleCase(address.province) }}, {{ address.postal_code }}</p>
+                    <p class="text-slate-600">{{ address.phone }}</p>
+                  </div>
+
+                  <button type="button" @click.stop="openAddressModal(address.id)"
+                    class="mt-3 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
+                      <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Ubah
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="border-t border-slate-200 pt-4">
+          <div class="flex w-full items-center justify-end gap-3">
+            <Button type="button" variant="outline" @click="showAddressManagementModal = false">
+              Tutup
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Shipping Method Selection Modal -->
+    <Dialog :open="showShippingMethodModal" @update:open="showShippingMethodModal = $event">
+      <DialogContent class="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Pilih Metode Pengiriman</DialogTitle>
+          <DialogDescription>
+            Pilih metode pengiriman yang sesuai untuk pesanan Anda.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-3 py-4">
+          <button v-for="method in availableShippingMethods" :key="method.value" type="button"
+            class="flex w-full items-start gap-4 rounded-lg border p-4 text-left transition" :class="selectedShippingMethod === method.value
+              ? 'border-sky-400 bg-sky-50 ring-2 ring-sky-200'
+              : 'border-slate-200 hover:border-sky-300 hover:bg-slate-50'" @click="selectShippingMethod(method.value)">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <!-- Store icon for pickup -->
+              <svg v-if="method.value === 'pickup'" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.6">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <!-- Truck icon for delivery -->
+              <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M10 17h4V5H2v12h3" />
+                <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+                <circle cx="7.5" cy="17.5" r="2.5" />
+                <circle cx="17.5" cy="17.5" r="2.5" />
+              </svg>
+            </span>
+            <div class="flex-1">
+              <p class="font-semibold text-slate-800">{{ method.label }}</p>
+              <p class="text-sm text-slate-500">{{ method.description }}</p>
+            </div>
+            <span v-if="selectedShippingMethod === method.value"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white">
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd" />
+              </svg>
+            </span>
+          </button>
+
+          <div v-if="!hasShippingMethods"
+            class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700">
+            <p class="font-medium">Tidak ada metode pengiriman</p>
+            <p class="text-xs">Produk ini belum dikonfigurasi metode pengirimannya oleh penjual.</p>
+          </div>
+        </div>
+
+        <DialogFooter class="border-t border-slate-200 pt-4">
+          <Button type="button" variant="outline" @click="showShippingMethodModal = false">
+            Tutup
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </LandingLayout>
 </template>
+
+<style scoped>
+.qty-input::-webkit-inner-spin-button,
+.qty-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.qty-input[type='number'] {
+  -moz-appearance: textfield;
+}
+</style>

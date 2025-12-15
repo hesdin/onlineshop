@@ -65,8 +65,8 @@ class SellerProductRequest extends FormRequest
             'location_district_id' => ['required', 'integer', Rule::exists($districtTable, 'id')],
             'location_postal_code' => ['required', 'string', 'max:10'],
             'is_pdn' => ['sometimes', 'boolean'],
-            'is_pkp' => ['sometimes', 'boolean'],
-            'is_tkdn' => ['sometimes', 'boolean'],
+            'shipping_pickup' => ['nullable'],
+            'shipping_delivery' => ['nullable'],
             'images' => [$isUpdate ? 'sometimes' : 'required', 'array', 'min:1'],
             'images.*' => ['file', 'image', 'max:5120'],
         ];
@@ -120,10 +120,23 @@ class SellerProductRequest extends FormRequest
             }
         }
 
-        $booleanFields = ['is_pdn', 'is_pkp', 'is_tkdn'];
+        $booleanFields = ['is_pdn', 'shipping_pickup', 'shipping_delivery'];
 
         foreach ($booleanFields as $field) {
-            $data[$field] = (bool) ($data[$field] ?? false);
+            if (!array_key_exists($field, $data)) {
+                $data[$field] = false;
+                continue;
+            }
+
+            $value = $data[$field];
+
+            // Convert to boolean
+            // Handle: "1", "0", 1, 0, true, false, "true", "false"
+            if (is_string($value)) {
+                $data[$field] = in_array($value, ['1', 'true', 'yes', 'on'], true);
+            } else {
+                $data[$field] = (bool) $value;
+            }
         }
 
         return $data;

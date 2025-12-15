@@ -18,6 +18,7 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('address', [AddressController::class, 'index'])->name('address');
     Route::post('address', [AddressController::class, 'store'])->name('address.store');
     Route::put('address/{address}', [AddressController::class, 'update'])->name('address.update');
+    Route::post('address/{address}/select', [AddressController::class, 'select'])->name('address.select');
     Route::delete('address/{address}', [AddressController::class, 'destroy'])->name('address.destroy');
 
     Route::get('payment', function () {

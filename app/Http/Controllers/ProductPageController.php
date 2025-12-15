@@ -25,7 +25,7 @@ class ProductPageController extends Controller
         $isProductAvailable = $product->isVisibleForCityAuth($cityId, $isAuthenticated);
 
         $product->load([
-            'store:id,name,slug,is_umkm,tax_status,rating,transactions_count,bumn_partner,response_time_label,province_id,city_id,district_id',
+            'store:id,name,slug,is_umkm,tax_status,rating,transactions_count,bumn_partner,response_time_label,province_id,city_id,district_id,phone',
             'store.provinceRegion:id,name',
             'store.cityRegion:id,name',
             'store.districtRegion:id,name',
@@ -38,6 +38,7 @@ class ProductPageController extends Controller
             'appName' => config('app.name', 'TP-PKK Marketplace'),
             'product' => $this->transformProduct($product, $cityId, $isAuthenticated),
             'customerAddress' => $this->customerAddress($request),
+            'customerAddresses' => $this->customerAddresses($request),
             'isProductAvailable' => $isProductAvailable,
         ]);
     }
@@ -78,6 +79,8 @@ class ProductPageController extends Controller
             'otherProducts' => $this->buildOtherProducts($product, $customerCityId, $isAuthenticated),
             'visibility_scope' => $product->visibility_scope,
             'city_name' => $product->location_city,
+            'shipping_pickup' => (bool) $product->shipping_pickup,
+            'shipping_delivery' => (bool) $product->shipping_delivery,
         ];
     }
 
@@ -85,8 +88,6 @@ class ProductPageController extends Controller
     {
         return collect([
             $product->is_pdn ? 'PDN' : null,
-            $product->is_pkp ? 'PKP' : null,
-            $product->is_tkdn ? 'TKDN' : null,
         ])
             ->filter()
             ->values()
@@ -158,6 +159,7 @@ class ProductPageController extends Controller
             'transactionsCount' => (int) ($store?->transactions_count ?? 0),
             'rating' => (float) ($store?->rating ?? 0),
             'url' => $store?->slug ? route('store.show', ['store' => $store->slug]) : null,
+            'phone' => $store?->phone,
         ];
     }
 
@@ -168,7 +170,7 @@ class ProductPageController extends Controller
         }
 
         return Product::query()
-            ->select(['id', 'name', 'slug', 'price', 'sale_price', 'location_city_id', 'location_province_id', 'location_district_id', 'location_postal_code', 'is_pdn', 'is_pkp', 'is_tkdn', 'store_id'])
+            ->select(['id', 'name', 'slug', 'price', 'sale_price', 'location_city_id', 'location_province_id', 'location_district_id', 'location_postal_code', 'is_pdn', 'store_id'])
             ->where('store_id', $product->store_id)
             ->whereKeyNot($product->getKey())
             ->visibleForCityAuth($customerCityId, $isAuthenticated)
@@ -192,9 +194,7 @@ class ProductPageController extends Controller
                     'location' => $this->formatLocation($item),
                     'badge' => $item->store?->is_umkm ? 'UMKM' : null,
                     'tags' => collect([
-                        $item->is_pkp ? 'PKP' : null,
                         $item->is_pdn ? 'PDN' : null,
-                        $item->is_tkdn ? 'TKDN' : null,
                     ])
                         ->filter()
                         ->values()
@@ -225,21 +225,42 @@ class ProductPageController extends Controller
             return null;
         }
 
-        $fullAddress = implode(', ', array_filter([
-            $address->address_line,
-            $address->district,
-            $address->city,
-            $address->province,
-            $address->postal_code,
-        ]));
+        return $this->transformAddress($address, $user->name);
+    }
 
+    protected function customerAddresses(Request $request): array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return Address::query()
+            ->where('user_id', $user->id)
+            ->with(['provinceRegion:id,name', 'cityRegion:id,name', 'districtRegion:id,name'])
+            ->orderByDesc('is_default')
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(fn (Address $address) => $this->transformAddress($address, $user->name))
+            ->values()
+            ->all();
+    }
+
+    protected function transformAddress(Address $address, ?string $fallbackRecipientName = null): array
+    {
         return [
             'id' => $address->id,
             'label' => $address->label ?: 'Alamat Utama',
-            'recipient' => $address->recipient_name ?: $user->name,
+            'recipient_name' => $address->recipient_name ?: $fallbackRecipientName,
             'phone' => $address->phone,
-            'full_address' => $fullAddress,
-            'address' => $address->address_line,
+            'province_id' => $address->province_id,
+            'city_id' => $address->city_id,
+            'district_id' => $address->district_id,
+            'postal_code' => $address->postal_code,
+            'address_line' => $address->address_line,
+            'is_default' => (bool) $address->is_default,
+            'note' => $address->note,
             'district' => $address->district,
             'city' => $address->city,
             'province' => $address->province,

@@ -35,6 +35,7 @@ const slides = [
 
 const submit = () => {
   form.post('/customer/login', {
+    replace: true, // Replace history entry so back button doesn't go to login page
     onFinish: () => form.reset('password'),
   });
 };

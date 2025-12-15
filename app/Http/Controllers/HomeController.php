@@ -100,8 +100,6 @@ class HomeController extends Controller
             'sold' => $product->stock ? "Terjual {$product->stock}" : 'Terjual 0',
             'tags' => collect([
                 $product->is_pdn ? 'PDN' : null,
-                $product->is_pkp ? 'PKP' : null,
-                $product->is_tkdn ? 'TKDN' : null,
             ])->filter()->values(),
             'image' => $this->resolveProductImage($product),
         ];

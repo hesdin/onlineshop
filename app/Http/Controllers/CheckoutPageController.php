@@ -46,8 +46,6 @@ class CheckoutPageController extends Controller
                         'location_district_id',
                         'location_postal_code',
                         'is_pdn',
-                        'is_pkp',
-                        'is_tkdn',
                         'store_id',
                     ])->with([
                         'store:id,name,is_umkm,tax_status,bumn_partner,province_id,city_id,district_id',
@@ -169,9 +167,7 @@ class CheckoutPageController extends Controller
         }
 
         return collect([
-            $product->is_pkp ? 'PKP' : null,
             $product->is_pdn ? 'PDN' : null,
-            $product->is_tkdn ? 'TKDN' : null,
         ])
             ->filter()
             ->values()

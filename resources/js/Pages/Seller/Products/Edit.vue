@@ -47,9 +47,10 @@ type ProductPayload = {
   location_province_id: number | null;
   location_city_id: number | null;
   location_district_id: number | null;
+  location_postal_code: string | null;
   is_pdn: boolean;
-  is_pkp: boolean;
-  is_tkdn: boolean;
+  shipping_pickup: boolean;
+  shipping_delivery: boolean;
   images: { id: number; url: string }[];
 };
 
@@ -59,6 +60,7 @@ const props = defineProps<{
   statuses: SelectOption[];
   itemTypes: SelectOption[];
   visibilityOptions: SelectOption[];
+  shippingMethods: SelectOption[];
   storeLocation: StoreLocation | null;
 }>();
 
@@ -74,21 +76,22 @@ defineOptions({
 
     <div class="flex items-center justify-between gap-2">
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-500">Ubah Produk</p>
+        <p class="text-xs uppercase text-slate-500">Ubah Produk</p>
         <h1 class="text-xl font-bold tracking-tight text-slate-900">
           {{ product.name }}
         </h1>
       </div>
       <Button variant="outline" size="sm" as-child>
         <Link href="/seller/products">
-        Kembali
+          Kembali
         </Link>
       </Button>
     </div>
 
     <ProductForm mode="edit" :product="props.product" :category-options="props.categoryOptions"
       :statuses="props.statuses" :item-types="props.itemTypes" :visibility-options="props.visibilityOptions"
-      :store-location="props.storeLocation" :submit-url="`/seller/products/${product.id}`">
+      :shipping-methods="props.shippingMethods" :store-location="props.storeLocation"
+      :submit-url="`/seller/products/${product.id}`">
       <template #cancel>
         <Link href="/seller/products">Batal</Link>
       </template>

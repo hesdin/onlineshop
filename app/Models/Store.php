@@ -33,6 +33,7 @@ class Store extends Model implements HasMedia
         'district_id',
         'postal_code',
         'address_line',
+        'phone',
         'is_verified',
         'is_umkm',
         'rating',

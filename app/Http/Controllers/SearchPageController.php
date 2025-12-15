@@ -25,7 +25,7 @@ class SearchPageController extends Controller
         $rating = $request->integer('rating');
 
         $badges = collect($request->input('badges', []))
-            ->filter(fn ($badge) => in_array($badge, ['pdn', 'pkp', 'tkdn'], true))
+            ->filter(fn ($badge) => in_array($badge, ['pdn'], true))
             ->values()
             ->all();
 
@@ -50,9 +50,7 @@ class SearchPageController extends Controller
             ->when($priceMin, fn ($query) => $query->where('price', '>=', $priceMin))
             ->when($priceMax, fn ($query) => $query->where('price', '<=', $priceMax))
             ->when($rating, fn ($query) => $query->whereHas('store', fn ($q) => $q->where('rating', '>=', $rating)))
-            ->when(in_array('pdn', $badges, true), fn ($query) => $query->where('is_pdn', true))
-            ->when(in_array('pkp', $badges, true), fn ($query) => $query->where('is_pkp', true))
-            ->when(in_array('tkdn', $badges, true), fn ($query) => $query->where('is_tkdn', true));
+            ->when(in_array('pdn', $badges, true), fn ($query) => $query->where('is_pdn', true));
 
         switch ($sort) {
             case 'price_asc':
@@ -82,8 +80,6 @@ class SearchPageController extends Controller
                 'location_province' => $product->location_province ?? $product->store?->province,
                 'status' => $product->status,
                 'is_pdn' => $product->is_pdn,
-                'is_pkp' => $product->is_pkp,
-                'is_tkdn' => $product->is_tkdn,
                 'item_type' => $product->item_type,
                 'store' => $product->store ? [
                     'id' => $product->store->id,
@@ -139,8 +135,6 @@ class SearchPageController extends Controller
                 ],
                 'badgeOptions' => [
                     ['value' => 'pdn', 'label' => 'PDN'],
-                    ['value' => 'pkp', 'label' => 'PKP'],
-                    ['value' => 'tkdn', 'label' => 'TKDN'],
                 ],
                 'priceRanges' => [
                     ['label' => '< Rp500 ribu', 'min' => null, 'max' => 500_000],

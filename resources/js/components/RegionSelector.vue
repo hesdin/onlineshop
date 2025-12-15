@@ -18,9 +18,9 @@ import { Check, ChevronsUpDown } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
-  provinceId: number | null;
-  cityId: number | null;
-  districtId?: number | null;
+  provinceId: number | string | null;
+  cityId: number | string | null;
+  districtId?: number | string | null;
   showDistrict?: boolean;
   disabled?: boolean;
   provincesProp?: RegionOption[];
@@ -57,38 +57,48 @@ const provinceOpen = ref(false);
 const cityOpen = ref(false);
 const districtOpen = ref(false);
 
-const selectedProvinceId = ref<number | null>(null);
-const selectedCityId = ref<number | null>(null);
-const selectedDistrictId = ref<number | null>(null);
+const normalizeIdValue = (value?: string | number | null) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isNaN(value) ? null : String(value);
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+};
+
+const isSameId = (first?: string | number | null, second?: string | number | null) =>
+  normalizeIdValue(first) === normalizeIdValue(second);
+
+const selectedProvinceId = ref<number | string | null>(null);
+const selectedCityId = ref<number | string | null>(null);
+const selectedDistrictId = ref<number | string | null>(null);
 
 const selectedProvinceName = computed(() => {
-  if (selectedProvinceId.value) {
-    const province = provinces.value.find((province) => province.id === selectedProvinceId.value);
-    if (province) {
-      return province.name;
-    }
+  const province = findProvince(selectedProvinceId.value);
+  if (province) {
+    return province.name;
   }
 
   return props.initialProvinceName ?? '';
 });
 
 const selectedCityName = computed(() => {
-  if (selectedCityId.value) {
-    const city = cities.value.find((city) => city.id === selectedCityId.value);
-    if (city) {
-      return city.name;
-    }
+  const city = findCity(selectedCityId.value);
+  if (city) {
+    return city.name;
   }
 
   return props.initialCityName ?? '';
 });
 
 const selectedDistrictName = computed(() => {
-  if (selectedDistrictId.value) {
-    const district = districts.value.find((district) => district.id === selectedDistrictId.value);
-    if (district) {
-      return district.name;
-    }
+  const district = findDistrict(selectedDistrictId.value);
+  if (district) {
+    return district.name;
   }
 
   return props.initialDistrictName ?? '';
@@ -119,12 +129,62 @@ const resetDistrict = () => {
   emit('update:districtId', null);
 };
 
+const findProvince = (id?: number | string | null) => {
+  const target = normalizeIdValue(id);
+  if (!target) {
+    return null;
+  }
+  return provinces.value.find((item) => normalizeIdValue(item.id) === target) ?? null;
+};
+
+const findCity = (id?: number | string | null) => {
+  const target = normalizeIdValue(id);
+  if (!target) {
+    return null;
+  }
+  return cities.value.find((item) => normalizeIdValue(item.id) === target) ?? null;
+};
+
+const findDistrict = (id?: number | string | null) => {
+  const target = normalizeIdValue(id);
+  if (!target) {
+    return null;
+  }
+  return districts.value.find((item) => normalizeIdValue(item.id) === target) ?? null;
+};
+
+const ensureCitiesForProvince = async (province?: RegionOption | null) => {
+  if (!province?.code) {
+    cities.value = [];
+    return;
+  }
+
+  if (props.citiesProp?.length) {
+    cities.value = props.citiesProp.filter((c) => c.province_code === province.code);
+  } else {
+    await loadCities(province.code);
+  }
+};
+
+const ensureDistrictsForCity = async (city?: RegionOption | null) => {
+  if (!props.showDistrict || !city?.code) {
+    districts.value = props.showDistrict ? districts.value : [];
+    return;
+  }
+
+  if (props.districtsProp?.length) {
+    districts.value = props.districtsProp.filter((d) => d.city_code === city.code);
+  } else {
+    await loadDistricts(city.code);
+  }
+};
+
 watch(
   () => props.provinceId,
   async (value) => {
     await ensureProvincesLoaded();
 
-    if (!value) {
+    if (!normalizeIdValue(value)) {
       if (selectedProvinceId.value) {
         selectedProvinceId.value = null;
         resetCityAndDistrict();
@@ -132,11 +192,15 @@ watch(
       return;
     }
 
-    if (value !== selectedProvinceId.value) {
-      selectedProvinceId.value = value;
-      const province = provinces.value.find((item) => item.id === value);
-      await loadCities(province?.code);
+    const province = findProvince(value);
+    if (!province) {
+      selectedProvinceId.value = null;
+      resetCityAndDistrict();
+      return;
     }
+
+    selectedProvinceId.value = province.id;
+    await ensureCitiesForProvince(province);
   },
   { immediate: true },
 );
@@ -144,7 +208,7 @@ watch(
 watch(
   () => props.cityId,
   async (value) => {
-    if (!value) {
+    if (!normalizeIdValue(value)) {
       if (selectedCityId.value) {
         selectedCityId.value = null;
         resetDistrict();
@@ -154,38 +218,20 @@ watch(
 
     await ensureProvincesLoaded();
 
-    const provinceId = selectedProvinceId.value ?? props.provinceId ?? null;
-    const province = provinceId ? provinces.value.find((item) => item.id === provinceId) : null;
-
-    if (
-      province
-      && (!cities.value.length || !cities.value.some((city) => city.id === value))
-    ) {
-      if (props.citiesProp?.length) {
-        cities.value = props.citiesProp.filter((c) => c.province_code === province.code);
-      } else {
-        await loadCities(province.code);
-      }
+    const province = findProvince(selectedProvinceId.value ?? props.provinceId ?? null);
+    if (province) {
+      await ensureCitiesForProvince(province);
     }
 
-    if (value !== selectedCityId.value) {
-      selectedCityId.value = value;
-      const city = cities.value.find((item) => item.id === value);
-      if (props.showDistrict) {
-        if (
-          city
-          && (!districts.value.length || !districts.value.some((district) => district.city_code === city.code))
-        ) {
-          if (props.districtsProp?.length) {
-            districts.value = props.districtsProp.filter((d) => d.city_code === city.code);
-          } else {
-            await loadDistricts(city.code);
-          }
-        } else if (city) {
-          await loadDistricts(city.code);
-        }
-      }
+    const city = findCity(value);
+    if (!city) {
+      selectedCityId.value = null;
+      resetDistrict();
+      return;
     }
+
+    selectedCityId.value = city.id;
+    await ensureDistrictsForCity(city);
   },
   { immediate: true },
 );
@@ -197,7 +243,7 @@ watch(
       return;
     }
 
-    if (!value) {
+    if (!normalizeIdValue(value)) {
       if (selectedDistrictId.value) {
         selectedDistrictId.value = null;
       }
@@ -206,32 +252,18 @@ watch(
 
     await ensureProvincesLoaded();
 
-    const cityId = selectedCityId.value ?? props.cityId ?? null;
-
-    if (cityId && !cities.value.some((city) => city.id === cityId)) {
-      const provinceId = selectedProvinceId.value ?? props.provinceId ?? null;
-      const province = provinceId ? provinces.value.find((item) => item.id === provinceId) : null;
-      if (province) {
-        if (props.citiesProp?.length) {
-          cities.value = props.citiesProp.filter((c) => c.province_code === province.code);
-        } else {
-          await loadCities(province.code);
-        }
-      }
+    const province = findProvince(selectedProvinceId.value ?? props.provinceId ?? null);
+    if (province) {
+      await ensureCitiesForProvince(province);
+    }
+    const city = findCity(selectedCityId.value ?? props.cityId ?? null);
+    if (city) {
+      await ensureDistrictsForCity(city);
     }
 
-    const city = cities.value.find((item) => item.id === cityId);
-
-    if (city && (!districts.value.length || !districts.value.some((district) => district.city_code === city.code))) {
-      if (props.districtsProp?.length) {
-        districts.value = props.districtsProp.filter((d) => d.city_code === city.code);
-      } else {
-        await loadDistricts(city.code);
-      }
-    }
-
-    if (value !== selectedDistrictId.value) {
-      selectedDistrictId.value = value;
+    const district = props.showDistrict ? findDistrict(value) : null;
+    if (district) {
+      selectedDistrictId.value = district.id;
     }
   },
   { immediate: true },
@@ -240,36 +272,23 @@ watch(
 watch(
   selectedProvinceId,
   async (id, previous) => {
-    if (props.disabled || id === previous) {
+    if (props.disabled || isSameId(id, previous)) {
+      return;
+    }
+    if (isSameId(id, props.provinceId)) {
+      const province = findProvince(id);
+      if (province) {
+        await ensureCitiesForProvince(province);
+      }
       return;
     }
 
-    // If the selected ID matches the prop, it means we are syncing from props (initialization or external update).
-    // in this case, we should NOT reset children or emit update, but we might need to ensure cities are loaded.
-    if (id === props.provinceId) {
-       const province = provinces.value.find((item) => item.id === id);
-       if (province?.code) {
-           if (!cities.value.length || (props.citiesProp && !cities.value.length)) {
-                if (props.citiesProp?.length) {
-                    cities.value = props.citiesProp.filter((c) => c.province_code === province.code);
-                } else {
-                    await loadCities(province.code);
-                }
-           }
-       }
-       return;
-    }
-
-    const province = provinces.value.find((item) => item.id === id);
+    const province = findProvince(id);
     emit('update:provinceId', province?.id ?? null);
     resetCityAndDistrict();
 
     if (province?.code) {
-      if (props.citiesProp?.length) {
-        cities.value = props.citiesProp.filter((c) => c.province_code === province.code);
-      } else {
-        await loadCities(province.code);
-      }
+      await ensureCitiesForProvince(province);
     }
   },
 );
@@ -277,48 +296,37 @@ watch(
 watch(
   selectedCityId,
   async (id, previous) => {
-    if (props.disabled || id === previous) {
+    if (props.disabled || isSameId(id, previous)) {
+      return;
+    }
+    if (isSameId(id, props.cityId)) {
+      const city = findCity(id);
+      if (city) {
+        await ensureDistrictsForCity(city);
+      }
       return;
     }
 
-    if (id === props.cityId) {
-        const city = cities.value.find((item) => item.id === id);
-        if (props.showDistrict && city?.code) {
-             if (!districts.value.length) {
-                if (props.districtsProp?.length) {
-                    districts.value = props.districtsProp.filter((d) => d.city_code === city.code);
-                } else {
-                    await loadDistricts(city.code);
-                }
-             }
-        }
-        return;
-    }
-
-    const city = cities.value.find((item) => item.id === id);
+    const city = findCity(id);
     emit('update:cityId', city?.id ?? null);
     resetDistrict();
 
     if (props.showDistrict && city?.code) {
-      if (props.districtsProp?.length) {
-        districts.value = props.districtsProp.filter((d) => d.city_code === city.code);
-      } else {
-        await loadDistricts(city.code);
-      }
+      await ensureDistrictsForCity(city);
     }
   },
 );
 
 watch(selectedDistrictId, (id, previous) => {
-  if (!props.showDistrict || props.disabled || id === previous) {
+  if (!props.showDistrict || props.disabled || isSameId(id, previous)) {
     return;
   }
 
-  if (id === props.districtId) {
-      return;
+  if (isSameId(id, props.districtId)) {
+    return;
   }
 
-  const district = districts.value.find((item) => item.id === id);
+  const district = props.showDistrict ? findDistrict(id) : null;
   emit('update:districtId', district?.id ?? null);
 });
 
@@ -336,7 +344,7 @@ onMounted(async () => {
   await ensureProvincesLoaded();
 
   if (props.provinceId) {
-    const province = provinces.value.find((item) => item.id === props.provinceId);
+    const province = findProvince(props.provinceId);
     if (province) {
       selectedProvinceId.value = province.id;
       await loadCities(province.code);
@@ -344,7 +352,7 @@ onMounted(async () => {
   }
 
   if (props.cityId && selectedProvinceId.value) {
-    const city = cities.value.find((item) => item.id === props.cityId);
+    const city = findCity(props.cityId);
     if (city) {
       selectedCityId.value = city.id;
       if (props.showDistrict) {
@@ -354,7 +362,7 @@ onMounted(async () => {
   }
 
   if (props.showDistrict && props.districtId && selectedCityId.value) {
-    const district = districts.value.find((item) => item.id === props.districtId);
+    const district = findDistrict(props.districtId);
     if (district) {
       selectedDistrictId.value = district.id;
     }
@@ -362,6 +370,28 @@ onMounted(async () => {
 });
 
 const renderButtonText = (text: string, fallback: string) => text || fallback;
+
+const setProvince = async (province?: RegionOption | null) => {
+  selectedProvinceId.value = province?.id ?? null;
+  emit('update:provinceId', province?.id ?? null);
+  resetCityAndDistrict();
+  await ensureCitiesForProvince(province ?? findProvince(selectedProvinceId.value));
+  provinceOpen.value = false;
+};
+
+const setCity = async (city?: RegionOption | null) => {
+  selectedCityId.value = city?.id ?? null;
+  emit('update:cityId', city?.id ?? null);
+  resetDistrict();
+  await ensureDistrictsForCity(city ?? findCity(selectedCityId.value));
+  cityOpen.value = false;
+};
+
+const setDistrict = (district?: RegionOption | null) => {
+  selectedDistrictId.value = district?.id ?? null;
+  emit('update:districtId', district?.id ?? null);
+  districtOpen.value = false;
+};
 </script>
 
 <template>
@@ -384,9 +414,9 @@ const renderButtonText = (text: string, fallback: string) => text || fallback;
             <CommandEmpty>Provinsi tidak ditemukan.</CommandEmpty>
             <CommandGroup>
               <CommandItem v-for="province in provinces" :key="province.id" :value="province.name"
-                @select="() => { selectedProvinceId = province.id; provinceOpen = false; }">
+                @select="() => setProvince(province)">
                 <Check class="mr-2 h-4 w-4"
-                  :class="selectedProvinceId === province.id ? 'opacity-100' : 'opacity-0'" />
+                  :class="isSameId(selectedProvinceId, province.id) ? 'opacity-100' : 'opacity-0'" />
                 {{ province.name }}
               </CommandItem>
             </CommandGroup>
@@ -416,9 +446,9 @@ const renderButtonText = (text: string, fallback: string) => text || fallback;
             <CommandInput placeholder="Cari kota..." />
             <CommandEmpty>Kota/Kabupaten tidak ditemukan.</CommandEmpty>
             <CommandGroup>
-              <CommandItem v-for="city in cities" :key="city.id" :value="city.name"
-                @select="() => { selectedCityId = city.id; cityOpen = false; }">
-                <Check class="mr-2 h-4 w-4" :class="selectedCityId === city.id ? 'opacity-100' : 'opacity-0'" />
+              <CommandItem v-for="city in cities" :key="city.id" :value="city.name" @select="() => setCity(city)">
+                <Check class="mr-2 h-4 w-4"
+                  :class="isSameId(selectedCityId, city.id) ? 'opacity-100' : 'opacity-0'" />
                 {{ city.name }}
               </CommandItem>
             </CommandGroup>
@@ -449,9 +479,9 @@ const renderButtonText = (text: string, fallback: string) => text || fallback;
             <CommandEmpty>Kecamatan tidak ditemukan.</CommandEmpty>
             <CommandGroup>
               <CommandItem v-for="district in districts" :key="district.id" :value="district.name"
-                @select="() => { selectedDistrictId = district.id; districtOpen = false; }">
+                @select="() => setDistrict(district)">
                 <Check class="mr-2 h-4 w-4"
-                  :class="selectedDistrictId === district.id ? 'opacity-100' : 'opacity-0'" />
+                  :class="isSameId(selectedDistrictId, district.id) ? 'opacity-100' : 'opacity-0'" />
                 {{ district.name }}
               </CommandItem>
             </CommandGroup>

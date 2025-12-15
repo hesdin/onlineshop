@@ -14,8 +14,13 @@ use Inertia\Response;
 
 class CustomerSessionController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        // Store intended URL from query string if present
+        if ($request->has('intended')) {
+            $request->session()->put('url.intended', $request->input('intended'));
+        }
+
         return Inertia::render('Auth/CustomerLogin');
     }
 

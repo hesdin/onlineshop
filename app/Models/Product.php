@@ -50,8 +50,8 @@ class Product extends Model implements HasMedia
         'location_district_id',
         'location_postal_code',
         'is_pdn',
-        'is_pkp',
-        'is_tkdn',
+        'shipping_pickup',
+        'shipping_delivery',
     ];
 
     protected $casts = [
@@ -70,8 +70,8 @@ class Product extends Model implements HasMedia
         'height' => 'decimal:2',
         'visibility_scope' => 'string',
         'is_pdn' => 'boolean',
-        'is_pkp' => 'boolean',
-        'is_tkdn' => 'boolean',
+        'shipping_pickup' => 'boolean',
+        'shipping_delivery' => 'boolean',
     ];
 
     protected $appends = [
@@ -119,6 +119,24 @@ class Product extends Model implements HasMedia
         return [
             self::VISIBILITY_GLOBAL,
             self::VISIBILITY_LOCAL,
+        ];
+    }
+
+    public static function shippingMethods(): array
+    {
+        return [
+            [
+                'value' => 'pickup',
+                'label' => 'Ambil di Toko',
+                'description' => 'Customer mengambil produk langsung di toko.',
+                'field' => 'shipping_pickup',
+            ],
+            [
+                'value' => 'delivery',
+                'label' => 'Diantar ke Tempat',
+                'description' => 'Penjual mengirim/mengantar produk ke alamat pembeli.',
+                'field' => 'shipping_delivery',
+            ],
         ];
     }
 

@@ -29,6 +29,7 @@ const props = defineProps<{
   statuses: SelectOption[];
   itemTypes: SelectOption[];
   visibilityOptions: SelectOption[];
+  shippingMethods: SelectOption[];
   storeLocation: StoreLocation | null;
 }>();
 
@@ -57,7 +58,7 @@ defineOptions({
 
     <ProductForm mode="create" submit-url="/seller/products" :category-options="props.categoryOptions"
       :statuses="props.statuses" :item-types="props.itemTypes" :visibility-options="props.visibilityOptions"
-      :store-location="props.storeLocation">
+      :shipping-methods="props.shippingMethods" :store-location="props.storeLocation">
       <template #cancel>
         <Link href="/seller/products">Batal</Link>
       </template>
