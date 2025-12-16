@@ -1,0 +1,67 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "📥 Pulling latest code..."
+            git pull origin main
+
+            echo "🔨 Building Docker image..."
+            docker compose build app
+
+            echo "🚀 Restarting containers..."
+            docker compose up -d
+
+            echo "📦 Syncing build assets..."
+            sleep 5
+            docker cp onlineshop-app:/var/www/html/public/build ./public/
+            docker restart onlineshop-nginx
+
+            echo "🧹 Clearing Laravel cache..."
+            docker exec onlineshop-app php artisan config:clear
+            docker exec onlineshop-app php artisan cache:clear
+            docker exec onlineshop-app php artisan view:clear
+
+            echo "📊 Running migrations..."
+            docker exec onlineshop-app php artisan migrate --force
+
+            echo "✅ Deployment complete!"
+          ENDSSH
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://pkksulselmart.store)
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Website is accessible (HTTP $STATUS)"
+          else
+            echo "⚠️ Website returned HTTP $STATUS"
+            exit 1
+          fi
