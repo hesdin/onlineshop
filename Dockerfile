@@ -45,6 +45,7 @@ RUN apk add --no-cache \
   supervisor \
   mariadb-client \
   postgresql16-client \
+  postgresql16-dev \
   libpng-dev \
   libjpeg-turbo-dev \
   libwebp-dev \
