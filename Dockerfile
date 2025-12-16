@@ -1,15 +1,22 @@
 # Stage 1: Composer Dependencies
-FROM composer:2 AS composer
+FROM php:8.2-cli-alpine AS composer
+
+# Install composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Install dependencies needed for exif
+RUN apk add --no-cache libexif-dev \
+  && docker-php-ext-install exif
 
 WORKDIR /app
 
 COPY composer.json composer.lock ./
 
 RUN composer install \
-    --no-dev \
-    --no-scripts \
-    --no-autoloader \
-    --prefer-dist
+  --no-dev \
+  --no-scripts \
+  --no-autoloader \
+  --prefer-dist
 
 COPY . .
 
@@ -34,41 +41,41 @@ FROM php:8.2-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
-    nginx \
-    supervisor \
-    mysql-client \
-    postgresql-client \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    libwebp-dev \
-    freetype-dev \
-    libzip-dev \
-    oniguruma-dev \
-    icu-dev \
-    bash \
-    curl \
-    git \
-    && docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp \
-    && docker-php-ext-install -j$(nproc) \
-        pdo_mysql \
-        pdo_pgsql \
-        gd \
-        zip \
-        intl \
-        mbstring \
-        opcache \
-        bcmath \
-        exif \
-        pcntl
+  nginx \
+  supervisor \
+  mysql-client \
+  postgresql-client \
+  libpng-dev \
+  libjpeg-turbo-dev \
+  libwebp-dev \
+  freetype-dev \
+  libzip-dev \
+  oniguruma-dev \
+  icu-dev \
+  bash \
+  curl \
+  git \
+  && docker-php-ext-configure gd \
+  --with-freetype \
+  --with-jpeg \
+  --with-webp \
+  && docker-php-ext-install -j$(nproc) \
+  pdo_mysql \
+  pdo_pgsql \
+  gd \
+  zip \
+  intl \
+  mbstring \
+  opcache \
+  bcmath \
+  exif \
+  pcntl
 
 # Install Redis extension
 RUN apk add --no-cache pcre-dev $PHPIZE_DEPS \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
-    && apk del pcre-dev $PHPIZE_DEPS
+  && pecl install redis \
+  && docker-php-ext-enable redis \
+  && apk del pcre-dev $PHPIZE_DEPS
 
 # Configure PHP for production
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
@@ -86,8 +93,8 @@ COPY . .
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+  && chmod -R 755 /var/www/html/storage \
+  && chmod -R 755 /var/www/html/bootstrap/cache
 
 # Copy entrypoint script
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
