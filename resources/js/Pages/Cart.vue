@@ -16,6 +16,7 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+
 });
 
 const state = reactive({
@@ -35,6 +36,8 @@ const MIN_DELETE_LOADING_MS = 700;
 let deleteLoadingHideTimeout = null;
 let deleteLoadingActiveCount = 0;
 const deleteLoadingMessage = 'Loading...';
+
+const checkoutLoading = ref(false);
 
 const showDeleteSuccess = (message = 'Produk berhasil dihapus dari keranjang.') => {
   if (deleteLoadingVisible.value) {
@@ -112,6 +115,23 @@ const captureSelectionState = () => {
   return selections;
 };
 
+const isValidImage = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  // Filter out common placeholder URLs
+  const placeholderPatterns = [
+    'picsum.photos',
+    'placeholder',
+    'via.placeholder',
+    'placehold',
+    'dummy',
+    'no-image',
+    'noimage'
+  ];
+  return !placeholderPatterns.some(pattern => trimmed.toLowerCase().includes(pattern));
+};
+
 const pickImageSource = (item, index) => {
   const candidates = [
     item?.img,
@@ -182,9 +202,40 @@ const initializeState = () => {
   );
 };
 
+const updateStateFromProps = () => {
+  // Update quantities and prices by matching item IDs, not by index
+  (props.groups ?? []).forEach((group, groupIndex) => {
+    (group.items ?? []).forEach((item) => {
+      const itemId = resolveItemId(item);
+      if (!itemId) return;
+
+      // Find the matching state item by ID within the same group
+      const stateGroup = state.itemStates?.[groupIndex];
+      if (!stateGroup) return;
+
+      const stateItem = stateGroup.find(s => s.id === itemId);
+      if (stateItem) {
+        // Only update qty and price from server, preserve checked state
+        stateItem.qty = item.qty ?? item.quantity ?? 1;
+        stateItem.price = item.price ?? item.unit_price ?? 0;
+        stateItem.stock = item.stock ?? null;
+      }
+    });
+  });
+};
+
+let isInitialized = false;
+
 watch(
   () => props.groups,
-  () => initializeState(),
+  () => {
+    if (!isInitialized) {
+      initializeState();
+      isInitialized = true;
+    } else {
+      updateStateFromProps();
+    }
+  },
   { immediate: true, deep: true }
 );
 
@@ -224,6 +275,9 @@ const isGroupIndeterminate = (groupIndex) => {
 const totalItems = computed(() => state.itemStates.reduce((sum, group) => sum + group.length, 0));
 const selectedCount = computed(() => state.itemStates.flat().filter((item) => item.checked).length);
 const selectedGroups = computed(() => state.itemStates.filter((group) => group.some((item) => item.checked)).length);
+const selectedTotalQty = computed(() =>
+  state.itemStates.flat().reduce((sum, item) => sum + (item.checked ? item.qty : 0), 0)
+);
 const selectedTotal = computed(() =>
   state.itemStates.reduce((sum, group, groupIndex) => {
     return (
@@ -281,6 +335,7 @@ const persistQuantity = (itemId, quantity) => {
     { quantity },
     {
       preserveScroll: true,
+      only: ['groups'],
       replace: true,
       onFinish: () => setLoading(itemId, false),
     }
@@ -324,6 +379,7 @@ const removeItem = (itemId) => {
 
 const goToCheckout = () => {
   if (selectedCount.value === 0) return;
+  checkoutLoading.value = true;
   const selectedIds = [];
   state.itemStates.forEach((group, groupIndex) => {
     group.forEach((itemState, itemIndex) => {
@@ -336,14 +392,38 @@ const goToCheckout = () => {
     });
   });
 
-  router.get('/cart/checkout', { items: selectedIds }, { preserveScroll: true });
+  router.get('/cart/checkout', { items: selectedIds }, {
+    preserveScroll: true,
+    onFinish: () => {
+      checkoutLoading.value = false;
+    }
+  });
 };
 
-const groups = computed(() => props.groups ?? []);
+const groups = computed(() => {
+  // Sort groups and items by ID to maintain consistent order
+  const sorted = (props.groups ?? []).map(group => ({
+    ...group,
+    items: (group.items ?? []).slice().sort((a, b) => {
+      const idA = resolveItemId(a);
+      const idB = resolveItemId(b);
+      if (!idA || !idB) return 0;
+      return String(idA).localeCompare(String(idB));
+    })
+  })).sort((a, b) => {
+    const idA = a.storeId ?? a.vendor ?? '';
+    const idB = b.storeId ?? b.vendor ?? '';
+    return String(idA).localeCompare(String(idB));
+  });
+
+  return sorted;
+});
+
 const recommendations = computed(() =>
   ensureArray(props.recommendations).map((item, index) => normalizeRecommendationItem(item, index))
 );
 const hasRecommendations = computed(() => recommendations.value.length > 0);
+
 </script>
 
 <template>
@@ -352,24 +432,23 @@ const hasRecommendations = computed(() => recommendations.value.length > 0);
     <Head :title="`Keranjang - ${appName}`" />
 
     <section class="space-y-6">
-      <div class="flex flex-col gap-3 mb-3">
-        <h1 class="text-3xl font-bold text-slate-900">Keranjang</h1>
-        <div class="rounded-md border border-slate-200 bg-white">
-          <div class="flex items-center gap-3 px-5 py-4">
-            <label class="inline-flex items-center gap-3">
-              <input type="checkbox" class="h-5 w-5 rounded-md border-slate-300 text-sky-600 focus:ring-sky-500"
-                :checked="isAllChecked" :indeterminate="hasPartialAll" @change="toggleAll($event.target.checked)" />
-              <span class="text-base font-semibold text-slate-900">
-                Pilih Semua
-                <span class="text-sm font-normal text-slate-400">({{ totalItems }})</span>
-              </span>
-            </label>
-          </div>
-        </div>
-      </div>
+      <h1 class="text-3xl font-bold text-slate-900">Keranjang</h1>
 
       <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,2.3fr)_minmax(320px,1fr)]">
         <div class="space-y-4">
+          <div class="rounded-md border border-slate-200 bg-white">
+            <div class="flex items-center gap-3 px-5 py-4">
+              <label class="inline-flex items-center gap-3">
+                <input type="checkbox" class="h-5 w-5 rounded-md border-slate-300 text-sky-600 focus:ring-sky-500"
+                  :checked="isAllChecked" :indeterminate="hasPartialAll" @change="toggleAll($event.target.checked)" />
+                <span class="text-base font-semibold text-slate-900">
+                  Pilih Semua
+                  <span class="text-sm font-normal text-slate-400">({{ totalItems }})</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div v-if="!groups.length"
             class="rounded-md border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-600">
             Keranjang masih kosong.
@@ -378,11 +457,11 @@ const hasRecommendations = computed(() => recommendations.value.length > 0);
           <div v-for="(group, groupIndex) in groups" :key="group.storeId ?? groupIndex"
             class="overflow-hidden rounded-md border border-slate-200 bg-white">
             <div class="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-              <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              <input type="checkbox" class="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 :checked="isGroupChecked(groupIndex)" :indeterminate="isGroupIndeterminate(groupIndex)"
                 @change="toggleGroup(groupIndex, $event.target.checked)" />
               <div class="flex-1">
-                <p class="text-sm font-semibold text-slate-900">{{ group.vendor }}</p>
+                <p class="text-md font-bold text-slate-900">{{ group.vendor }}</p>
                 <p class="text-xs text-slate-500">{{ group.location || 'Lokasi tidak tersedia' }}</p>
               </div>
               <span v-if="group.benefit"
@@ -394,38 +473,51 @@ const hasRecommendations = computed(() => recommendations.value.length > 0);
             <div class="divide-y divide-slate-100">
               <div v-for="(item, itemIndex) in group.items" :key="item.id ?? itemIndex" class="space-y-3 px-5 py-4">
                 <div class="flex items-start gap-4">
-                  <input type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  <input type="checkbox" class="mt-1 h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                     :checked="state.itemStates?.[groupIndex]?.[itemIndex]?.checked"
                     @change="toggleItem(groupIndex, itemIndex, $event.target.checked)" />
 
                   <div class="flex flex-1 flex-col gap-4 md:flex-row md:items-center md:gap-6">
-                    <div class="h-24 w-24 overflow-hidden rounded-md border border-slate-100 bg-slate-50">
-                      <img :src="item.img" :alt="item.name" class="h-full w-full object-cover" />
+                    <div class="h-24 w-24 overflow-hidden rounded-md border border-slate-100"
+                      :class="isValidImage(item.img) ? 'bg-slate-50' : ''">
+                      <img v-if="isValidImage(item.img)" :src="item.img" :alt="item.name"
+                        class="h-full w-full object-cover" />
+                      <div v-else
+                        class="flex h-full w-full items-center justify-center text-xs font-medium text-slate-400">
+                        No Image
+                      </div>
                     </div>
 
                     <div class="flex-1 space-y-2">
-                      <div class="flex flex-wrap items-center gap-2 text-xs">
-                        <span class="rounded-md px-3 py-1 font-semibold"
-                          :class="item.status === 'Tersedia' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'">
-                          {{ item.status }}
-                        </span>
-                        <div v-if="item.location" class="flex items-center gap-1 text-slate-500">
-                          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
-                            <circle cx="12" cy="9.5" r="2.3" />
-                          </svg>
-                          <span>{{ item.location }}</span>
-                        </div>
-                      </div>
 
-                      <p class="text-base font-semibold leading-snug text-slate-900">
+
+                      <p class="text-base leading-snug text-slate-900">
                         <Link v-if="item.url" :href="item.url" class="hover:text-sky-600">{{ item.name }}</Link>
                         <span v-else>{{ item.name }}</span>
                       </p>
 
                       <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-600">
-                        <span v-for="tag in item.tags" :key="tag" class="rounded-md bg-slate-100 px-2.5 py-1">{{ tag
-                          }}</span>
+                        <span v-for="tag in item.tags" :key="tag" class="rounded-sm bg-slate-100 px-2.5 py-1">{{ tag
+                        }}</span>
+                        <span v-if="item.shipping_method === 'delivery'"
+                          class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-blue-700">
+                          <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 17h4V5H2v12h3" />
+                            <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+                            <circle cx="7.5" cy="17.5" r="2.5" />
+                            <circle cx="17.5" cy="17.5" r="2.5" />
+                          </svg>
+                          Diantar
+                        </span>
+                        <span v-else-if="item.shipping_method === 'pickup'"
+                          class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-amber-700">
+                          <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 10.5 4.5 5h15L21 10.5" />
+                            <path d="M5 11h14v8H5z" />
+                            <path d="M10 15h4" />
+                          </svg>
+                          Ambil di Toko
+                        </span>
                       </div>
                     </div>
 
@@ -466,42 +558,88 @@ const hasRecommendations = computed(() => recommendations.value.length > 0);
                   </div>
                 </div>
 
-                <div class="pl-11 md:pl-[140px]">
-                  <button type="button"
-                    class="inline-flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-700">
-                    <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12.5 20H21.5" stroke="#00A6F4" stroke-width="1.5" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                      <path
-                        d="M17 3.49998C17.3978 3.10216 17.9374 2.87866 18.5 2.87866C18.7786 2.87866 19.0544 2.93353 19.3118 3.04014C19.5692 3.14674 19.803 3.303 20 3.49998C20.197 3.69697 20.3532 3.93082 20.4598 4.18819C20.5664 4.44556 20.6213 4.72141 20.6213 4.99998C20.6213 5.27856 20.5664 5.55441 20.4598 5.81178C20.3532 6.06915 20.197 6.303 20 6.49998L7.5 19L3.5 20L4.5 16L17 3.49998Z"
-                        stroke="#00A6F4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
 
-                    <span>Catatan Untuk Penjual</span>
-                  </button>
-                </div>
               </div>
+            </div>
+          </div>
+          <div class="pt-8 space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-3xl font-bold text-slate-900">Rekomendasi Untuk Kamu</h2>
+              <Link href="/" class="text-sm font-semibold text-sky-600 hover:text-sky-700">Lihat Semua</Link>
+            </div>
+
+            <div v-if="hasRecommendations" class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+              <article v-for="item in recommendations" :key="item.id"
+                class="flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md">
+                <div class="h-40 w-full overflow-hidden" :class="isValidImage(item.img) ? 'bg-slate-100' : ''">
+                  <img v-if="isValidImage(item.img)" :src="item.img" :alt="item.title"
+                    class="h-full w-full object-cover" />
+                  <div v-else class="flex h-full w-full items-center justify-center text-xs font-medium text-slate-400">
+                    Tidak ada gambar
+                  </div>
+                </div>
+                <div class="flex flex-1 flex-col gap-2 p-4">
+                  <div class="flex items-center gap-2 text-[11px] font-semibold">
+                    <span v-if="item.storeBadge"
+                      class="rounded-sm bg-sky-500 px-2 py-0.5 uppercase tracking-wide text-white">{{ item.storeBadge
+                      }}</span>
+                    <span v-for="badge in item.badges" :key="badge"
+                      class="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">{{ badge }}</span>
+                  </div>
+
+                  <p class="line-clamp-2 text-sm font-semibold text-slate-900">
+                    <Link :href="item.url" class="hover:text-sky-600">{{ item.title }}</Link>
+                  </p>
+
+                  <div v-if="item.location" class="flex items-center gap-1 text-[11px] text-slate-500">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        d="M10 2.5a5.25 5.25 0 00-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 00.72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0010 2.5zm0 7.25a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                    <span>{{ item.location }}</span>
+                  </div>
+
+                  <p class="text-base font-bold text-slate-900">
+                    {{ formatCurrency(item.price) }}
+                  </p>
+
+                  <div v-if="item.originalPrice" class="flex items-center gap-2 text-xs">
+                    <span class="text-slate-400 line-through">{{ formatCurrency(item.originalPrice) }}</span>
+                    <span v-if="item.discountPercent"
+                      class="rounded-md bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">
+                      {{ item.discountPercent }}%
+                    </span>
+                  </div>
+
+                  <div class="mt-auto flex items-center justify-between text-xs text-slate-500">
+                    <span>{{ item.sold || 'Stok aman' }}</span>
+                    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Stok
+                      aman</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <div v-else
+              class="rounded-md border border-dashed border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-500">
+              Belum ada rekomendasi berdasarkan aktivitas belanjamu.
             </div>
           </div>
         </div>
 
-        <aside class="space-y-3">
+        <aside class="sticky top-32 space-y-3">
+
+
           <div class="rounded-md border border-slate-200 bg-white p-5">
             <p class="text-lg font-semibold text-slate-900">Ringkasan Belanja</p>
 
             <div class="mt-4 space-y-4 text-sm text-slate-600">
-              <p v-if="orderSummaries.length === 0" class="text-xs text-slate-500">
-                Pilih produk untuk melihat ringkasan pesanan.
-              </p>
 
-              <div v-else v-for="(order, idx) in orderSummaries" :key="`order-${idx}`"
+
+              <div v-for="(order, idx) in orderSummaries" :key="`order-${idx}`"
                 class="space-y-2 border-b border-slate-100 pb-4 last:border-0 last:pb-0">
                 <p class="text-base font-semibold text-slate-800">Pesanan ke {{ idx + 1 }}</p>
 
-                <div class="flex items-start justify-between gap-4">
-                  <span class="text-slate-500">Nama Toko</span>
-                  <span class="max-w-[60%] text-right text-sm font-semibold text-slate-800">{{ order.vendor }}</span>
-                </div>
+                <p class="text-sm font-semibold text-slate-900">{{ order.vendor }}</p>
 
                 <div class="flex items-center justify-between">
                   <span class="text-slate-500">Total Harga {{ order.itemCount }} Barang</span>
@@ -531,86 +669,31 @@ const hasRecommendations = computed(() => recommendations.value.length > 0);
               </div>
             </div>
 
-            <button type="button" class="mt-5 w-full rounded-md px-4 py-3 text-sm font-semibold transition"
-              :class="selectedCount === 0 ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-sky-500 text-white hover:bg-sky-600'"
-              :disabled="selectedCount === 0" @click="goToCheckout">
-              <span>{{ selectedCount === 0 ? 'Pilih produk terlebih dahulu' : 'Beli' }}</span>
+            <button type="button"
+              class="mt-5 w-full rounded-md px-4 py-3 text-sm font-semibold transition flex items-center justify-center gap-2"
+              :class="selectedCount === 0 || checkoutLoading ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-sky-500 text-white hover:bg-sky-600'"
+              :disabled="selectedCount === 0 || checkoutLoading" @click="goToCheckout">
+              <svg v-if="checkoutLoading" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              <span>{{ checkoutLoading ? 'Memproses...' : (selectedCount === 0 ? 'Pilih produk terlebih dahulu' : `Beli
+                (${selectedTotalQty})`) }}</span>
             </button>
           </div>
 
-          <div class="rounded-md border border-dashed border-slate-200 bg-white px-5 py-4 text-sm text-slate-600">
-            <p class="font-semibold text-slate-800">Butuh bantuan?</p>
-            <p class="mt-1 text-slate-500">Hubungi pusat bantuan atau chat penjual sebelum checkout.</p>
-          </div>
+
         </aside>
       </div>
     </section>
 
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-3xl font-bold text-slate-900">Rekomendasi Untuk Kamu</h2>
-        <Link href="/" class="text-sm font-semibold text-sky-600 hover:text-sky-700">Lihat Semua</Link>
-      </div>
 
-      <div v-if="hasRecommendations" class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-        <article v-for="item in recommendations" :key="item.id"
-          class="flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md">
-          <div class="h-40 w-full overflow-hidden bg-slate-100">
-            <img v-if="item.img" :src="item.img" :alt="item.title" class="h-full w-full object-cover" />
-            <div v-else class="flex h-full w-full items-center justify-center text-xs font-medium text-slate-400">
-              Tidak ada gambar
-            </div>
-          </div>
-          <div class="flex flex-1 flex-col gap-2 p-4">
-            <div class="flex items-center gap-2 text-[11px] font-semibold">
-              <span v-if="item.storeBadge"
-                class="rounded-sm bg-sky-500 px-2 py-0.5 uppercase tracking-wide text-white">{{ item.storeBadge
-                }}</span>
-              <span v-for="badge in item.badges" :key="badge"
-                class="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">{{ badge }}</span>
-            </div>
-
-            <p class="line-clamp-2 text-sm font-semibold text-slate-900">
-              <Link :href="item.url" class="hover:text-sky-600">{{ item.title }}</Link>
-            </p>
-
-            <div v-if="item.location" class="flex items-center gap-1 text-[11px] text-slate-500">
-              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  d="M10 2.5a5.25 5.25 0 00-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 00.72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0010 2.5zm0 7.25a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
-              <span>{{ item.location }}</span>
-            </div>
-
-            <p class="text-base font-bold text-slate-900">
-              {{ formatCurrency(item.price) }}
-            </p>
-
-            <div v-if="item.originalPrice" class="flex items-center gap-2 text-xs">
-              <span class="text-slate-400 line-through">{{ formatCurrency(item.originalPrice) }}</span>
-              <span v-if="item.discountPercent"
-                class="rounded-md bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">
-                {{ item.discountPercent }}%
-              </span>
-            </div>
-
-            <div class="mt-auto flex items-center justify-between text-xs text-slate-500">
-              <span>{{ item.sold || 'Stok aman' }}</span>
-              <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Stok
-                aman</span>
-            </div>
-          </div>
-        </article>
-      </div>
-      <div v-else
-        class="rounded-md border border-dashed border-slate-200 bg-white px-6 py-8 text-center text-sm text-slate-500">
-        Belum ada rekomendasi berdasarkan aktivitas belanjamu.
-      </div>
-    </section>
 
     <Teleport to="body">
-      <div v-if="deleteLoadingVisible"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35">
+      <div v-if="deleteLoadingVisible" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35">
         <div
           class="flex items-center gap-3 rounded-xl bg-white/95 px-4 py-3 text-slate-800 shadow-xl ring-1 ring-slate-200">
           <svg class="h-5 w-5 animate-spin text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"

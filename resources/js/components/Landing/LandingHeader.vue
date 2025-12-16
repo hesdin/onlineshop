@@ -72,9 +72,29 @@ const formatPrice = (value) =>
     normalizePrice(value)
   );
 
+const isValidImage = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  // Filter out common placeholder URLs
+  const placeholderPatterns = [
+    'picsum.photos',
+    'placeholder',
+    'via.placeholder',
+    'placehold',
+    'dummy',
+    'no-image',
+    'noimage'
+  ];
+  return !placeholderPatterns.some(pattern => trimmed.toLowerCase().includes(pattern));
+};
+
 const cartItemPrice = (item) => normalizePrice(item?.subtotal ?? item?.unit_price ?? item?.price ?? 0);
 const cartItemQty = (item) => item?.qty ?? item?.quantity ?? 0;
-const cartItemImage = (item) => item?.image || item?.img || 'https://picsum.photos/seed/cart-placeholder/64/64';
+const cartItemImage = (item) => {
+  const img = item?.image || item?.img || null;
+  return isValidImage(img) ? img : null;
+};
 const cartItemName = (item) => item?.name ?? 'Produk';
 
 const page = usePage();
@@ -323,8 +343,15 @@ const goToLogin = () => {
             </div>
             <div v-if="cartItems.length" class="divide-y divide-slate-100">
               <div class="flex gap-3 px-4 py-3" v-for="(item, index) in cartItems" :key="`cart-${item.id ?? index}`">
-                <img class="h-12 w-12 flex-shrink-0 rounded-lg bg-slate-100 object-cover" :src="cartItemImage(item)"
-                  :alt="cartItemName(item)" />
+                <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden"
+                  :class="cartItemImage(item) ? 'bg-slate-100' : ''">
+                  <img v-if="cartItemImage(item)" class="h-full w-full object-cover" :src="cartItemImage(item)"
+                    :alt="cartItemName(item)" />
+                  <div v-else
+                    class="flex h-full w-full items-center justify-center text-[10px] font-medium text-slate-400">
+                    No Image
+                  </div>
+                </div>
                 <div class="flex-1">
                   <p class="text-sm font-semibold text-slate-900">{{ cartItemName(item) }}</p>
                   <p class="text-xs text-slate-500">{{ cartItemQty(item) }} Barang</p>

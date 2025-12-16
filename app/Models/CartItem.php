@@ -18,6 +18,7 @@ class CartItem extends Model
         'unit_price',
         'subtotal',
         'note',
+        'shipping_method',
     ];
 
     protected $casts = [

@@ -2,11 +2,10 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch, onMounted, onBeforeUnmount, reactive } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
-import RegionSelector from '@/Components/RegionSelector.vue';
+import AddressFormModal from '@/components/Customer/AddressFormModal.vue';
+import AddressSelectModal from '@/components/Customer/AddressSelectModal.vue';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 const props = defineProps({
   appName: {
@@ -200,6 +199,7 @@ const addToCartForm = useForm({
   product_id: product.value.id ?? null,
   quantity: quantity.value,
   note: '',
+  shipping_method: null,
 });
 const cartError = ref('');
 const cartNotifications = ref([]);
@@ -297,27 +297,32 @@ const regionInitialNames = reactive({
   district: '',
 });
 
-// Computed untuk memastikan tipe yang benar untuk RegionSelector
-const regionProvinceId = computed({
-  get: () => addressForm.province_id ? Number(addressForm.province_id) : null,
-  set: (val) => { addressForm.province_id = val; }
-});
+const selectedCustomerAddressId = computed(() => page.props.customerAddress?.id ?? null);
 
-const regionCityId = computed({
-  get: () => addressForm.city_id ? Number(addressForm.city_id) : null,
-  set: (val) => { addressForm.city_id = val; }
-});
+const addressSelectOptions = computed(() => {
+  const addresses = page.props.customerAddresses || [];
+  return addresses.map((address) => {
+    const locationParts = [
+      address.district ? toTitleCase(address.district) : null,
+      address.city ? toTitleCase(address.city) : null,
+      address.province ? toTitleCase(address.province) : null,
+    ].filter(Boolean);
 
-const regionDistrictId = computed({
-  get: () => addressForm.district_id ? Number(addressForm.district_id) : null,
-  set: (val) => { addressForm.district_id = val; }
-});
+    const lines = [
+      locationParts.length ? locationParts.join(', ') : null,
+      address.postal_code || null,
+    ].filter(Boolean);
 
-const otherAddresses = computed(() => {
-  const all = page.props.customerAddresses || [];
-  const currentId = page.props.customerAddress?.id;
-  if (!currentId) return all;
-  return all.filter(a => a.id !== currentId);
+    return {
+      id: address.id,
+      label: address.label || 'Alamat',
+      recipient: address.recipient_name,
+      detail: address.address_line,
+      lines,
+      phone: address.phone,
+      canEdit: true,
+    };
+  });
 });
 
 const openAddressManagementModal = () => {
@@ -372,6 +377,19 @@ const openAddressModal = (addressId = null) => {
   }
 
   showAddressModal.value = true;
+};
+
+const closeAddressModal = () => {
+  if (addressForm.processing) return;
+  showAddressModal.value = false;
+};
+
+const handleAddressModalToggle = (value) => {
+  if (!value) {
+    closeAddressModal();
+    return;
+  }
+  showAddressModal.value = value;
 };
 
 const ADDRESS_REQUIRED_FIELDS = [
@@ -785,36 +803,27 @@ const shareLinks = computed(() => {
 const whatsappChatUrl = computed(() => {
   const phone = product.value.store?.phone;
 
-  // Debug logging
-  console.log('🐛 WhatsApp Debug:', {
-    storeExists: !!product.value.store,
-    phone: phone,
-    phoneType: typeof phone,
-    phoneLength: phone?.length,
-    trimmed: phone?.trim(),
-  });
+
 
   // Check if phone exists and is not empty
   if (!phone || phone.trim() === '') {
-    console.log('❌ No phone or empty phone');
     return null;
   }
 
   // Remove all non-numeric characters from phone number
   const cleanPhone = phone.replace(/\D/g, '');
 
-  console.log('🧹 Cleaned phone:', cleanPhone);
+
 
   // If cleanPhone is empty after removing non-numeric, return null
   if (!cleanPhone) {
-    console.log('❌ Clean phone is empty');
     return null;
   }
 
   // If phone doesn't start with country code, assume Indonesia (+62)
   const formattedPhone = cleanPhone.startsWith('62') ? cleanPhone : `62${cleanPhone.replace(/^0+/, '')}`;
 
-  console.log('✅ Formatted phone:', formattedPhone);
+
 
   // Pre-filled message
   const message = encodeURIComponent(
@@ -822,7 +831,7 @@ const whatsappChatUrl = computed(() => {
   );
 
   const url = `https://wa.me/${formattedPhone}?text=${message}`;
-  console.log('✅ WhatsApp URL:', url);
+
 
   return url;
 });
@@ -848,8 +857,9 @@ const formattedProductLocation = computed(() => {
 const shippingSummary = computed(() => {
   const address = page.props.customerAddress ?? null;
   const normalizeRegion = (value) => (value ? toTitleCase(value) : '');
-  const regionDetail =
-    [address?.district, address?.city, address?.province].map(normalizeRegion).filter(Boolean).join(', ') || null;
+
+  // Only show city/kabupaten
+  const regionDetail = address?.city ? normalizeRegion(address.city) : null;
 
   // Get shipping method title
   let shippingTitle = 'Pilih metode pengiriman';
@@ -1430,32 +1440,7 @@ onBeforeUnmount(() => {
                     </div>
                   </div>
 
-                  <button type="button"
-                    class="flex w-full items-start gap-3 rounded-md border border-slate-200 bg-white/90 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-sky-400"
-                    @click="openAddressManagementModal">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
-                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                        <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
-                        <circle cx="12" cy="9.5" r="2.3" />
-                      </svg>
-                    </span>
-                    <div class="flex-1">
-                      <p class="font-semibold text-slate-800">{{ shippingSummary.addressTitle }}</p>
-                      <p v-if="shippingSummary.addressDetail" class="text-xs text-slate-500">
-                        {{ shippingSummary.addressDetail }}
-                      </p>
-                      <p v-else class="text-xs text-slate-400">Pilih alamat pengiriman</p>
-                    </div>
-                    <svg class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-                      stroke-width="1.8">
-                      <path d="M7 4.5 12 10l-5 5.5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </button>
-
-                  <button type="button"
-                    class="flex w-full items-start gap-3 rounded-md border border-slate-200 bg-white/90 px-3 py-2 text-left text-sm text-slate-700 transition hover:border-sky-400"
-                    :class="{ 'opacity-50 cursor-not-allowed': !hasShippingMethods }" :disabled="!hasShippingMethods"
-                    @click="openShippingMethodModal">
+                  <div class="flex items-start gap-3">
                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
                       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                         <path d="M10 17h4V5H2v12h3" />
@@ -1464,13 +1449,42 @@ onBeforeUnmount(() => {
                         <circle cx="17.5" cy="17.5" r="2.5" />
                       </svg>
                     </span>
-                    <div class="flex-1">
-                      <p class="font-semibold text-slate-800">{{ shippingSummary.shippingTitle }}</p>
-                      <p class="text-xs text-slate-500">
-                        {{ shippingSummary.shippingDescription || 'Pilih metode pengiriman' }}
+                    <div>
+                      <p class="text-xs text-slate-500">Metode pengiriman tersedia</p>
+                      <div v-if="hasShippingMethods" class="text-xs font-semibold text-slate-800">
+                        <template v-if="product.shipping_pickup && product.shipping_delivery">
+                          <p>- Ambil di Toko</p>
+                          <p>- Diantar ke Tempat</p>
+                        </template>
+                        <template v-else-if="product.shipping_pickup">
+                          <p>Ambil di Toko</p>
+                        </template>
+                        <template v-else-if="product.shipping_delivery">
+                          <p>Diantar ke Tempat</p>
+                        </template>
+                      </div>
+                      <p v-else class="text-xs font-semibold text-slate-400">
+                        Tidak ada metode tersedia
                       </p>
                     </div>
-                    <svg v-if="hasShippingMethods" class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="none"
+                  </div>
+
+                  <button type="button" class="flex w-full items-start gap-3 text-left transition hover:opacity-75"
+                    @click="openAddressManagementModal">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
+                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                        <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
+                        <circle cx="12" cy="9.5" r="2.3" />
+                      </svg>
+                    </span>
+                    <div class="flex-1">
+                      <p class="text-xs text-slate-500">Dikirim ke</p>
+                      <p class="text-xs font-semibold text-slate-800">
+                        {{ shippingSummary.addressTitle }}<template v-if="shippingSummary.addressDetail">, {{
+                          shippingSummary.addressDetail }}</template>
+                      </p>
+                    </div>
+                    <svg class="h-4 w-4 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none"
                       stroke="currentColor" stroke-width="1.8">
                       <path d="M7 4.5 12 10l-5 5.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
@@ -1734,7 +1748,7 @@ onBeforeUnmount(() => {
                 </svg>
               </span>
               <div class="flex-1">
-                <p class="text-xs font-semibold uppercase tracking-wide text-red-600">
+                <p class="text-xs font-semibold text-red-600">
                   {{ notification.message }}
                 </p>
                 <p v-if="notification.detail" class="text-xs font-semibold text-red-600/80">
@@ -1742,9 +1756,11 @@ onBeforeUnmount(() => {
                 </p>
               </div>
               <button type="button"
-                class="rounded-full border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50"
+                class="flex h-6 w-6 items-center justify-center rounded-full text-red-600 transition hover:bg-red-50"
                 @click="removeCartNotification(notification.id)">
-                Tutup
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 5l10 10M15 5 5 15" stroke-linecap="round" />
+                </svg>
               </button>
             </div>
           </template>
@@ -1870,221 +1886,19 @@ onBeforeUnmount(() => {
       </div>
     </Teleport>
 
-    <!-- Address Form Modal -->
-    <Dialog :open="showAddressModal" @update:open="(val) => showAddressModal = val">
-      <DialogContent class="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{{ isEditingAddress ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Pengiriman' }}</DialogTitle>
-          <DialogDescription>
-            {{ isEditingAddress
-              ? 'Perbarui data alamat pengiriman Anda.'
-              : 'Lengkapi data alamat pengiriman Anda untuk melanjutkan pembelian.' }}
-          </DialogDescription>
-        </DialogHeader>
+    <AddressFormModal :open="showAddressModal" @update:open="handleAddressModalToggle" :form="addressForm"
+      :initial-region-names="regionInitialNames"
+      :title="isEditingAddress ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Pengiriman'"
+      :description="isEditingAddress
+        ? 'Perbarui data alamat pengiriman Anda.'
+        : 'Lengkapi data alamat pengiriman Anda untuk melanjutkan pembelian.'"
+      :submit-label="isEditingAddress ? 'Simpan Perubahan' : 'Simpan & Lanjutkan'" :show-default-toggle="false"
+      @submit="submitAddress" />
 
-        <form class="space-y-4" @submit.prevent="submitAddress">
-          <!-- Row 1: Label & Recipient Name -->
-          <div class="grid gap-4 md:grid-cols-2">
-            <div class="space-y-2">
-              <Label>Label Alamat</Label>
-              <Input v-model="addressForm.label" placeholder="Rumah / Kantor" :disabled="addressForm.processing"
-                required />
-              <p v-if="addressForm.errors.label" class="text-sm text-red-500">{{ addressForm.errors.label }}</p>
-            </div>
-            <div class="space-y-2">
-              <Label>Nama Penerima</Label>
-              <Input v-model="addressForm.recipient_name" placeholder="Nama lengkap" :disabled="addressForm.processing"
-                required />
-              <p v-if="addressForm.errors.recipient_name" class="text-sm text-red-500">{{
-                addressForm.errors.recipient_name
-              }}</p>
-            </div>
-          </div>
-
-          <!-- Phone -->
-          <div class="space-y-2">
-            <Label>Nomor Telepon</Label>
-            <Input v-model="addressForm.phone" placeholder="08xxxxxxxxxx" :disabled="addressForm.processing" required />
-            <p v-if="addressForm.errors.phone" class="text-sm text-red-500">{{ addressForm.errors.phone }}</p>
-          </div>
-
-          <!-- Region Selector -->
-          <RegionSelector v-model:provinceId="regionProvinceId" v-model:cityId="regionCityId"
-            v-model:districtId="regionDistrictId" :show-district="true" :disabled="addressForm.processing"
-            :province-required="true" :city-required="true" :district-required="true" :errors="{
-              provinceId: addressForm.errors.province_id,
-              cityId: addressForm.errors.city_id,
-              districtId: addressForm.errors.district_id,
-            }" :initial-province-name="regionInitialNames.province" :initial-city-name="regionInitialNames.city"
-            :initial-district-name="regionInitialNames.district" />
-
-          <!-- Postal Code -->
-          <div class="space-y-2">
-            <Label>Kode Pos</Label>
-            <Input v-model="addressForm.postal_code" placeholder="Kode pos" :disabled="addressForm.processing"
-              required />
-            <p v-if="addressForm.errors.postal_code" class="text-sm text-red-500">{{ addressForm.errors.postal_code }}
-            </p>
-          </div>
-
-          <!-- Address Line -->
-          <div class="space-y-2">
-            <Label>Alamat Lengkap</Label>
-            <Input v-model="addressForm.address_line" placeholder="Jalan, nomor rumah, RT/RW"
-              :disabled="addressForm.processing" required />
-            <p v-if="addressForm.errors.address_line" class="text-sm text-red-500">{{ addressForm.errors.address_line }}
-            </p>
-          </div>
-
-          <!-- Note -->
-          <div class="space-y-2">
-            <Label>Catatan untuk Kurir (Opsional)</Label>
-            <Input v-model="addressForm.note" placeholder="Patokan, warna rumah, dll"
-              :disabled="addressForm.processing" />
-          </div>
-
-          <DialogFooter class="flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" @click="showAddressModal = false"
-              :disabled="addressForm.processing">
-              Batal
-            </Button>
-            <Button type="submit" :disabled="addressForm.processing">
-              {{ addressForm.processing ? 'Menyimpan...' : 'Simpan & Lanjutkan' }}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    <!-- Address Management Modal -->
-    <Dialog :open="showAddressManagementModal" @update:open="(val) => showAddressManagementModal = val">
-      <DialogContent class="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Alamat Pengiriman</DialogTitle>
-          <DialogDescription>Pilih alamat pengiriman atau tambah alamat baru</DialogDescription>
-        </DialogHeader>
-
-        <div class="flex-1 overflow-y-auto py-4">
-          <div class="flex items-center justify-end mb-4 px-1">
-            <button type="button" @click="openAddressModal()"
-              class="text-sm font-semibold text-sky-600 border border-sky-600 rounded-md px-4 py-2 hover:bg-sky-50 transition">
-              Tambah Alamat
-            </button>
-          </div>
-          <!-- Address List -->
-          <div class="space-y-3">
-            <!-- Current Selected Address -->
-            <div v-if="hasAddress"
-              class="relative rounded-md border-2 border-emerald-500 bg-emerald-50/30 p-4 transition hover:bg-emerald-50/50">
-              <!-- Terpilih Badge -->
-              <div class="absolute right-4 top-4">
-                <span
-                  class="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
-                  <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                      d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                      clip-rule="evenodd" />
-                  </svg>
-                  Terpilih
-                </span>
-              </div>
-
-              <div class="flex items-start gap-4 pr-24">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                  <svg class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2">
-                    <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
-                    <circle cx="12" cy="9.5" r="2.3" />
-                  </svg>
-                </div>
-
-                <div class="flex-1 space-y-2">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-semibold text-slate-900">{{ page.props.customerAddress?.label || 'Alamat' }}
-                    </p>
-                    <span class="text-xs text-slate-400">•</span>
-                    <p class="text-sm font-semibold text-emerald-600">{{ page.props.customerAddress?.recipient_name }}
-                    </p>
-                  </div>
-
-                  <div class="space-y-1 text-sm text-slate-700">
-                    <p>{{ page.props.customerAddress?.address_line }}</p>
-                    <p>{{ toTitleCase(page.props.customerAddress?.district) }}, {{
-                      toTitleCase(page.props.customerAddress?.city) }}</p>
-                    <p>{{ toTitleCase(page.props.customerAddress?.province) }}, {{
-                      page.props.customerAddress?.postal_code }}</p>
-                    <p class="text-slate-600">{{ page.props.customerAddress?.phone }}</p>
-                  </div>
-
-                  <button type="button" @click="openAddressModal(page.props.customerAddress?.id)"
-                    class="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-50">
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
-                      <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                    Ubah Alamat
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Sample Other Addresses - You can loop through other addresses here -->
-            <div v-for="address in otherAddresses" :key="address.id"
-              class="relative rounded-md border border-slate-200 bg-white p-4 transition hover:border-sky-300 hover:shadow-md">
-              <button type="button" @click.stop="selectAddress(address.id)"
-                class="absolute right-4 top-4 inline-flex items-center gap-1 rounded-md border border-sky-500 bg-white px-3 py-1.5 text-xs font-semibold text-sky-600 transition hover:bg-sky-50">
-                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M7 10l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="M5 5h10v10H5z" />
-                </svg>
-                Pilih
-              </button>
-              <div class="flex items-start gap-4 pr-20">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                  <svg class="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2">
-                    <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
-                    <circle cx="12" cy="9.5" r="2.3" />
-                  </svg>
-                </div>
-
-                <div class="flex-1 space-y-2">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-semibold text-slate-900">{{ address.label }}</p>
-                    <span class="text-xs text-slate-400">•</span>
-                    <p class="text-sm font-semibold text-slate-700">{{ address.recipient_name }}</p>
-                  </div>
-
-                  <div class="space-y-1 text-sm text-slate-700">
-                    <p>{{ address.address_line }}</p>
-                    <p>{{ toTitleCase(address.district) }}, {{ toTitleCase(address.city) }}</p>
-                    <p>{{ toTitleCase(address.province) }}, {{ address.postal_code }}</p>
-                    <p class="text-slate-600">{{ address.phone }}</p>
-                  </div>
-
-                  <button type="button" @click.stop="openAddressModal(address.id)"
-                    class="mt-3 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
-                      <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                    Ubah
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter class="border-t border-slate-200 pt-4">
-          <div class="flex w-full items-center justify-end gap-3">
-            <Button type="button" variant="outline" @click="showAddressManagementModal = false">
-              Tutup
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <AddressSelectModal :open="showAddressManagementModal" :addresses="addressSelectOptions"
+      :selected-id="selectedCustomerAddressId" show-edit-button
+      @update:open="(val) => (showAddressManagementModal = val)" @add="openAddressModal()"
+      @select="selectAddress" @edit="openAddressModal" />
 
     <!-- Shipping Method Selection Modal -->
     <Dialog :open="showShippingMethodModal" @update:open="showShippingMethodModal = $event">

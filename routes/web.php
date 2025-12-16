@@ -35,6 +35,8 @@ Route::middleware(['auth', 'role:customer'])
         Route::get('/', CartPageController::class)->name('index');
         Route::post('/', [CartController::class, 'store'])->name('store');
         Route::patch('/items/{item}', [CartController::class, 'update'])->name('items.update');
+        Route::put('/items/{item}/note', [CartController::class, 'updateNote'])->name('items.note.update');
+        Route::put('/items/{item}/shipping', [CartController::class, 'updateShippingMethod'])->name('items.shipping.update');
         Route::delete('/items/{item}', [CartController::class, 'destroy'])->name('items.destroy');
         Route::get('/checkout', CheckoutPageController::class)->name('checkout');
         Route::get('/payment', PaymentPageController::class)->name('payment');

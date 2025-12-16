@@ -17,6 +17,7 @@ class CartController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:500'],
+            'shipping_method' => ['nullable', 'string', 'in:pickup,delivery'],
         ]);
 
         $cityId = CustomerLocationResolver::resolveCityId($request);
@@ -72,6 +73,10 @@ class CartController extends Controller
             $item->note = $data['note'];
         }
 
+        if (! empty($data['shipping_method'])) {
+            $item->shipping_method = $data['shipping_method'];
+        }
+
         $item->save();
 
         return back()->with('success', 'Produk berhasil ditambahkan ke keranjang.');
@@ -124,12 +129,59 @@ class CartController extends Controller
         return back()->with('success', 'Produk dihapus dari keranjang.');
     }
 
+    public function updateNote(Request $request, CartItem $item)
+    {
+        $data = $request->validate([
+            'note' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        if (! $this->belongsToUser($request, $item)) {
+            return response()->json(['error' => 'Item tidak ditemukan.'], 403);
+        }
+
+        $item->update([
+            'note' => $data['note'] ?? null,
+        ]);
+
+        return back()->with('success', 'Catatan diperbarui.');
+    }
+
+    public function updateShippingMethod(Request $request, CartItem $item)
+    {
+        $data = $request->validate([
+            'shipping_method' => ['nullable', 'string', 'in:pickup,delivery'],
+        ]);
+
+        if (! $this->belongsToUser($request, $item)) {
+            return response()->json(['error' => 'Item tidak ditemukan.'], 403);
+        }
+
+        $product = $item->product()
+            ->select(['id', 'shipping_pickup', 'shipping_delivery'])
+            ->first();
+
+        if (! $product) {
+            return response()->json(['error' => 'Produk tidak ditemukan.'], 404);
+        }
+
+        $availableMethods = array_filter([
+            $product->shipping_pickup ? 'pickup' : null,
+            $product->shipping_delivery ? 'delivery' : null,
+        ]);
+
+        if ($data['shipping_method'] && ! in_array($data['shipping_method'], $availableMethods, true)) {
+            return response()->json(['error' => 'Metode pengiriman tidak tersedia untuk produk ini.'], 422);
+        }
+
+        $item->update([
+            'shipping_method' => $data['shipping_method'] ?? null,
+        ]);
+
+        return back()->with('success', 'Metode pengiriman diperbarui.');
+    }
+
     protected function belongsToUser(Request $request, CartItem $item): bool
     {
-        $cart = $item->cart()->select(['id', 'user_id', 'status'])->first();
-
-        return $cart
-            && $cart->user_id === $request->user()->id
-            && $cart->status === Cart::STATUS_OPEN;
+        return $item->cart->user_id === $request->user()?->id;
     }
 }

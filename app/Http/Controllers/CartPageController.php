@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Support\CustomerLocationResolver;
@@ -51,6 +52,7 @@ class CartPageController extends Controller
             'groups' => $groups,
             'recommendations' => $this->recommendations($user?->id, $cityId),
             'paymentMethods' => $this->paymentMethods(),
+            'customerAddress' => $this->customerAddress($request),
         ]);
     }
 
@@ -87,6 +89,7 @@ class CartPageController extends Controller
                             'url' => $product ? route('product.detail', ['slug' => $product->slug, 'product' => $product]) : null,
                             'stock' => $stock,
                             'minOrder' => $product?->min_order ?: 1,
+                            'shipping_method' => $item->shipping_method,
                         ];
                     })->values(),
                 ];
@@ -217,6 +220,48 @@ class CartPageController extends Controller
             'OVO',
             'VISA',
             'MASTER',
+        ];
+    }
+
+    protected function customerAddress(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $address = Address::query()
+            ->where('user_id', $user->id)
+            ->with(['provinceRegion:id,name', 'cityRegion:id,name', 'districtRegion:id,name'])
+            ->orderByDesc('is_default')
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if (! $address) {
+            return null;
+        }
+
+        return $this->transformAddress($address, $user->name);
+    }
+
+    protected function transformAddress(Address $address, ?string $fallbackRecipientName = null): array
+    {
+        return [
+            'id' => $address->id,
+            'label' => $address->label ?: 'Alamat Utama',
+            'recipient_name' => $address->recipient_name ?: $fallbackRecipientName,
+            'phone' => $address->phone,
+            'province_id' => $address->province_id,
+            'city_id' => $address->city_id,
+            'district_id' => $address->district_id,
+            'postal_code' => $address->postal_code,
+            'address_line' => $address->address_line,
+            'is_default' => (bool) $address->is_default,
+            'note' => $address->note,
+            'district' => $address->district,
+            'city' => $address->city,
+            'province' => $address->province,
         ];
     }
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { Head, router } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import { computed, reactive, onBeforeUnmount } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 
 const props = defineProps({
@@ -24,6 +24,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  shippingSelections: {
+    type: Object,
+    default: () => ({}),
+  },
 });
 
 const state = reactive({
@@ -32,6 +36,8 @@ const state = reactive({
   promoCode: '',
   submitting: false,
 });
+const PAYMENT_SUBMIT_LOADING_MS = 2000;
+let submitRequestTimer = null;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
@@ -48,6 +54,9 @@ const applyPromo = () => {
 };
 
 const submitPayment = () => {
+  if (state.submitting) {
+    return;
+  }
   if (!state.selectedMethod) {
     alert('Silakan pilih metode pembayaran terlebih dahulu');
     return;
@@ -60,18 +69,25 @@ const submitPayment = () => {
 
   state.submitting = true;
 
-  router.post('/cart/payment/process', {
-    payment_method_code: state.selectedMethod,
-    items: props.selectedItems,
-    address_id: props.addressId,
-    shipping_selections: {},
-    notes: {},
-  }, {
-    preserveScroll: true,
-    onFinish: () => {
-      state.submitting = false;
-    },
-  });
+  if (submitRequestTimer) {
+    clearTimeout(submitRequestTimer);
+  }
+
+  submitRequestTimer = setTimeout(() => {
+    router.post('/cart/payment/process', {
+      payment_method_code: state.selectedMethod,
+      items: props.selectedItems,
+      address_id: props.addressId,
+      shipping_selections: props.shippingSelections,
+      notes: {},
+    }, {
+      preserveScroll: true,
+      onFinish: () => {
+        state.submitting = false;
+      },
+    });
+    submitRequestTimer = null;
+  }, PAYMENT_SUBMIT_LOADING_MS);
 };
 
 const totals = computed(() => {
@@ -80,10 +96,17 @@ const totals = computed(() => {
   const fee = 0;
   return { items, shipping, fee };
 });
+
+onBeforeUnmount(() => {
+  if (submitRequestTimer) {
+    clearTimeout(submitRequestTimer);
+  }
+});
 </script>
 
 <template>
   <LandingLayout>
+
     <Head :title="`Pembayaran - ${appName}`" />
 
     <section class="space-y-6" @keydown.window.escape="state.showPromo = false">
@@ -93,30 +116,47 @@ const totals = computed(() => {
 
       <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(360px,1fr)]">
         <div class="rounded-lg bg-white p-6 shadow-sm">
-          <div class="flex items-center gap-3">
-            <p class="text-lg font-bold text-slate-900">Metode Pembayaran</p>
-            <span class="rounded-md bg-rose-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">Wajib</span>
-          </div>
+          <p class="text-lg font-bold text-slate-900">Metode Pembayaran</p>
 
           <div class="mt-4 space-y-6">
             <div v-for="(group, gIndex) in paymentMethods" :key="`pm-group-${gIndex}`" class="space-y-3">
-              <div class="flex items-center gap-2">
-                <p class="text-base font-semibold text-slate-900">{{ group.label }}</p>
-                <p class="text-xs font-semibold text-slate-500">{{ group.note }}</p>
-              </div>
 
-              <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div class="space-y-3">
                 <label v-for="method in group.methods" :key="method.id"
-                  class="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition hover:border-sky-300 hover:shadow-sm"
-                  :class="state.selectedMethod === method.id ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-100' : 'border-slate-200 bg-white'"
+                  class="flex cursor-pointer items-center gap-4 rounded-lg border px-5 py-4 transition"
+                  :class="state.selectedMethod === method.id ? 'border-sky-500 bg-sky-50' : 'border-slate-200 bg-white hover:border-sky-300'"
                   @click="selectMethod(method.id)">
-                  <span class="flex h-5 w-5 items-center justify-center rounded-full border"
-                    :class="state.selectedMethod === method.id ? 'border-sky-500 bg-sky-500 ring-2 ring-sky-100' : 'border-slate-300 bg-white'">
-                    <span class="h-2.5 w-2.5 rounded-full bg-white" v-show="state.selectedMethod === method.id"></span>
+
+                  <!-- Radio Button -->
+                  <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
+                    :class="state.selectedMethod === method.id ? 'border-sky-500' : 'border-slate-300'">
+                    <span class="h-2.5 w-2.5 rounded-full bg-sky-500"
+                      v-show="state.selectedMethod === method.id"></span>
                   </span>
+
+                  <!-- Icon -->
+                  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
+                    :class="state.selectedMethod === method.id ? 'bg-sky-500' : 'bg-slate-100'">
+                    <!-- COD Icon -->
+                    <svg v-if="group.label === 'Cash on Delivery'" class="h-5 w-5"
+                      :class="state.selectedMethod === method.id ? 'text-white' : 'text-slate-600'" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    </svg>
+                    <!-- Transfer Icon -->
+                    <svg v-else-if="group.label === 'Transfer Manual'" class="h-5 w-5"
+                      :class="state.selectedMethod === method.id ? 'text-white' : 'text-slate-600'" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="5" width="20" height="14" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+                      <path d="M2 10h20" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </div>
+
+                  <!-- Text -->
                   <div class="flex-1">
                     <p class="text-sm font-semibold text-slate-900">{{ method.name }}</p>
-                    <p class="text-[11px] font-semibold text-slate-500">{{ method.limit }}</p>
+                    <p class="text-xs text-slate-500">{{ group.note }}</p>
                   </div>
                 </label>
               </div>
@@ -167,7 +207,8 @@ const totals = computed(() => {
                     <!-- Store Rating & Response Time -->
                     <div v-if="order.store_rating" class="flex items-center gap-1 text-xs text-slate-600">
                       <svg class="h-3.5 w-3.5 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        <path
+                          d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                       </svg>
                       <span>{{ order.store_rating }}/5</span>
                     </div>
@@ -186,23 +227,14 @@ const totals = computed(() => {
                       <span class="text-slate-600">{{ order.typeLabel }}</span>
                       <span class="font-semibold">{{ formatCurrency(order.total) }}</span>
                     </div>
-                    <div class="flex items-center justify-between" v-if="order.benefit">
-                      <span class="text-slate-600">Pengiriman</span>
-                      <div class="flex items-center gap-2">
-                        <span class="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                          {{ order.benefit }}
-                        </span>
-                        <span class="font-semibold">{{ formatCurrency(order.shipping) }}</span>
-                      </div>
-                    </div>
                   </div>
 
                   <!-- WhatsApp Tanya Toko Button -->
-                  <a v-if="order.whatsapp_link" :href="order.whatsapp_link"
-                    target="_blank" rel="noopener noreferrer"
+                  <a v-if="order.whatsapp_link" :href="order.whatsapp_link" target="_blank" rel="noopener noreferrer"
                     class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-50">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      <path
+                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                     </svg>
                     Tanya Toko (Transfer Manual)
                   </a>
@@ -215,30 +247,26 @@ const totals = computed(() => {
                 </div>
 
                 <div class="space-y-2 border-t border-slate-200 pt-3 text-sm font-semibold text-slate-800">
-                  <div class="flex items-center justify-between">
+                  <div class="flex items-center justify-between text-base font-bold text-slate-900">
                     <span>Total Semua Pesanan</span>
                     <span>{{ formatCurrency(totals.items + totals.shipping) }}</span>
-                  </div>
-                  <div class="flex items-center justify-between text-slate-600">
-                    <span>Biaya transaksi Metode Pembayaran</span>
-                    <span>{{ formatCurrency(totals.fee) }}</span>
-                  </div>
-                  <div class="flex items-center justify-between text-base font-bold text-slate-900">
-                    <span>Grand Total</span>
-                    <span>{{ formatCurrency(totals.items + totals.shipping + totals.fee) }}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <button type="button" @click="submitPayment"
-            :disabled="!state.selectedMethod || state.submitting"
-            class="w-full rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition"
+          <button type="button" @click="submitPayment" :disabled="!state.selectedMethod || state.submitting"
+            class="w-full rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2"
             :class="state.selectedMethod && !state.submitting
               ? 'bg-sky-600 text-white hover:bg-sky-700 cursor-pointer'
               : 'bg-slate-300 text-slate-500 cursor-not-allowed'">
-            {{ state.submitting ? 'Memproses...' : 'Bayar Sekarang' }}
+            <svg v-if="state.submitting" class="h-4 w-4 animate-spin text-current" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <circle class="opacity-25" cx="12" cy="12" r="10" />
+              <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round" />
+            </svg>
+            <span>{{ state.submitting ? 'Loading...' : 'Bayar Sekarang' }}</span>
           </button>
         </aside>
       </div>
@@ -251,8 +279,8 @@ const totals = computed(() => {
             <div class="space-y-1">
               <p class="text-xl font-bold text-slate-900">Promo</p>
             </div>
-            <button type="button" class="text-slate-400 transition hover:text-slate-600"
-              aria-label="Tutup popup promo" @click="state.showPromo = false">
+            <button type="button" class="text-slate-400 transition hover:text-slate-600" aria-label="Tutup popup promo"
+              @click="state.showPromo = false">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
@@ -278,8 +306,8 @@ const totals = computed(() => {
             <div class="space-y-4">
               <p class="text-base font-bold text-slate-900">Promo Lainnya</p>
               <div class="flex flex-col items-center gap-3 rounded-lg bg-slate-50 px-6 py-10 text-center">
-                <svg width="200" height="200" viewBox="0 0 200 200" fill="none"
-                  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg"
+                  xmlns:xlink="http://www.w3.org/1999/xlink">
                   <rect width="200" height="200" fill="url(#pattern0)" />
                   <defs>
                     <pattern id="pattern0" patternContentUnits="objectBoundingBox" width="1" height="1">

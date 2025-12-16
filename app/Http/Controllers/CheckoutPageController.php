@@ -47,6 +47,8 @@ class CheckoutPageController extends Controller
                         'location_postal_code',
                         'is_pdn',
                         'store_id',
+                        'shipping_pickup',
+                        'shipping_delivery',
                     ])->with([
                         'store:id,name,is_umkm,tax_status,bumn_partner,province_id,city_id,district_id',
                         'store.provinceRegion:id,name',
@@ -93,6 +95,7 @@ class CheckoutPageController extends Controller
                             'id' => $item->id,
                             'productId' => $product?->id,
                             'name' => $product?->name,
+                            'note' => $item->note,
                             'price' => (int) $price,
                             'qty' => (int) $item->quantity,
                             'subtotal' => (int) ($item->subtotal ?: $price * $item->quantity),
@@ -105,6 +108,9 @@ class CheckoutPageController extends Controller
                             'minOrder' => $product?->min_order ?: 1,
                             'type' => $type,
                             'weight' => $weight,
+                            'shipping_method' => $item->shipping_method,
+                            'shipping_pickup' => (bool) $product?->shipping_pickup,
+                            'shipping_delivery' => (bool) $product?->shipping_delivery,
                         ];
                     })->values(),
                 ];
@@ -133,10 +139,21 @@ class CheckoutPageController extends Controller
                 return [
                     'id' => $address->id,
                     'name' => $address->recipient_name ?: $address->label,
+                    'label' => $address->label ?: 'Alamat',
                     'phone' => $address->phone,
                     'detail' => $detail,
                     'tag' => $address->label ?: 'Alamat',
                     'is_default' => (bool) $address->is_default,
+                    'recipient_name' => $address->recipient_name,
+                    'address_line' => $address->address_line,
+                    'province' => $address->province,
+                    'city' => $address->city,
+                    'district' => $address->district,
+                    'postal_code' => $address->postal_code,
+                    'province_id' => $address->province_id,
+                    'city_id' => $address->city_id,
+                    'district_id' => $address->district_id,
+                    'note' => $address->note,
                 ];
             })
             ->values()

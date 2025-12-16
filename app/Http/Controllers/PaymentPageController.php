@@ -66,12 +66,15 @@ class PaymentPageController extends Controller
 
         $defaultAddress = $addresses->firstWhere('is_default') ?? $addresses->first();
 
+        $shippingSelections = $request->input('shipping_selections', []);
+
         return Inertia::render('Payment', [
             'appName' => config('app.name', 'TP-PKK Marketplace'),
             'paymentMethods' => $this->paymentMethods(),
             'orders' => $orders,
             'selectedItems' => $selectedItems->all(),
             'addressId' => $defaultAddress?->id,
+            'shippingSelections' => $shippingSelections,
         ]);
     }
 
@@ -163,6 +166,7 @@ class PaymentPageController extends Controller
     {
         $methods = \App\Models\PaymentMethod::query()
             ->where('is_active', true)
+            ->whereIn('channel', ['cod', 'manual_transfer'])
             ->get();
 
         // Group by channel

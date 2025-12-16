@@ -160,6 +160,7 @@ class OrderController extends Controller
                 'payment_status' => $order->payment_status,
                 'subtotal' => $order->subtotal,
                 'shipping_cost' => $order->shipping_cost,
+                'shipping_method' => $order->shipping_service,
                 'grand_total' => $order->grand_total,
                 'ordered_at' => $order->ordered_at?->format('d M Y H:i'),
                 'expires_at' => $order->expires_at?->format('d M Y H:i'),

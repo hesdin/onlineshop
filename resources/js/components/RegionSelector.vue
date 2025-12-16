@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-vue-next';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
   provinceId: number | string | null;
@@ -56,6 +56,9 @@ const {
 const provinceOpen = ref(false);
 const cityOpen = ref(false);
 const districtOpen = ref(false);
+const provinceCommandRef = ref<any>(null);
+const cityCommandRef = ref<any>(null);
+const districtCommandRef = ref<any>(null);
 
 const normalizeIdValue = (value?: string | number | null) => {
   if (value === undefined || value === null) {
@@ -392,6 +395,57 @@ const setDistrict = (district?: RegionOption | null) => {
   emit('update:districtId', district?.id ?? null);
   districtOpen.value = false;
 };
+
+const focusFirstCommandItem = (commandRef: { value?: any }) => {
+  const root = commandRef?.value?.$el ?? commandRef?.value ?? null;
+  if (!root) return;
+  const target =
+    root.querySelector?.('[data-command-item]') ||
+    root.querySelector?.('input, [tabindex]');
+  if (target) {
+    (target as HTMLElement).focus();
+  }
+};
+
+watch(provinceOpen, (open) => {
+  if (!open) return;
+  nextTick(() => focusFirstCommandItem({ value: provinceCommandRef.value }));
+});
+
+watch(cityOpen, (open) => {
+  if (!open) return;
+  nextTick(() => focusFirstCommandItem({ value: cityCommandRef.value }));
+});
+
+watch(districtOpen, (open) => {
+  if (!open) return;
+  nextTick(() => focusFirstCommandItem({ value: districtCommandRef.value }));
+});
+
+const handleTriggerKeydown = (event: KeyboardEvent, type: 'province' | 'city' | 'district') => {
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+    return;
+  }
+
+  event.preventDefault();
+
+  if (type === 'province') {
+    if (props.disabled) return;
+    provinceOpen.value = true;
+    return;
+  }
+
+  if (type === 'city') {
+    if (props.disabled || !selectedProvinceId.value) return;
+    cityOpen.value = true;
+    return;
+  }
+
+  if (type === 'district') {
+    if (props.disabled || !selectedCityId.value) return;
+    districtOpen.value = true;
+  }
+};
 </script>
 
 <template>
@@ -403,13 +457,14 @@ const setDistrict = (district?: RegionOption | null) => {
       </Label>
       <Popover v-model:open="provinceOpen">
         <PopoverTrigger as-child>
-          <Button variant="outline" role="combobox" class="w-full justify-between" :disabled="disabled">
+          <Button variant="outline" role="combobox" class="w-full justify-between" :disabled="disabled"
+            @keydown="handleTriggerKeydown($event, 'province')">
             {{ renderButtonText(selectedProvinceName, 'Pilih provinsi') }}
             <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent class="w-[280px] p-0">
-          <Command>
+          <Command ref="provinceCommandRef">
             <CommandInput placeholder="Cari provinsi..." />
             <CommandEmpty>Provinsi tidak ditemukan.</CommandEmpty>
             <CommandGroup>
@@ -436,13 +491,13 @@ const setDistrict = (district?: RegionOption | null) => {
       <Popover v-model:open="cityOpen">
         <PopoverTrigger as-child>
           <Button variant="outline" role="combobox" class="w-full justify-between"
-            :disabled="disabled || !selectedProvinceId">
+            :disabled="disabled || !selectedProvinceId" @keydown="handleTriggerKeydown($event, 'city')">
             {{ renderButtonText(selectedCityName, selectedProvinceId ? 'Pilih kota' : 'Pilih provinsi dulu') }}
             <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent class="w-[280px] p-0">
-          <Command>
+          <Command ref="cityCommandRef">
             <CommandInput placeholder="Cari kota..." />
             <CommandEmpty>Kota/Kabupaten tidak ditemukan.</CommandEmpty>
             <CommandGroup>
@@ -468,13 +523,13 @@ const setDistrict = (district?: RegionOption | null) => {
       <Popover v-model:open="districtOpen">
         <PopoverTrigger as-child>
           <Button variant="outline" role="combobox" class="w-full justify-between"
-            :disabled="disabled || !selectedCityId">
+            :disabled="disabled || !selectedCityId" @keydown="handleTriggerKeydown($event, 'district')">
             {{ renderButtonText(selectedDistrictName, selectedCityId ? 'Pilih kecamatan' : 'Pilih kota dulu') }}
             <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent class="w-[320px] p-0">
-          <Command>
+          <Command ref="districtCommandRef">
             <CommandInput placeholder="Cari kecamatan..." />
             <CommandEmpty>Kecamatan tidak ditemukan.</CommandEmpty>
             <CommandGroup>
