@@ -93,7 +93,7 @@ const categoryTiles = computed(() => {
 
 const fallbackCollections = [
   { title: 'SUPERDEAL Road to PKK Sulsel Mart Forum', color: 'from-sky-600 to-sky-500' },
-  { title: 'Koleksi PAR4DE Jasa Percetakan', color: 'from-amber-500 to-orange-400' },
+  { title: 'Koleksi PKK Sulsel Mart Jasa Percetakan', color: 'from-amber-500 to-orange-400' },
   { title: 'Koleksi Andalan Perjalanan Bisnis', color: 'from-emerald-500 to-teal-400' },
   { title: 'Koleksi Perawatan Teknologi', color: 'from-indigo-500 to-blue-500' },
   { title: 'Koleksi Produktif di Kantor', color: 'from-purple-500 to-fuchsia-500' },
