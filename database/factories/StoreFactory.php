@@ -15,7 +15,8 @@ class StoreFactory extends Factory
 
     public function definition()
     {
-        $name = $this->faker->unique()->company;
+        $faker = $this->faker ?? \Faker\Factory::create();
+        $name = $faker->unique()->company;
         $slug = Str::slug($name);
         $province = Province::inRandomOrder()->first();
         $city = $province
@@ -28,22 +29,22 @@ class StoreFactory extends Factory
         return [
             'user_id' => null,
             'name' => $name,
-            'slug' => "{$slug}-{$this->faker->unique()->numberBetween(1, 9999)}",
-            'tagline' => $this->faker->catchPhrase,
-            'description' => $this->faker->paragraph,
-            'type' => $this->faker->randomElement(['umkm', 'vendor', 'koperasi', 'premium']),
-            'tax_status' => $this->faker->randomElement(['pkp', 'non_pkp']),
-            'bumn_partner' => $this->faker->boolean(30) ? $this->faker->company : null,
+            'slug' => "{$slug}-{$faker->unique()->numberBetween(1, 9999)}",
+            'tagline' => $faker->catchPhrase,
+            'description' => $faker->paragraph,
+            'type' => $faker->randomElement(['umkm', 'vendor', 'koperasi', 'premium']),
+            'tax_status' => $faker->randomElement(['pkp', 'non_pkp']),
+            'bumn_partner' => $faker->boolean(30) ? $faker->company : null,
             'province_id' => $province?->id,
             'city_id' => $city?->id,
             'district_id' => $district?->id,
-            'postal_code' => $this->faker->postcode,
-            'address_line' => $this->faker->address,
-            'is_verified' => $this->faker->boolean(60),
-            'is_umkm' => $this->faker->boolean(80),
-            'rating' => $this->faker->randomFloat(2, 3.0, 5.0),
-            'transactions_count' => $this->faker->numberBetween(0, 250),
-            'response_time_label' => $this->faker->randomElement(['24 jam', '48 jam', '3 hari']),
+            'postal_code' => $faker->postcode,
+            'address_line' => $faker->address,
+            'is_verified' => $faker->boolean(60),
+            'is_umkm' => $faker->boolean(80),
+            'rating' => $faker->randomFloat(2, 3.0, 5.0),
+            'transactions_count' => $faker->numberBetween(0, 250),
+            'response_time_label' => $faker->randomElement(['24 jam', '48 jam', '3 hari']),
         ];
     }
 }
