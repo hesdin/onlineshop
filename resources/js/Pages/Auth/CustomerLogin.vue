@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import CustomerCareButton from '@/Components/CustomerCareButton.vue';
+import CustomerCareButton from '@/components/CustomerCareButton.vue';
 import LoginHeroSlider from '@/components/Auth/LoginHeroSlider.vue';
 
 const form = useForm({
