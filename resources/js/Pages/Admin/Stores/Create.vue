@@ -208,7 +208,7 @@ const filteredSellerOptions = computed(() => {
                 <Button variant="outline" role="combobox" class="w-full justify-between"
                   :class="form.errors.user_id ? 'border-red-500' : ''">
                   <span class="truncate">
-                    {{ selectedSeller ? `${selectedSeller.name} — ${selectedSeller.email}` : 'Pilih seller
+                    {{ selectedSeller ? `${selectedSeller.name} — ${selectedSeller.email}` : 'Pilih seller terverifikasi' }}
                   </span>
                   <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
