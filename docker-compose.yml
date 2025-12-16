@@ -14,6 +14,7 @@ services:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
       - DB_HOST=postgres
+      - DB_CONNECTION=pgsql
       - DB_PORT=5432
       - DB_DATABASE=${DB_DATABASE:-onlineshop}
       - DB_USERNAME=${DB_USERNAME:-postgres}
