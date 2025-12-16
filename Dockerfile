@@ -1,5 +1,5 @@
 # Stage 1: Composer Dependencies
-FROM php:8.2-cli-alpine AS composer
+FROM php:8.3-cli-alpine AS composer
 
 # Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -37,14 +37,14 @@ COPY --from=composer /app/vendor ./vendor
 RUN npm run build
 
 # Stage 3: Production Image
-FROM php:8.2-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
   nginx \
   supervisor \
-  mysql-client \
-  postgresql-client \
+  mariadb-client \
+  postgresql16-client \
   libpng-dev \
   libjpeg-turbo-dev \
   libwebp-dev \
@@ -52,6 +52,7 @@ RUN apk add --no-cache \
   libzip-dev \
   oniguruma-dev \
   icu-dev \
+  libexif-dev \
   bash \
   curl \
   git \
