@@ -2,7 +2,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import CustomerCareButton from '@/Components/CustomerCareButton.vue';
-import LoginHeroSlider from '@/Components/Auth/LoginHeroSlider.vue';
+import LoginHeroSlider from '@/components/Auth/LoginHeroSlider.vue';
 
 const form = useForm({
   email: '',

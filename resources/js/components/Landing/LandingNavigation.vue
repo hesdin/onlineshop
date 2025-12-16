@@ -1,9 +1,9 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3';
 import { computed, reactive, watch } from 'vue';
-import LandingTopBar from '@/Components/Landing/LandingTopBar.vue';
-import LandingHeader from '@/Components/Landing/LandingHeader.vue';
-import LandingMobileMenu from '@/Components/Landing/LandingMobileMenu.vue';
+import LandingTopBar from '@/components/Landing/LandingTopBar.vue';
+import LandingHeader from '@/components/Landing/LandingHeader.vue';
+import LandingMobileMenu from '@/components/Landing/LandingMobileMenu.vue';
 import { syncCartStore, useCartStore } from '@/Stores/cartStore';
 
 const page = usePage();

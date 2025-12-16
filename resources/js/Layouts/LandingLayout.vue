@@ -1,6 +1,6 @@
 <script setup>
-import LandingFooter from '@/Components/Landing/LandingFooter.vue';
-import LandingNavigation from '@/Components/Landing/LandingNavigation.vue';
+import LandingFooter from '@/components/Landing/LandingFooter.vue';
+import LandingNavigation from '@/components/Landing/LandingNavigation.vue';
 </script>
 
 <template>

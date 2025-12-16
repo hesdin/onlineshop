@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import CustomerCareButton from '@/Components/CustomerCareButton.vue';
+import CustomerCareButton from '@/components/CustomerCareButton.vue';
 
 const props = defineProps<{
   mode: 'verify' | 'reset' | 'force';

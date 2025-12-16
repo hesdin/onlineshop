@@ -2,7 +2,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import CustomerCareButton from '@/Components/CustomerCareButton.vue';
-import LoginHeroSlider from '@/Components/Auth/LoginHeroSlider.vue';
+import LoginHeroSlider from '@/components/Auth/LoginHeroSlider.vue';
 
 const roleLabel = 'Penjual';
 const postUrl = '/seller/login';
@@ -42,6 +42,7 @@ const showPassword = ref(false);
 </script>
 
 <template>
+
   <Head :title="`Login ${roleLabel}`" />
 
   <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-sky-600 text-white">
@@ -89,16 +90,15 @@ const showPassword = ref(false);
                   autocomplete="current-password"
                   class="w-full bg-transparent py-3 text-sm sm:text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   placeholder="Masukan Kata Sandi" :disabled="form.processing" />
-                <button type="button" class="p-1 text-slate-400 hover:text-slate-600" @click="showPassword = !showPassword"
-                  :aria-pressed="showPassword">
+                <button type="button" class="p-1 text-slate-400 hover:text-slate-600"
+                  @click="showPassword = !showPassword" :aria-pressed="showPassword">
                   <span class="sr-only">{{ showPassword ? 'Sembunyikan' : 'Tampilkan' }} kata sandi</span>
                   <svg v-if="!showPassword" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="1.8">
                     <path d="M1 12s3.5-7 11-7 11 7 11 7-3.5 7-11 7S1 12 1 12Z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="1.8">
+                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M1 12s3.5-7 11-7 11 7 11 7-3.5 7-11 7S1 12 1 12Z" />
                     <path d="m4 4 16 16" />
                   </svg>

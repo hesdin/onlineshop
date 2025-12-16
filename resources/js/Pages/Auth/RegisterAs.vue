@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import CustomerCareButton from '@/Components/CustomerCareButton.vue';
+import CustomerCareButton from '@/components/CustomerCareButton.vue';
 import heroIllustration from '@/../images/illustrations/online-shopping.svg';
 
 const options = [
@@ -22,28 +22,29 @@ const options = [
 </script>
 
 <template>
+
   <Head title="Daftar Sebagai - PKK UMKM" />
 
   <section class="relative flex min-h-screen items-center justify-center bg-slate-100 px-4 py-16">
-    <div class="relative mx-auto flex w-full max-w-5xl min-h-[70vh] flex-col overflow-hidden rounded-lg bg-white shadow-sm md:min-h-[75vh] md:flex-row">
-      <div class="flex w-full flex-col justify-between border-b border-slate-100 px-8 py-12 md:w-1/2 md:border-b-0 md:border-r">
+    <div
+      class="relative mx-auto flex w-full max-w-5xl min-h-[70vh] flex-col overflow-hidden rounded-lg bg-white shadow-sm md:min-h-[75vh] md:flex-row">
+      <div
+        class="flex w-full flex-col justify-between border-b border-slate-100 px-8 py-12 md:w-1/2 md:border-b-0 md:border-r">
         <div>
           <div class="flex items-start justify-between gap-4">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Daftar Sebagai</h1>
-            <div class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 px-3 text-[11px] font-bold text-sky-600">
+            <div
+              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 px-3 text-[11px] font-bold text-sky-600">
               TP-PKK Marketplace
             </div>
           </div>
 
           <div class="mt-8 space-y-4">
-            <Link
-              v-for="option in options"
-              :key="option.label"
-              :href="option.href"
-              class="flex items-center gap-4 rounded-lg bg-slate-50 px-5 py-4 transition hover:bg-slate-100"
-            >
+            <Link v-for="option in options" :key="option.label" :href="option.href"
+              class="flex items-center gap-4 rounded-lg bg-slate-50 px-5 py-4 transition hover:bg-slate-100">
               <span :class="['flex h-14 w-14 flex-none items-center justify-center rounded-lg', option.bg]">
-                <svg v-if="option.icon === 'cart'" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <svg v-if="option.icon === 'cart'" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.7">
                   <path d="M3 8h18l-1.5 10H4.5L3 8Z" stroke-linecap="round" stroke-linejoin="round" />
                   <path d="M9 11.5v2.5M15 11.5v2.5" stroke-linecap="round" />
                 </svg>

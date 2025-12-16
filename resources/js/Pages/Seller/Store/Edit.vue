@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle2, ShieldCheck } from 'lucide-vue-next';
-import RegionSelector from '@/Components/RegionSelector.vue';
+import RegionSelector from '@/components/RegionSelector.vue';
 
 type SelectOption = {
   value: string;
@@ -162,7 +162,7 @@ watch(
       </div>
       <Button variant="outline" size="sm" as-child>
         <Link href="/seller/dashboard">
-        Kembali ke dashboard
+          Kembali ke dashboard
         </Link>
       </Button>
     </div>

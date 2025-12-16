@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import LandingLayout from '@/Layouts/LandingLayout.vue';
-import CustomerSidebarMenu from '@/Components/Customer/SidebarMenu.vue';
+import CustomerSidebarMenu from '@/components/Customer/SidebarMenu.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle2, HomeIcon, MapPin } from 'lucide-vue-next';
-import RegionSelector from '@/Components/RegionSelector.vue';
+import RegionSelector from '@/components/RegionSelector.vue';
 
 const props = defineProps({
   addresses: {
@@ -170,7 +170,7 @@ defineOptions({
                       <h3 class="text-sm font-semibold text-slate-900">{{ address.label }}</h3>
                       <span v-if="badge(address)"
                         class="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">{{
-                        badge(address) }}</span>
+                          badge(address) }}</span>
                     </div>
                     <p class="text-sm text-slate-600">{{ address.recipient_name }} • {{ address.phone }}</p>
                     <p class="text-sm text-slate-600 flex items-center gap-2">

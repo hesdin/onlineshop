@@ -29,7 +29,7 @@ import {
   CommandInput,
   CommandItem,
 } from '@/components/ui/command';
-import RegionSelector from '@/Components/RegionSelector.vue';
+import RegionSelector from '@/components/RegionSelector.vue';
 import { ChevronsUpDown, ImagePlus, X, Check } from 'lucide-vue-next';
 
 type Option = {

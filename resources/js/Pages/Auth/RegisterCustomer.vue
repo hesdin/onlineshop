@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
-import CustomerCareButton from '@/Components/CustomerCareButton.vue';
+import CustomerCareButton from '@/components/CustomerCareButton.vue';
 import heroIllustration from '@/../images/illustrations/online-shopping.svg';
 
 const form = useForm({
