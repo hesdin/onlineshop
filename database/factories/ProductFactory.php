@@ -17,9 +17,10 @@ class ProductFactory extends Factory
 
     public function definition()
     {
-        $name = $this->faker->unique()->words(3, true);
-        $price = $this->faker->numberBetween(10000, 500000);
-        $salePrice = $this->faker->boolean(40) ? $this->faker->numberBetween(5000, $price) : null;
+        $faker = $this->faker ?? fake();
+        $name = $faker->unique()->words(3, true);
+        $price = $faker->numberBetween(10000, 500000);
+        $salePrice = $faker->boolean(40) ? $faker->numberBetween(5000, $price) : null;
         $itemTypes = collect(Product::itemTypes())->pluck('value')->toArray();
         $statuses = collect(Product::statuses())->pluck('value')->toArray();
         $province = Province::inRandomOrder()->first();
@@ -34,27 +35,24 @@ class ProductFactory extends Factory
             'store_id' => Store::factory(),
             'category_id' => Category::inRandomOrder()->value('id') ?? null,
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . $this->faker->unique()->numberBetween(1, 9999),
-            'brand' => $this->faker->company,
-            'description' => $this->faker->paragraph,
+            'slug' => Str::slug($name) . '-' . $faker->unique()->numberBetween(1, 9999),
+            'brand' => $faker->company,
+            'description' => $faker->paragraph,
             'price' => $price,
             'sale_price' => $salePrice,
-            'min_order' => $this->faker->numberBetween(1, 5),
-            'stock' => $this->faker->numberBetween(0, 200),
-            'weight' => $this->faker->numberBetween(100, 5000),
-            'length' => $this->faker->randomFloat(2, 10, 120),
-            'width' => $this->faker->randomFloat(2, 10, 80),
-            'height' => $this->faker->randomFloat(2, 2, 60),
-            'item_type' => $this->faker->randomElement($itemTypes ?: ['product']),
-            'status' => $this->faker->randomElement($statuses ?: ['ready']),
+            'min_order' => $faker->numberBetween(1, 5),
+            'stock' => $faker->numberBetween(0, 200),
+            'weight' => $faker->numberBetween(100, 5000),
+            'length' => $faker->randomFloat(2, 10, 120),
+            'width' => $faker->randomFloat(2, 10, 80),
+            'height' => $faker->randomFloat(2, 2, 60),
+            'item_type' => $faker->randomElement($itemTypes ?: ['product']),
+            'status' => $faker->randomElement($statuses ?: ['ready']),
             'visibility_scope' => Product::VISIBILITY_GLOBAL,
             'location_province_id' => $province?->id,
             'location_city_id' => $city?->id,
             'location_district_id' => $district?->id,
-            'location_postal_code' => $this->faker->postcode,
-            'is_pdn' => $this->faker->boolean(50),
-            'is_pkp' => $this->faker->boolean(40),
-            'is_tkdn' => $this->faker->boolean(30),
+            'location_postal_code' => $faker->postcode,
         ];
     }
 }
