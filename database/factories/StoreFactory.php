@@ -15,8 +15,8 @@ class StoreFactory extends Factory
 
     public function definition()
     {
-        $faker = $this->faker ?? \Faker\Factory::create();
-        $name = $faker->unique()->company;
+        $faker = $this->faker ?? fake();
+        $name = $faker->unique()->company();
         $slug = Str::slug($name);
         $province = Province::inRandomOrder()->first();
         $city = $province
