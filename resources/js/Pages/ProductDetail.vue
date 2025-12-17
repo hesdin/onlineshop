@@ -760,17 +760,19 @@ const goToCheckout = () => {
   }
 
   isBuyingNow.value = true;
-  const started = submitCartRequest({
-    skipNotification: true,
-    onSuccess: () => router.visit('/cart/checkout'),
+
+  // Direct buy - bypass cart, go straight to checkout with just this product
+  router.visit('/buy-now', {
+    method: 'get',
+    data: {
+      product_id: product.value.id,
+      quantity: quantity.value,
+      shipping_method: selectedShippingMethod.value || null,
+    },
     onFinish: () => {
       isBuyingNow.value = false;
     },
   });
-
-  if (!started) {
-    isBuyingNow.value = false;
-  }
 };
 
 const formatPrice = (value) =>
@@ -1888,8 +1890,7 @@ onBeforeUnmount(() => {
 
     <AddressFormModal :open="showAddressModal" @update:open="handleAddressModalToggle" :form="addressForm"
       :initial-region-names="regionInitialNames"
-      :title="isEditingAddress ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Pengiriman'"
-      :description="isEditingAddress
+      :title="isEditingAddress ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Pengiriman'" :description="isEditingAddress
         ? 'Perbarui data alamat pengiriman Anda.'
         : 'Lengkapi data alamat pengiriman Anda untuk melanjutkan pembelian.'"
       :submit-label="isEditingAddress ? 'Simpan Perubahan' : 'Simpan & Lanjutkan'" :show-default-toggle="false"
@@ -1897,8 +1898,8 @@ onBeforeUnmount(() => {
 
     <AddressSelectModal :open="showAddressManagementModal" :addresses="addressSelectOptions"
       :selected-id="selectedCustomerAddressId" show-edit-button
-      @update:open="(val) => (showAddressManagementModal = val)" @add="openAddressModal()"
-      @select="selectAddress" @edit="openAddressModal" />
+      @update:open="(val) => (showAddressManagementModal = val)" @add="openAddressModal()" @select="selectAddress"
+      @edit="openAddressModal" />
 
     <!-- Shipping Method Selection Modal -->
     <Dialog :open="showShippingMethodModal" @update:open="showShippingMethodModal = $event">

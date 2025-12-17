@@ -13,6 +13,7 @@ Route::get('dashboard', DashboardController::class)->name('dashboard.index');
 Route::resource('products', ProductController::class)->except(['show']);
 
 Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
+Route::get('orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 Route::get('store', [StoreController::class, 'edit'])->name('store.edit');
 Route::post('store', [StoreController::class, 'store'])->name('store.store');

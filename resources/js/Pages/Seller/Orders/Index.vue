@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import SellerDashboardLayout from '@/Layouts/SellerDashboardLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, h, onBeforeUnmount, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert';
+import { DataTable } from '@/components/ui/data-table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-import { CheckCircle2, Search, ShoppingBag } from 'lucide-vue-next';
+import { CheckCircle2, Eye, Filter, Search } from 'lucide-vue-next';
+import type { ColumnDef } from '@tanstack/vue-table';
 
 type StatusOption = {
   value: string;
@@ -49,9 +57,50 @@ defineOptions({
 
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success ?? '');
+const successVisible = ref(false);
+let successTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(
+  flashSuccess,
+  (value) => {
+    if (successTimeout) {
+      clearTimeout(successTimeout);
+      successTimeout = null;
+    }
+
+    if (value) {
+      successVisible.value = true;
+      successTimeout = setTimeout(() => {
+        successVisible.value = false;
+      }, 3000);
+    } else {
+      successVisible.value = false;
+    }
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (successTimeout) {
+    clearTimeout(successTimeout);
+  }
+});
+
+const normalizeFilterValue = (value?: string | null) => (value && value.length ? value : 'all');
 
 const search = ref(props.filters.search ?? '');
-const statusFilter = ref(props.filters.status ?? 'all');
+const appliedStatusFilter = ref(normalizeFilterValue(props.filters.status));
+const statusFilterInput = ref(appliedStatusFilter.value);
+const filterPopoverOpen = ref(false);
+
+watch(
+  () => props.filters.status,
+  (value) => {
+    const normalized = normalizeFilterValue(value);
+    appliedStatusFilter.value = normalized;
+    statusFilterInput.value = normalized;
+  },
+);
 
 const currencyFormatter = new Intl.NumberFormat('id-ID', {
   style: 'currency',
@@ -97,32 +146,48 @@ const paymentStatusBadge = (status: string) => {
 
 const buildQuery = (override: Record<string, unknown> = {}) => ({
   search: search.value || undefined,
-  status: statusFilter.value === 'all' ? undefined : statusFilter.value || undefined,
+  status: appliedStatusFilter.value === 'all' ? undefined : appliedStatusFilter.value || undefined,
   ...override,
 });
 
 const debouncedSearch = useDebounceFn((value: string) => {
   router.get('/seller/orders', buildQuery({ search: value || undefined }), {
-    preserveScroll: true,
-    replace: true,
     preserveState: true,
+    replace: true,
+    preserveScroll: true,
   });
-}, 350);
+}, 400);
 
 watch(search, (value) => debouncedSearch(value));
 
-watch(statusFilter, () => {
+const applyFilters = () => {
+  appliedStatusFilter.value = statusFilterInput.value || 'all';
   router.get('/seller/orders', buildQuery(), {
-    preserveScroll: true,
-    replace: true,
     preserveState: true,
+    replace: true,
+    preserveScroll: true,
   });
-});
+  filterPopoverOpen.value = false;
+};
+
+const clearFilterInputs = () => {
+  statusFilterInput.value = 'all';
+};
 
 const resetFilters = () => {
   search.value = '';
-  statusFilter.value = 'all';
+  appliedStatusFilter.value = 'all';
+  clearFilterInputs();
+  router.get('/seller/orders', buildQuery(), {
+    preserveState: true,
+    replace: true,
+    preserveScroll: true,
+  });
 };
+
+const hasActiveFilters = computed(
+  () => !!search.value || appliedStatusFilter.value !== 'all',
+);
 
 const numberedPaginationLinks = computed(() =>
   (props.orders.links ?? []).filter((link) => Number.isInteger(Number(link.label))),
@@ -136,132 +201,192 @@ const paginateTo = (url?: string | null) => {
     replace: true,
   });
 };
+
+const columns = computed<ColumnDef<OrderRow>[]>(() => [
+  {
+    id: 'order',
+    accessorKey: 'order_number',
+    header: () => 'Pesanan',
+    cell: ({ row }) =>
+      h('div', { class: 'space-y-0.5' }, [
+        h('p', { class: 'font-semibold text-slate-900' }, row.original.order_number),
+        h('p', { class: 'text-xs text-slate-500' }, row.original.created_at ?? '-'),
+      ]),
+    meta: { class: 'min-w-[160px]' },
+  },
+  {
+    id: 'customer',
+    header: () => 'Pelanggan',
+    cell: ({ row }) =>
+      h('div', { class: 'space-y-0.5' }, [
+        h('p', { class: 'font-medium text-slate-800' }, row.original.customer.name ?? 'Tidak diketahui'),
+        row.original.customer.email
+          ? h('p', { class: 'text-xs text-slate-500' }, row.original.customer.email)
+          : null,
+      ]),
+    meta: { class: 'min-w-[180px]' },
+  },
+  {
+    id: 'total',
+    header: () => 'Total',
+    cell: ({ row }) =>
+      h('p', { class: 'font-semibold text-slate-900' }, formatCurrency(row.original.grand_total)),
+    meta: { class: 'min-w-[120px]' },
+  },
+  {
+    id: 'status',
+    header: () => 'Status',
+    cell: ({ row }) => {
+      const badge = orderStatusBadge(row.original.status);
+      return h(
+        'span',
+        {
+          class: `inline-flex items-center rounded-sm px-3 py-1 text-xs font-semibold ${badge.class}`,
+        },
+        badge.label,
+      );
+    },
+    meta: { class: 'w-36' },
+  },
+  {
+    id: 'payment',
+    header: () => 'Pembayaran',
+    cell: ({ row }) => {
+      const badge = paymentStatusBadge(row.original.payment_status);
+      return h(
+        'span',
+        {
+          class: `inline-flex items-center rounded-sm px-3 py-1 text-xs font-semibold ${badge.class}`,
+        },
+        badge.label,
+      );
+    },
+    meta: { class: 'w-32' },
+  },
+  {
+    id: 'actions',
+    header: () => 'Aksi',
+    cell: ({ row }) =>
+      h('div', { class: 'flex justify-end gap-3' }, [
+        h(
+          'span',
+          {
+            class:
+              'inline-flex h-8 w-8 items-center justify-center rounded-full ' +
+              'cursor-pointer text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+            onClick: () => router.visit(`/seller/orders/${row.original.id}`),
+          },
+          [h(Eye, { class: 'h-[15px] w-[15px]' })],
+        ),
+      ]),
+    meta: { class: 'text-right w-20' },
+    enableHiding: false,
+  },
+]);
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 w-full">
 
     <Head title="Pesanan" />
 
-    <Alert v-if="flashSuccess" variant="default" class="flex items-start gap-3 border-green-200 bg-green-50">
+    <Alert v-if="successVisible && flashSuccess" variant="default"
+      class="flex items-center gap-2 border-green-200 bg-green-50 text-sm font-medium text-green-700">
       <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <div class="space-y-1">
-        <AlertTitle class="text-green-800">Berhasil</AlertTitle>
-        <AlertDescription class="text-green-700">
-          {{ flashSuccess }}
-        </AlertDescription>
-      </div>
+      <span>{{ flashSuccess }}</span>
     </Alert>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Pesanan</h1>
+        <h1 class="text-2xl font-semibold text-slate-900">Pesanan Masuk</h1>
         <p class="text-sm text-slate-500">Pantau dan update status pesanan toko.</p>
       </div>
-      <Button variant="outline" size="sm" as-child>
-        <Link href="/seller/dashboard">
-        <ShoppingBag class="mr-2 h-4 w-4" />
-        Ringkasan
-        </Link>
-      </Button>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="relative w-full md:w-72">
-        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-          <Search class="h-4 w-4" />
-        </span>
-        <Input v-model="search" placeholder="Cari nomor pesanan" class="w-full pl-9" />
+    <section class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="relative w-full md:w-64">
+          <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <Search class="h-4 w-4" />
+          </span>
+          <Input v-model="search" placeholder="Cari nomor pesanan"
+            class="w-full border border-slate-200 bg-white pl-9" />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <Button v-if="hasActiveFilters" variant="outline" class="gap-2" @click="resetFilters">
+            Reset
+          </Button>
+
+          <div class="flex items-center gap-2">
+            <Popover v-model:open="filterPopoverOpen">
+              <PopoverTrigger as-child>
+                <button type="button"
+                  class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:text-sky-600">
+                  <Filter class="h-4 w-4" />
+                  Filter
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" class="w-72 space-y-4 p-4">
+                <div>
+                  <p class="text-sm font-semibold text-slate-900">Filter Pesanan</p>
+                </div>
+                <div class="space-y-4 text-left">
+                  <div class="space-y-2">
+                    <label class="text-xs font-semibold text-slate-500">Status Pesanan</label>
+                    <Select v-model="statusFilterInput">
+                      <SelectTrigger class="w-full bg-white">
+                        <SelectValue placeholder="Semua status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua status</SelectItem>
+                        <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between pt-2">
+                  <button type="button" class="text-sm font-medium text-slate-500 hover:text-slate-700"
+                    @click="clearFilterInputs">
+                    Reset
+                  </button>
+                  <Button type="button" class="px-4" @click="applyFilters">
+                    Apply Filter
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <Select v-model="statusFilter">
-          <SelectTrigger class="w-44">
-            <SelectValue placeholder="Status pesanan" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua status</SelectItem>
-            <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button v-if="search || statusFilter !== 'all'" variant="outline" size="sm" @click="resetFilters">
-          Reset
-        </Button>
+      <div class="overflow-hidden rounded-sm border border-slate-200 bg-white">
+        <DataTable :columns="columns" :data="orders.data" />
       </div>
-    </div>
 
-    <div class="w-full overflow-x-auto rounded-md border border-slate-200 bg-white">
-      <table class="w-full text-left text-sm">
-        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr>
-            <th class="px-4 py-3">Pesanan</th>
-            <th class="px-4 py-3">Pelanggan</th>
-            <th class="px-4 py-3">Total</th>
-            <th class="px-4 py-3">Status</th>
-            <th class="px-4 py-3">Pembayaran</th>
-            <th class="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="order in orders.data" :key="order.id"
-            class="border-t border-slate-100 transition hover:bg-slate-50/60">
-            <td class="px-4 py-3">
-              <p class="font-semibold text-slate-900">{{ order.order_number }}</p>
-              <p class="text-xs text-slate-500">{{ order.created_at }}</p>
-            </td>
-            <td class="px-4 py-3">
-              <p class="font-medium text-slate-800">{{ order.customer.name ?? 'Tidak diketahui' }}</p>
-              <p class="text-xs text-slate-500">{{ order.customer.email }}</p>
-            </td>
-            <td class="px-4 py-3 font-semibold text-slate-900">
-              {{ formatCurrency(order.grand_total) }}
-            </td>
-            <td class="px-4 py-3">
-              <Badge :class="orderStatusBadge(order.status).class" variant="secondary">
-                {{ orderStatusBadge(order.status).label }}
-              </Badge>
-            </td>
-            <td class="px-4 py-3">
-              <Badge :class="paymentStatusBadge(order.payment_status).class" variant="secondary">
-                {{ paymentStatusBadge(order.payment_status).label }}
-              </Badge>
-            </td>
-            <td class="px-4 py-3 text-right">
-              <Button size="sm" variant="outline" as-child>
-                <Link :href="`/seller/orders/${order.id}`">Detail</Link>
-              </Button>
-            </td>
-          </tr>
-          <tr v-if="orders.data.length === 0">
-            <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">
-              Belum ada pesanan.
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-      <p>
-        Menampilkan {{ orders.data.length }} dari
-        {{ orders.total }} pesanan.
-      </p>
-      <div class="flex flex-wrap items-center gap-1">
-        <Button variant="outline" size="sm" :disabled="!orders.prev_page_url" @click="paginateTo(orders.prev_page_url)">
-          Sebelumnya
-        </Button>
-        <Button v-for="link in numberedPaginationLinks" :key="link.label" size="sm"
-          :variant="link.active ? 'default' : 'outline'" :aria-current="link.active ? 'page' : undefined"
-          :disabled="!link.url" @click="paginateTo(link.url)">
-          {{ link.label }}
-        </Button>
-        <Button variant="outline" size="sm" :disabled="!orders.next_page_url" @click="paginateTo(orders.next_page_url)">
-          Selanjutnya
-        </Button>
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <p>
+          Menampilkan {{ orders.data.length }} dari
+          {{ orders.total }} pesanan.
+        </p>
+        <div class="flex flex-wrap items-center gap-1">
+          <Button variant="outline" size="sm" :disabled="!orders.prev_page_url"
+            @click="paginateTo(orders.prev_page_url)">
+            Sebelumnya
+          </Button>
+          <Button v-for="link in numberedPaginationLinks" :key="link.label" size="sm"
+            :variant="link.active ? 'default' : 'outline'" :aria-current="link.active ? 'page' : undefined"
+            :disabled="!link.url" @click="paginateTo(link.url)">
+            {{ link.label }}
+          </Button>
+          <Button variant="outline" size="sm" :disabled="!orders.next_page_url"
+            @click="paginateTo(orders.next_page_url)">
+            Selanjutnya
+          </Button>
+        </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>

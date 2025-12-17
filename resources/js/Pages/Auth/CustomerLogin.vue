@@ -61,7 +61,7 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
       <LoginHeroSlider :slides="slides" />
 
       <div class="relative flex-1">
-        <div class="relative z-10 ml-auto w-full max-w-lg rounded-lg bg-white p-8 sm:p-10 text-slate-900 shadow-2xl">
+        <div class="relative z-10 ml-auto w-full max-w-lg rounded-lg bg-white p-8 sm:p-10 text-slate-900 shadow-sm">
           <div class="flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
               <Link href="/login"

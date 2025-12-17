@@ -85,8 +85,8 @@ class StorePageController extends Controller
             'location' => $this->formatLocation($store),
             'is_umkm' => (bool) $store->is_umkm,
             'tax_status' => $this->formatTaxStatus($store->tax_status),
-            'banner' => 'https://smb-padiumkm-images-public-prod.oss-ap-southeast-5.aliyuncs.com/seller/banner_image/18122023/631a5d56aa3096cbda26050f/2edcf9ca34478d3dcc12565b4a56e9.jpg?x-oss-process=image/resize,m_fill,w_1200,h_300/quality,Q_50',
-            'avatar' => "https://picsum.photos/seed/store-{$store->id}/200/200",
+            'banner_url' => $store->banner_url,
+            'logo_url' => $store->logo_url,
             'badges' => array_values(array_filter([
                 $store->is_umkm ? 'UMKM' : 'Vendor',
                 $store->tax_status ? $this->formatTaxStatus($store->tax_status) : null,

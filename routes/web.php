@@ -43,6 +43,10 @@ Route::middleware(['auth', 'role:customer'])
         Route::post('/payment/process', [App\Http\Controllers\OrderController::class, 'createOrder'])->name('payment.process');
     });
 
+Route::get('/buy-now', App\Http\Controllers\BuyNowController::class)
+    ->middleware(['auth', 'role:customer'])
+    ->name('buy-now');
+
 Route::middleware(['auth', 'role:customer'])
     ->prefix('orders')
     ->name('orders.')

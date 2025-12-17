@@ -48,6 +48,8 @@ class SellerStoreRequest extends FormRequest
             'address_line' => ['nullable', 'string'],
             'response_time_label' => ['nullable', 'string', 'max:255'],
             'is_umkm' => ['sometimes', 'boolean'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+            'banner' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:4096'],
         ];
     }
 

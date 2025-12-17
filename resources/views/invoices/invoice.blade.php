@@ -1,322 +1,371 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - {{ $order->order_number }}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'DejaVu Sans', sans-serif;
-            font-size: 12px;
-            color: #333;
-            line-height: 1.6;
-        }
-        .container {
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .header {
-            border-bottom: 3px solid #0ea5e9;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            font-size: 24px;
-            color: #0ea5e9;
-            margin-bottom: 5px;
-        }
-        .header .subtitle {
-            color: #64748b;
-            font-size: 11px;
-        }
-        .invoice-info {
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .invoice-info table {
-            width: 100%;
-        }
-        .invoice-info td {
-            padding: 5px;
-        }
-        .invoice-info td:first-child {
-            font-weight: 600;
-            width: 150px;
-        }
-        .section {
-            margin-bottom: 25px;
-        }
-        .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        .two-col {
-            display: table;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        .col {
-            display: table-cell;
-            width: 48%;
-            vertical-align: top;
-            padding: 10px;
-        }
-        .col:first-child {
-            padding-left: 0;
-        }
-        .col:last-child {
-            padding-right: 0;
-        }
-        .box {
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 4px;
-            min-height: 100px;
-        }
-        .box h3 {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .box p {
-            margin: 4px 0;
-        }
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        .items-table thead {
-            background: #0ea5e9;
-            color: white;
-        }
-        .items-table th,
-        .items-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .items-table th {
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-        .items-table tbody tr:hover {
-            background: #f8fafc;
-        }
-        .text-right {
-            text-align: right;
-        }
-        .text-center {
-            text-align: center;
-        }
-        .totals {
-            float: right;
-            width: 350px;
-        }
-        .totals table {
-            width: 100%;
-        }
-        .totals td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .totals td:first-child {
-            font-weight: 600;
-        }
-        .totals td:last-child {
-            text-align: right;
-        }
-        .grand-total {
-            background: #0ea5e9;
-            color: white;
-            font-size: 14px;
-            font-weight: 700;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .instructions {
-            background: #eff6ff;
-            border-left: 4px solid #0ea5e9;
-            padding: 15px;
-            margin-top: 20px;
-        }
-        .instructions h4 {
-            color: #0369a1;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-        .instructions p {
-            color: #475569;
-            margin-bottom: 5px;
-        }
-        .footer {
-            text-align: center;
-            color: #94a3b8;
-            font-size: 10px;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice - {{ $order->order_number }}</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      /* Smaller font as per reference */
+      color: #333;
+      line-height: 1.4;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 30px 40px;
+      background: #fff;
+    }
+
+    /* Header */
+    .header {
+      width: 100%;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0ea5e9;
+      /* Sky Blue */
+      margin-bottom: 5px;
+    }
+
+    .invoice-title-block {
+      text-align: right;
+      vertical-align: top;
+    }
+
+    .invoice-label {
+      font-size: 10px;
+      font-weight: bold;
+      color: #333;
+      text-transform: uppercase;
+    }
+
+    .invoice-number {
+      font-size: 11px;
+      color: #0ea5e9;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    /* Info Section */
+    .info-table {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .info-table td {
+      vertical-align: top;
+    }
+
+    .info-label {
+      font-weight: bold;
+      font-size: 10px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .info-row {
+      margin-bottom: 3px;
+    }
+
+    .info-key {
+      display: inline-block;
+      width: 100px;
+      color: #666;
+    }
+
+    .seller-name {
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .buyer-name {
+      font-weight: bold;
+    }
+
+    .buyer-address {
+      margin-top: 2px;
+      color: #666;
+      max-width: 300px;
+      line-height: 1.4;
+    }
+
+    /* Items Table */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .items-table th {
+      text-align: left;
+      padding: 10px 0;
+      border-top: 2px solid #ddd;
+      border-bottom: 2px solid #ddd;
+      font-size: 9px;
+      font-transform: uppercase;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .items-table td {
+      padding: 15px 0;
+      vertical-align: top;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .product-name {
+      font-weight: bold;
+      font-size: 11px;
+      color: #0ea5e9;
+      margin-bottom: 4px;
+    }
+
+    .product-meta {
+      font-size: 9px;
+      color: #888;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    /* Totals */
+    .totals-container {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .totals-table {
+      width: 45%;
+      float: right;
+    }
+
+    .totals-table td {
+      padding: 3px 0;
+    }
+
+    .totals-label {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .totals-value {
+      text-align: right;
+      color: #333;
+    }
+
+    .grand-total-row td {
+      padding-top: 10px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* Watermark */
+    .watermark {
+      position: absolute;
+      top: 300px;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-15deg);
+      border: 3px solid #e0f2fe;
+      color: #bae6fd;
+      font-size: 80px;
+      font-weight: bold;
+      padding: 10px 40px;
+      opacity: 0.8;
+      z-index: -1;
+      letter-spacing: 10px;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 50px;
+      font-size: 9px;
+      color: #666;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+
+    .payment-method-label {
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .payment-method-value {
+      font-weight: bold;
+      font-size: 11px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .insurance-info {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 9px;
+      color: #666;
+      margin-top: 20px;
+    }
+
+    .insurance-logo {
+      font-weight: bold;
+      color: #0ea5e9;
+      background: #e0f2fe;
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-size: 9px;
+    }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>{{ config('app.name', 'TP-PKK Marketplace') }}</h1>
-            <div class="subtitle">Invoice Pemesanan</div>
-        </div>
+  @if ($order->payment_status == 'paid')
+    <div class="watermark">LUNAS</div>
+  @endif
 
-        <div class="invoice-info">
-            <table>
-                <tr>
-                    <td>No. Invoice:</td>
-                    <td><strong>{{ $order->order_number }}</strong></td>
-                </tr>
-                <tr>
-                    <td>Tanggal Pemesanan:</td>
-                    <td>{{ $order->ordered_at?->format('d F Y, H:i') }} WIB</td>
-                </tr>
-                <tr>
-                    <td>Status Pembayaran:</td>
-                    <td>
-                        <span class="status-badge status-pending">
-                            {{ $order->payment_status === 'pending' ? 'Menunggu Pembayaran' : ucfirst($order->payment_status) }}
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Metode Pembayaran:</td>
-                    <td>{{ $order->paymentMethod->name }}</td>
-                </tr>
-            </table>
-        </div>
+  <div class="container">
+    <!-- Header -->
+    <table class="header">
+      <tr>
+        <td style="vertical-align: top;">
+          <!-- Logo / Brand Text -->
+          <div class="logo">{{ config('app.name', 'TP-PKK Marketplace') }}</div>
+        </td>
+        <td class="invoice-title-block">
+          <div class="invoice-label">INVOICE</div>
+          <div class="invoice-number">{{ $order->order_number }}</div>
+        </td>
+      </tr>
+    </table>
 
-        <div class="two-col">
-            <div class="col">
-                <div class="box">
-                    <h3>Informasi Pembeli</h3>
-                    <p><strong>{{ $order->user->name }}</strong></p>
-                    <p>{{ $order->user->email }}</p>
-                    @if($order->address)
-                        <p style="margin-top: 8px;">{{ $order->address->recipient_name }}</p>
-                        <p>{{ $order->address->phone }}</p>
-                        <p>{{ $order->address->address_line }}</p>
-                        <p>{{ $order->address->city }}, {{ $order->address->province }}</p>
-                        <p>{{ $order->address->postal_code }}</p>
-                    @endif
-                </div>
-            </div>
-            <div class="col">
-                <div class="box">
-                    <h3>Informasi Penjual</h3>
-                    <p><strong>{{ $order->store->name }}</strong></p>
-                    @if($order->store->phone)
-                        <p>{{ $order->store->phone }}</p>
-                    @endif
-                    @if($order->store->address_line)
-                        <p style="margin-top: 8px;">{{ $order->store->address_line }}</p>
-                    @endif
-                    @if($order->store->city || $order->store->province)
-                        <p>{{ $order->store->city }}@if($order->store->city && $order->store->province), @endif{{ $order->store->province }}</p>
-                    @endif
-                </div>
-            </div>
-        </div>
+    <!-- Info Table -->
+    <table class="info-table">
+      <tr>
+        <td style="width: 50%; padding-right: 20px;">
+          <div class="info-label">DITERBITKAN ATAS NAMA</div>
+          <div class="info-row">
+            <span class="info-key">Penjual</span>
+            <span class="seller-name">: {{ $order->store->name }}</span>
+          </div>
+        </td>
+        <td style="width: 50%;">
+          <div class="info-label">UNTUK</div>
+          <div class="info-row">
+            <span class="info-key">Pembeli</span>
+            <span class="buyer-name">: {{ $order->address->recipient_name ?? $order->user->name }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Tanggal Pembelian</span>
+            <span>: {{ $order->created_at->translatedFormat('d F Y') }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key" style="vertical-align: top;">Alamat Pengiriman</span>
+            <span style="display: inline-block; width: 65%; vertical-align: top;">
+              : @if ($order->address)
+                <strong>{{ $order->address->recipient_name }}</strong> ({{ $order->address->phone }})<br>
+                {{ $order->address->address_line }}<br>
+                {{ $order->address->district ? $order->address->district . ', ' : '' }}
+                {{ $order->address->city }}, {{ $order->address->postal_code }}
+                {{ $order->address->province }}
+              @else
+                {{ $order->user->email }}
+              @endif
+            </span>
+          </div>
+        </td>
+      </tr>
+    </table>
 
-        <div class="section">
-            <div class="section-title">Detail Pesanan</div>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th style="width: 5%;">No</th>
-                        <th>Nama Produk</th>
-                        <th class="text-center" style="width: 10%;">Qty</th>
-                        <th class="text-right" style="width: 20%;">Harga Satuan</th>
-                        <th class="text-right" style="width: 20%;">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($order->items as $index => $item)
-                        <tr>
-                            <td class="text-center">{{ $index + 1 }}</td>
-                            <td>
-                                {{ $item->product->name }}
-                                @if($item->note)
-                                    <br><small style="color: #64748b;">Catatan: {{ $item->note }}</small>
-                                @endif
-                            </td>
-                            <td class="text-center">{{ $item->quantity }}</td>
-                            <td class="text-right">Rp {{ number_format($item->unit_price, 0, ',', '.') }}</td>
-                            <td class="text-right">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    <!-- Items Table -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width: 45%;">INFO PRODUK</th>
+          <th class="text-center" style="width: 15%;">JUMLAH</th>
+          <th class="text-right" style="width: 20%;">HARGA SATUAN</th>
+          <th class="text-right" style="width: 20%;">TOTAL HARGA</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach ($order->items as $item)
+          <tr>
+            <td>
+              <div class="product-name">{{ $item->product->name }}</div>
+              <div class="product-meta">Berat: 1 kg {{-- Placeholder as weight is not in item model --}}</div>
+              @if ($item->note)
+                <div class="product-meta" style="font-style: italic;">Catatan: {{ $item->note }}</div>
+              @endif
+            </td>
+            <td class="text-center">{{ $item->quantity }}</td>
+            <td class="text-right">Rp{{ number_format($item->unit_price, 0, ',', '.') }}</td>
+            <td class="text-right">Rp{{ number_format($item->subtotal, 0, ',', '.') }}</td>
+          </tr>
+        @endforeach
+      </tbody>
+    </table>
 
-            <div class="totals">
-                <table>
-                    <tr>
-                        <td>Subtotal</td>
-                        <td>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</td>
-                    </tr>
-                    <tr>
-                        <td>Ongkos Kirim</td>
-                        <td>Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</td>
-                    </tr>
-                    @if($order->discount_total > 0)
-                        <tr>
-                            <td>Diskon</td>
-                            <td>- Rp {{ number_format($order->discount_total, 0, ',', '.') }}</td>
-                        </tr>
-                    @endif
-                    <tr class="grand-total">
-                        <td>Total</td>
-                        <td>Rp {{ number_format($order->grand_total, 0, ',', '.') }}</td>
-                    </tr>
-                </table>
-            </div>
-            <div style="clear: both;"></div>
-        </div>
-
-        @if($order->paymentMethod->metadata && isset($order->paymentMethod->metadata['instructions']))
-            <div class="instructions">
-                <h4>Instruksi Pembayaran - {{ $order->paymentMethod->name }}</h4>
-                <p>{{ $order->paymentMethod->metadata['instructions'] }}</p>
-                @if($order->paymentMethod->code === 'manual_transfer')
-                    <p style="margin-top: 10px;"><strong>Silakan hubungi toko untuk informasi rekening transfer.</strong></p>
-                @endif
-            </div>
+    <!-- Totals -->
+    <div class="totals-container">
+      <table class="totals-table">
+        <tr>
+          <td class="totals-label">TOTAL HARGA ({{ $order->items_count }} BARANG)</td>
+          <td class="totals-value">
+            Rp{{ number_format($order->grand_total - ($order->shipping_cost ?? 0) + ($order->discount_amount ?? 0), 0, ',', '.') }}
+          </td>
+        </tr>
+        <tr>
+          <td class="totals-label" style="font-weight: normal;">Total Ongkos Kirim</td>
+          <td class="totals-value">Rp{{ number_format($order->shipping_cost ?? 0, 0, ',', '.') }}</td>
+        </tr>
+        @if ($order->discount_amount > 0)
+          <tr>
+            <td class="totals-label" style="font-weight: normal;">Diskon</td>
+            <td class="totals-value">-Rp{{ number_format($order->discount_amount, 0, ',', '.') }}</td>
+          </tr>
         @endif
-
-        <div class="footer">
-            <p>Invoice ini dibuat secara otomatis oleh sistem {{ config('app.name') }}</p>
-            <p>Untuk pertanyaan, silakan hubungi toko terkait.</p>
-        </div>
+        <tr class="grand-total-row">
+          <td>TOTAL BELANJA</td>
+          <td class="totals-value">Rp{{ number_format($order->grand_total, 0, ',', '.') }}</td>
+        </tr>
+        <tr class="grand-total-row">
+          <td>TOTAL TAGIHAN</td>
+          <td class="totals-value">Rp{{ number_format($order->grand_total, 0, ',', '.') }}</td>
+        </tr>
+      </table>
+      <div style="clear: both;"></div>
     </div>
+
+    <!-- Footer Info -->
+    <div style="margin-top: 30px;">
+      <div class="payment-method-label">Metode Pembayaran</div>
+      <div class="payment-method-value">{{ $order->paymentMethod ? $order->paymentMethod->name : '-' }}</div>
+
+      <div class="insurance-info">
+        <span class="insurance-logo">HITS</span>
+        <span>Asuransi Pengiriman {{ config('app.name') }}</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Invoice ini sah dan diproses oleh komputer</p>
+      <p>Silakan hubungi <strong>{{ config('app.name') }} Care</strong> apabila kamu membutuhkan bantuan.</p>
+    </div>
+  </div>
 </body>
+
 </html>

@@ -46,11 +46,8 @@ const filterState = reactive({
 const storeTitle = computed(() => `${props.store?.name ?? 'Toko'} - ${props.appName}`);
 const storeLocation = computed(() => props.store?.location || 'Lokasi tidak tersedia');
 const storeBadges = computed(() => props.store?.badges ?? []);
-const storeBanner = computed(
-  () =>
-    props.store?.banner ||
-    'https://smb-padiumkm-images-public-prod.oss-ap-southeast-5.aliyuncs.com/seller/banner_image/18122023/631a5d56aa3096cbda26050f/2edcf9ca34478d3dcc12565b4a56e9.jpg?x-oss-process=image/resize,m_fill,w_1200,h_300/quality,Q_50'
-);
+const storeBanner = computed(() => props.store?.banner_url || null);
+const storeLogo = computed(() => props.store?.logo_url || null);
 
 const productsList = computed(() => props.products?.data ?? []);
 const pagination = computed(() => props.products ?? {});
@@ -163,25 +160,25 @@ const statIconClass = (icon) => {
 
     <section class="mx-auto w-full max-w-[1200px] px-4 py-6 sm:py-8 space-y-6">
       <div class="space-y-4">
-        <div class="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+        <div v-if="storeBanner" class="overflow-hidden rounded-md border border-neutral-200 bg-neutral-100">
           <img :src="storeBanner" :alt="props.store?.name || 'Banner toko'"
             class="h-[220px] w-full object-cover sm:h-[260px] lg:h-[280px]" />
         </div>
 
         <div
-          class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white px-6 py-4 shadow-sm">
+          class="flex flex-wrap items-center justify-between gap-4 rounded-md border border-neutral-200 bg-white px-6 py-4">
           <div class="flex min-w-0 items-center gap-4">
             <div class="relative">
               <div
-                class="grid size-14 place-items-center overflow-hidden rounded-full border border-neutral-200 bg-white">
-                <img v-if="props.store?.avatar" :src="props.store.avatar" :alt="props.store?.name"
-                  class="h-full w-full object-cover" />
-                <span v-else class="text-xs font-semibold text-neutral-500">LOGO</span>
+                class="grid size-24 place-items-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50">
+                <img v-if="storeLogo" :src="storeLogo" :alt="props.store?.name" class="h-full w-full object-cover" />
+                <svg v-else class="size-6 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="m21 15-5-5L5 21" />
+                </svg>
               </div>
-              <span
-                class="absolute -bottom-1 left-1 inline-flex items-center rounded-lg bg-sky-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                {{ storeBadges[0] || 'UMKM' }}
-              </span>
             </div>
 
             <div class="min-w-0 space-y-1">
@@ -191,7 +188,7 @@ const statIconClass = (icon) => {
 
               <div class="flex flex-wrap gap-2">
                 <span v-for="badge in storeBadges" :key="badge"
-                  class="inline-flex items-center rounded-lg bg-neutral-100 px-3 py-1 text-[11px] font-semibold text-neutral-700">
+                  class="text-xs inline-flex items-center rounded-md bg-neutral-100 px-3 py-1 text-[11px] font-semibold text-neutral-700">
                   {{ badge }}
                 </span>
               </div>
@@ -239,9 +236,11 @@ const statIconClass = (icon) => {
             </div>
 
             <button type="button"
-              class="inline-flex items-center gap-2 rounded-xl border border-sky-500 px-5 py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50">
-              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 6h16v9H7l-3 3V6Z" />
+              class="inline-flex items-center gap-2 rounded-md border border-sky-500 px-5 py-2 text-sm font-semibold text-sky-600 hover:bg-sky-50">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp"
+                viewBox="0 0 16 16">
+                <path
+                  d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
               </svg>
               Chat Penjual
             </button>
@@ -251,26 +250,26 @@ const statIconClass = (icon) => {
 
       <div class="mt-6 grid gap-6 lg:grid-cols-[296px_minmax(0,1fr)]">
         <aside class="space-y-4">
-          <div class="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <div class="rounded-md border border-neutral-200 bg-white p-4">
             <div class="flex items-center justify-between text-sm font-semibold text-neutral-900">
               <span>Filter</span>
               <button class="text-xs font-semibold text-sky-600" type="button" @click="resetFilters">Reset</button>
             </div>
 
             <div class="mt-4 space-y-4">
-              <div class="space-y-3 rounded-xl border border-neutral-100 bg-neutral-50/60 p-4">
+              <div class="space-y-3 rounded-md border border-neutral-100 bg-neutral-50/60 p-4">
                 <p class="text-sm font-semibold text-neutral-900">Rentang Harga</p>
 
                 <div class="space-y-2 text-xs">
                   <label class="block text-neutral-500">Harga Terendah</label>
                   <input v-model="filterState.price_min" type="text" inputmode="numeric" placeholder="Rp 0"
-                    class="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500" />
+                    class="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500" />
                 </div>
 
                 <div class="space-y-2 text-xs">
                   <label class="block text-neutral-500">Harga Tertinggi</label>
                   <input v-model="filterState.price_max" type="text" inputmode="numeric" placeholder="Rp 500.000"
-                    class="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500" />
+                    class="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500" />
                 </div>
 
                 <label class="flex items-center gap-2 text-sm text-neutral-700">
@@ -280,7 +279,7 @@ const statIconClass = (icon) => {
 
                 <div class="flex justify-end">
                   <button type="button"
-                    class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600"
+                    class="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600"
                     @click="applyFilters">
                     Terapkan
                   </button>
@@ -288,7 +287,7 @@ const statIconClass = (icon) => {
               </div>
 
               <details v-for="(group, index) in filterGroups" :key="group.title"
-                class="group rounded-xl border border-neutral-100 bg-neutral-50/60" :open="index === 0">
+                class="group rounded-md border border-neutral-100 bg-neutral-50/60" :open="index === 0">
                 <summary
                   class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-800">
                   {{ group.title }}
@@ -326,7 +325,7 @@ const statIconClass = (icon) => {
         <div class="space-y-4">
           <div class="flex flex-wrap items-center gap-4">
             <div class="min-w-0 flex-1">
-              <form class="flex items-center rounded-xl border border-neutral-200 bg-white px-4 py-2.5"
+              <form class="flex items-center rounded-md border border-neutral-200 bg-white px-4 py-2.5"
                 @submit.prevent="applyFilters">
                 <input v-model="filterState.search" type="text" placeholder="Cari produk toko ini"
                   class="w-full bg-transparent text-sm text-neutral-700 placeholder:text-neutral-400 outline-none" />
@@ -343,7 +342,7 @@ const statIconClass = (icon) => {
 
             <div class="relative inline-flex">
               <select v-model="filterState.sort"
-                class="appearance-none rounded-xl border border-neutral-200 bg-white px-5 py-2 pr-9 text-sm font-medium text-neutral-700 outline-none"
+                class="appearance-none rounded-md border border-neutral-200 bg-white px-5 py-2 pr-9 text-sm font-medium text-neutral-700 outline-none"
                 @change="applyFilters">
                 <option v-for="option in sortChoices" :key="option.value" :value="option.value">
                   {{ option.label }}
@@ -366,47 +365,47 @@ const statIconClass = (icon) => {
 
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <article v-for="product in productsList" :key="product.id"
-              class="flex h-full flex-col overflow-hidden rounded-lg border border-neutral-100 bg-white shadow-sm">
+              class="flex h-full flex-col overflow-hidden rounded-md border border-neutral-100 bg-white">
               <Link :href="productUrl(product)" class="group block h-full">
-              <div class="relative">
-                <img :src="product.image" :alt="product.name"
-                  class="h-40 w-full object-cover transition duration-150 group-hover:scale-[1.01]" />
-                <span
-                  class="absolute left-2 top-2 rounded-full bg-sky-600 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-                  {{ storeBadges[0] || 'UMKM' }}
-                </span>
-                <span v-if="product.tag === 'Pre Order'"
-                  class="absolute right-2 top-2 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 shadow-sm">
-                  {{ product.tag }}
-                </span>
-              </div>
-              <div class="flex flex-1 flex-col gap-2 p-3">
-                <h3 class="line-clamp-2 text-sm font-semibold leading-tight text-neutral-900">
-                  {{ product.name }}
-                </h3>
-                <p class="text-sm font-bold text-neutral-900">{{ formatPrice(product.price) }}</p>
-
-                <p class="mt-0.5 flex items-center gap-1 text-xs text-neutral-500">
-                  <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.657 16.657 13.414 20.9a1 1 0 0 1-1.414 0L6.343 15.243a8 8 0 1 1 11.314 1.414Z" />
-                    <circle cx="12" cy="11" r="3" />
-                  </svg>
-                  {{ product.location || storeLocation }}
-                </p>
-
-                <div class="mt-auto flex flex-wrap items-center gap-2 text-[11px] text-neutral-600">
-                  <span v-for="badge in product.badges" :key="badge"
-                    class="rounded-md bg-neutral-100 px-2 py-0.5 font-semibold text-neutral-700">
-                    {{ badge }}
+                <div class="relative">
+                  <img :src="product.image" :alt="product.name"
+                    class="h-40 w-full object-cover transition duration-150 group-hover:scale-[1.01]" />
+                  <span
+                    class="absolute left-2 top-2 rounded-full bg-sky-600 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                    {{ storeBadges[0] || 'UMKM' }}
+                  </span>
+                  <span v-if="product.tag === 'Pre Order'"
+                    class="absolute right-2 top-2 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                    {{ product.tag }}
                   </span>
                 </div>
-              </div>
+                <div class="flex flex-1 flex-col gap-2 p-3">
+                  <h3 class="line-clamp-2 text-sm font-semibold leading-tight text-neutral-900">
+                    {{ product.name }}
+                  </h3>
+                  <p class="text-sm font-bold text-neutral-900">{{ formatPrice(product.price) }}</p>
+
+                  <p class="mt-0.5 flex items-center gap-1 text-xs text-neutral-500">
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.657 16.657 13.414 20.9a1 1 0 0 1-1.414 0L6.343 15.243a8 8 0 1 1 11.314 1.414Z" />
+                      <circle cx="12" cy="11" r="3" />
+                    </svg>
+                    {{ product.location || storeLocation }}
+                  </p>
+
+                  <div class="mt-auto flex flex-wrap items-center gap-2 text-[11px] text-neutral-600">
+                    <span v-for="badge in product.badges" :key="badge"
+                      class="rounded-md bg-neutral-100 px-2 py-0.5 font-semibold text-neutral-700">
+                      {{ badge }}
+                    </span>
+                  </div>
+                </div>
               </Link>
             </article>
           </div>
 
           <div
-            class="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200 bg-white px-5 py-4 text-sm text-neutral-600">
+            class="flex flex-wrap items-center gap-3 rounded-md border border-neutral-200 bg-white px-5 py-4 text-sm text-neutral-600">
             <p class="text-xs text-neutral-500">
               <template v-if="displayRange">
                 Menampilkan {{ displayRange.from }}-{{ displayRange.to }} dari {{ displayRange.total }} produk

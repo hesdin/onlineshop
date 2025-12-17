@@ -125,9 +125,6 @@ const paymentStatusBadge = (status: string) => {
 
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="space-y-1">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Panel Seller
-        </p>
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-bold text-slate-900">
             {{ store?.name ?? 'Mulai setup toko' }}
@@ -155,13 +152,13 @@ const paymentStatusBadge = (status: string) => {
       <div class="flex flex-wrap items-center gap-2">
         <Button variant="outline" as-child>
           <Link href="/seller/store">
-          Kelola Toko
+            Kelola Toko
           </Link>
         </Button>
         <Button as-child>
           <Link href="/seller/products/create">
-          <Package class="mr-2 h-4 w-4" />
-          Tambah Produk
+            <Package class="mr-2 h-4 w-4" />
+            Tambah Produk
           </Link>
         </Button>
       </div>
@@ -207,8 +204,8 @@ const paymentStatusBadge = (status: string) => {
             </div>
             <Button variant="outline" size="sm" as-child>
               <Link href="/seller/orders">
-              <ShoppingBag class="mr-2 h-4 w-4" />
-              Lihat Semua
+                <ShoppingBag class="mr-2 h-4 w-4" />
+                Lihat Semua
               </Link>
             </Button>
           </CardHeader>
@@ -284,7 +281,8 @@ const paymentStatusBadge = (status: string) => {
                 </Badge>
               </div>
             </div>
-            <div v-if="topProducts.length === 0" class="rounded-md border border-dashed border-slate-200 p-4 text-center">
+            <div v-if="topProducts.length === 0"
+              class="rounded-md border border-dashed border-slate-200 p-4 text-center">
               <p class="text-sm font-medium text-slate-700">Belum ada transaksi</p>
               <p class="text-xs text-slate-500">Mulai promosikan produk untuk melihat performanya.</p>
             </div>
@@ -312,7 +310,7 @@ const paymentStatusBadge = (status: string) => {
             <Separator class="my-3" />
             <Button as-child variant="ghost" size="sm" class="px-0 text-blue-600">
               <Link href="/seller/products">
-              Kelola produk
+                Kelola produk
               </Link>
             </Button>
           </div>
@@ -328,7 +326,7 @@ const paymentStatusBadge = (status: string) => {
             <Separator class="my-3" />
             <Button as-child variant="ghost" size="sm" class="px-0 text-blue-600">
               <Link href="/seller/orders">
-              Pantau pesanan
+                Pantau pesanan
               </Link>
             </Button>
           </div>
@@ -344,7 +342,7 @@ const paymentStatusBadge = (status: string) => {
             <Separator class="my-3" />
             <Button as-child variant="ghost" size="sm" class="px-0 text-blue-600">
               <Link href="/seller/store">
-              Ubah profil toko
+                Ubah profil toko
               </Link>
             </Button>
           </div>

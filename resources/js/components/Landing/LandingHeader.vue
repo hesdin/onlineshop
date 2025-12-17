@@ -201,6 +201,11 @@ const loginUrl = computed(() => {
 const goToLogin = () => {
   router.visit(loginUrl.value, { replace: true });
 };
+
+const isSeller = computed(() => {
+  const roles = props.authUser?.roles ?? [];
+  return roles.includes('seller') || roles.includes('toko');
+});
 </script>
 
 <template>
@@ -402,50 +407,89 @@ const goToLogin = () => {
             class="absolute inset-x-4 top-full mt-2 w-auto overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-200/70 lg:inset-x-auto lg:right-0 lg:w-[360px] lg:max-w-[90vw]"
             v-show="state.profileOpen">
             <div class="flex items-start gap-3 px-5 pt-5 pb-4">
-              <div class="grid h-12 w-12 place-items-center rounded-full bg-slate-200">
-                <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M5 21c0-4 3-7 7-7s7 3 7 7" />
-                </svg>
+              <div class="h-10 w-10 flex-shrink-0 rounded-full bg-slate-200 overflow-hidden">
+                <img v-if="authUser?.avatar_url" :src="authUser.avatar_url" alt="Profile"
+                  class="h-full w-full object-cover">
+                <div v-else class="grid h-full w-full place-items-center">
+                  <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M5 21c0-4 3-7 7-7s7 3 7 7" />
+                  </svg>
+                </div>
               </div>
               <div class="flex-1">
-                <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center justify-between gap-3">
                   <div>
                     <p class="text-base font-semibold text-slate-900">{{ authUser?.name }}</p>
-                    <p class="text-sm text-slate-500">{{ authUser?.email }}</p>
                   </div>
                   <Link href="/customer/dashboard/profile"
-                    class="inline-flex items-center rounded-lg bg-cyan-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700">
+                    class="inline-flex items-center rounded-sm bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-700">
                     Lihat Profile
                   </Link>
                 </div>
               </div>
             </div>
 
-            <div class="px-5 pb-4">
-              <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div class="grid h-12 w-12 place-items-center rounded-lg bg-cyan-100 text-cyan-700">
-                  <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 8a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3Z" />
-                    <path d="M4 10h16" />
-                    <path d="M11 14h5" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center gap-1 text-sm font-semibold text-slate-700">
-                    <span>Saldo Refund</span>
-                    <span class="text-slate-400">?</span>
-                  </div>
-                  <p class="text-lg font-bold text-cyan-700">Rp0</p>
-                </div>
-                <button type="button"
-                  class="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 shadow-sm transition hover:bg-slate-300">
-                  Tarik
-                </button>
-              </div>
+
+
+            <!-- Seller Menu -->
+            <div v-if="isSeller" class="divide-y divide-slate-100">
+              <Link href="/seller/dashboard"
+                class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                <span class="text-sm font-semibold">Dashboard Toko</span>
+              </Link>
+              <Link href="/seller/products"
+                class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+                <span class="text-sm font-semibold">Produk Saya</span>
+              </Link>
+              <Link href="/seller/orders"
+                class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                <span class="text-sm font-semibold">Pesanan Masuk</span>
+              </Link>
+              <Link href="/seller/store"
+                class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                <span class="text-sm font-semibold">Pengaturan Toko</span>
+              </Link>
+              <button type="button" @click="handleLogout"
+                class="flex w-full items-center gap-3 px-5 py-3 text-left text-red-600 transition hover:bg-red-50">
+                <svg class="h-6 w-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+                <span class="text-sm font-semibold">Keluar</span>
+              </button>
             </div>
 
-            <div class="divide-y divide-slate-100">
+            <!-- Customer Menu (Default) -->
+            <div v-else class="divide-y divide-slate-100">
               <Link href="/customer/dashboard/payment"
                 class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
                 <svg class="h-6 w-6 text-slate-500" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">

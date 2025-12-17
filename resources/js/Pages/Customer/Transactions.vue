@@ -1,7 +1,7 @@
 <script setup>
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 import CustomerSidebarMenu from '@/components/Customer/SidebarMenu.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 
 defineOptions({
   layout: LandingLayout,
@@ -34,7 +34,7 @@ const statusBadgeClass = (value) => {
       return 'bg-sky-100 text-sky-700';
     case 'delivered':
     case 'completed':
-      return 'bg-emerald-100 text-emerald-700';
+      return 'bg-sky-100 text-sky-700';
     case 'cancelled':
       return 'bg-rose-100 text-rose-700';
     default:
@@ -50,87 +50,560 @@ const formatPrice = (value) =>
 const formatDate = (value) => {
   if (!value) return '-';
   const date = new Date(value);
-  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+// Modal Logic
+import { ref } from 'vue';
+
+const showDetailModal = ref(false);
+const showTransferModal = ref(false);
+const showCODModal = ref(false);
+const selectedOrder = ref(null);
+
+const openDetailModal = (order) => {
+  selectedOrder.value = order;
+  showDetailModal.value = true;
+  document.body.style.overflow = 'hidden';
+};
+
+const closeDetailModal = () => {
+  showDetailModal.value = false;
+  setTimeout(() => {
+    selectedOrder.value = null;
+  }, 300);
+  document.body.style.overflow = '';
+};
+
+const closeTransferModal = () => {
+  showTransferModal.value = false;
+  document.body.style.overflow = 'hidden'; // Restore to detail modal state
+};
+
+const handlePayment = (order) => {
+  // Set selected order so modal can display its data
+  selectedOrder.value = order;
+
+  // Check payment method - assumes 'cod' or 'transfer' code from backend
+  // Since we access payment_info.method name in template, we utilize order.payment_method_code or similar if available
+  // Or check based on the label text if code isn't easily available, but controller sends payment_status.
+  // We need to ensure we have the code. Let's assume 'cod' vs 'bank_transfer'
+
+  // NOTE: Controller didn't explicitly send payment_method_code in the 'payment_info' array,
+  // but it is likely in the full order object if we look closely or we can infer.
+  // Let's rely on the text for now or check if we need to add code to controller.
+
+  // Actually, let's look at the controller again. It sends `paymentMethod:id,name`.
+  // Logic: "COD" usually contains "COD" in name or we should add code to response.
+
+  const isCOD = order.payment_info?.method?.toLowerCase().includes('cod');
+
+  if (isCOD) {
+    showCODModal.value = true;
+    document.body.style.overflow = 'hidden';
+  } else {
+    // Transfer Manual
+    showTransferModal.value = true;
+    document.body.style.overflow = 'hidden';
+  }
+};
+
+const closeCODModal = () => {
+  showCODModal.value = false;
+  document.body.style.overflow = '';
+};
+
+const chatStore = (phone, text) => {
+  if (!phone) return '#';
+  const formattedPhone = phone.replace(/\D/g, ''); // Basic formatting
+  // Ensure 62 prefix
+  const finalPhone = formattedPhone.startsWith('62') ? formattedPhone : '62' + formattedPhone.replace(/^0/, '');
+  return `https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`;
+};
+
+const generateTransferProofLink = (order) => {
+  if (!order?.store?.phone) return '#';
+
+  const text = `Halo, saya ingin konfirmasi pembayaran untuk pesanan ${order.order_number}.
+
+Berikut bukti transfer saya untuk produk:
+${order.first_item?.name} ${order.items_count > 1 ? '(+' + (order.items_count - 1) + ' lainnya)' : ''}
+
+Total Transfer: ${formatPrice(order.grand_total)}`;
+
+  return chatStore(order.store.phone, text);
+};
+
+// Buy Again Logic
+const isBuyingAgain = ref(false);
+
+const buyAgain = async (order) => {
+  if (isBuyingAgain.value) return;
+
+  // Check if order has items
+  if (!order.items || order.items.length === 0) {
+    alert('Tidak ada item untuk dibeli ulang.');
+    return;
+  }
+
+  isBuyingAgain.value = true;
+
+  try {
+    // Add each item to cart sequentially
+    for (let i = 0; i < order.items.length; i++) {
+      const item = order.items[i];
+
+      await new Promise((resolve, reject) => {
+        router.post('/cart', {
+          product_id: item.product_id,
+          quantity: item.quantity,
+          note: item.note || '',
+        }, {
+          preserveScroll: true,
+          preserveState: true,
+          onSuccess: () => resolve(),
+          onError: (errors) => {
+            console.warn(`Failed to add item ${item.name}:`, errors);
+            resolve(); // Continue even if one item fails
+          },
+        });
+      });
+    }
+
+    // Redirect to cart page after all items added
+    router.visit('/cart');
+  } catch (error) {
+    console.error('Error buying again:', error);
+    alert('Terjadi kesalahan saat menambahkan produk ke keranjang.');
+  } finally {
+    isBuyingAgain.value = false;
+  }
 };
 </script>
 
 <template>
-  <div class="bg-slate-50">
+  <div class="bg-slate-50 min-h-screen">
 
     <Head title="Daftar Transaksi" />
 
-    <div class="mx-auto flex max-w-screen-2xl flex-col gap-6 px-6 py-10">
-      <nav class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
-        <a href="/" class="text-sky-600 hover:underline">Beranda</a>
-        <span>/</span>
+    <div class="mx-auto flex max-w-full flex-col gap-6 px-4 py-8">
+      <!-- Breadcrumb -->
+      <nav class="flex items-center gap-2 text-sm font-medium text-slate-500">
+        <a href="/" class="transition hover:text-slate-800">Beranda</a>
+        <svg class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd"
+            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+            clip-rule="evenodd" />
+        </svg>
         <span class="text-slate-900">Daftar Transaksi</span>
       </nav>
 
-      <div class="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div class="grid gap-8 lg:grid-cols-[280px_1fr]">
         <CustomerSidebarMenu active-key="transaksi" />
 
         <main class="space-y-6">
-          <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+          <section class="max-w-4xl space-y-6">
+            <!-- Header Section -->
+            <div class="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h2 class="text-xl font-semibold text-slate-900">Daftar Transaksi</h2>
-                <p class="text-sm text-slate-500">Lihat status pesanan dan riwayat transaksi.</p>
+                <h1 class="text-2xl font-bold text-slate-900">Daftar Transaksi</h1>
               </div>
               <div class="flex gap-2">
-                <button
-                  class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                  Filter
-                </button>
-                <button
-                  class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                  Ekspor
-                </button>
+                <!-- Placeholder for future filters -->
               </div>
             </div>
 
-            <div v-if="props.orders.length" class="mt-6 space-y-3">
+            <!-- Transactions List -->
+            <div v-if="props.orders.length" class="space-y-4">
               <div v-for="order in props.orders" :key="order.id"
-                class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p class="text-sm font-semibold text-slate-900">No. Pesanan {{ order.order_number }}</p>
-                    <p class="text-xs text-slate-500">Tanggal: {{ formatDate(order.created_at) }}</p>
-                    <p v-if="order.store" class="text-xs text-slate-500">Toko: {{ order.store }}</p>
+                class="group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+
+                <!-- Card Header -->
+                <div class="flex items-center gap-3 border-b border-slate-50 bg-white px-5 py-3 text-sm">
+                  <div class="flex items-center gap-2 text-slate-900 font-semibold">
+                    <svg class="h-5 w-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    Belanja
                   </div>
-                  <div class="flex flex-wrap gap-2">
-                    <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="statusBadgeClass(order.status)">
-                      {{ statusLabel(order.status) }}
-                    </span>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                      {{ paymentLabel(order.payment_status) }}
-                    </span>
+                  <span class="text-slate-400">{{ formatDate(order.created_at) }}</span>
+                  <span class="rounded px-1.5 py-0.5 text-xs font-semibold" :class="statusBadgeClass(order.status)">
+                    {{ statusLabel(order.status) }}
+                  </span>
+                  <span class="text-slate-400 text-xs ml-auto">{{ order.order_number }}</span>
+                </div>
+
+                <!-- Card Body -->
+                <div class="px-5 py-4">
+                  <!-- Store Name -->
+                  <div class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <!-- <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                      class="bi bi-shop-window" viewBox="0 0 16 16">
+                      <path
+                        d="M2.97 1.35A1 1 0 0 1 3.73 1h8.54a1 1 0 0 1 .76.35l2.609 3.044A1.5 1.5 0 0 1 16 5.37v.255a2.375 2.375 0 0 1-4.25 1.458A2.37 2.37 0 0 1 9.875 8 2.37 2.37 0 0 1 8 7.083 2.37 2.37 0 0 1 6.125 8a2.37 2.37 0 0 1-1.875-.917A2.375 2.375 0 0 1 0 5.625V5.37a1.5 1.5 0 0 1 .361-.976zm1.78 4.275a1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0 1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0 1.375 1.375 0 1 0 2.75 0V5.37a.5.5 0 0 0-.12-.325L12.27 2H3.73L1.12 5.045A.5.5 0 0 0 1 5.37v.255a1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0M1.5 8.5A.5.5 0 0 1 2 9v6h12V9a.5.5 0 0 1 1 0v6h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1V9a.5.5 0 0 1 .5-.5m2 .5a.5.5 0 0 1 .5.5V13h8V9.5a.5.5 0 0 1 1 0V13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5a.5.5 0 0 1 .5-.5" />
+                    </svg> -->
+                    {{ order.store.name }}
                   </div>
-                </div>
-                <div class="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600">
-                  <span>Total: <strong class="text-slate-900">{{ formatPrice(order.grand_total) }}</strong></span>
-                  <span>Jumlah Barang: {{ order.items_count ?? 0 }}</span>
-                </div>
-                <div class="mt-3 flex gap-2 text-sm">
-                  <button class="rounded-lg border border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50">
-                    Detail
-                  </button>
-                  <button v-if="order.status === 'pending_payment'"
-                    class="rounded-lg border border-sky-500 bg-sky-500 px-3 py-2 text-white hover:bg-sky-600">
-                    Bayar Sekarang
-                  </button>
-                  <button v-else class="rounded-lg border border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50">
-                    Beli Lagi
-                  </button>
+
+                  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex gap-4">
+                      <!-- Product Image -->
+                      <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-slate-200">
+                        <img v-if="order.first_item?.image_url" :src="order.first_item.image_url"
+                          :alt="order.first_item.name" class="h-full w-full object-cover">
+                        <div v-else class="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div class="space-y-1">
+                        <div v-if="order.first_item" class="font-bold text-slate-900 line-clamp-1">
+                          {{ order.first_item.name }}
+                        </div>
+                        <div class="text-sm text-slate-500">
+                          {{ order.items_count }} barang x {{ formatPrice(order.grand_total / order.items_count) }}
+                          <span v-if="order.items_count > 1" class="ml-1 text-slate-400 text-xs">
+                            +{{ order.items_count - 1 }} produk lainnya
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      class="flex flex-col items-end gap-1 mt-2 sm:mt-0 pl-4 border-l-0 sm:border-l border-slate-100 min-w-[120px]">
+                      <span class="text-xs text-slate-500">Total Belanja</span>
+                      <span class="font-bold text-slate-900">{{ formatPrice(order.grand_total) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="mt-4 flex items-center justify-end gap-2 text-sm">
+                    <button @click="openDetailModal(order)"
+                      class="font-semibold text-sky-600 hover:text-sky-700 mr-auto hover:cursor-pointer">
+                      Lihat Detail Transaksi
+                    </button>
+
+                    <button v-if="order.status === 'pending_payment'" @click="handlePayment(order)"
+                      class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700">
+                      Bayar
+                    </button>
+                    <button v-else @click="buyAgain(order)" :disabled="isBuyingAgain"
+                      class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+                      <svg v-if="isBuyingAgain" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
+                        <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round"></path>
+                      </svg>
+                      {{ isBuyingAgain ? 'Memproses...' : 'Beli Lagi' }}
+                    </button>
+                    <button
+                      class="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
+                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- Empty State -->
             <div v-else
-              class="mt-6 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-              Belum ada transaksi.
+              class="flex min-h-[400px] flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+              <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-slate-900">Belum ada transaksi</h3>
+              <p class="mt-2 max-w-sm text-slate-500">Anda belum pernah melakukan transaksi. Mulai belanja sekarang
+                untuk melihat riwayat pesanan Anda di sini.</p>
+              <a href="/"
+                class="mt-6 inline-flex items-center gap-2 rounded-md bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">
+                Mulai Belanja
+              </a>
             </div>
           </section>
         </main>
       </div>
     </div>
+
+    <!-- Detail Transaction Modal -->
+    <Teleport to="body">
+      <div v-if="showDetailModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+        role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeDetailModal"></div>
+
+        <!-- Modal Panel -->
+        <div
+          class="relative w-full max-w-4xl transform overflow-hidden rounded-md bg-white shadow-2xl transition-all max-h-[90vh] flex flex-col">
+
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <h3 class="text-lg font-bold text-slate-900">Detail Transaksi</h3>
+            <button @click="closeDetailModal"
+              class="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+              <span class="sr-only">Close</span>
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="flex-1 overflow-y-auto bg-white p-6" v-if="selectedOrder">
+            <div class="grid gap-8 lg:grid-cols-[1fr_300px]">
+
+              <!-- Left Column: Details -->
+              <div class="space-y-8">
+                <!-- Status Section -->
+                <div class="border-b border-slate-100 pb-6">
+                  <div class="font-bold text-lg text-slate-900 mb-3">{{ statusLabel(selectedOrder.status) }}</div>
+                  <div class="space-y-1 text-sm">
+                    <div class="flex">
+                      <span class="text-slate-500 w-36">No. Pesanan</span>
+                      <span class="font-semibold text-sky-600">{{ selectedOrder.order_number }}</span>
+                    </div>
+                    <div class="flex">
+                      <span class="text-slate-500 w-36">Tanggal Pembelian</span>
+                      <span class="text-slate-900">{{ formatDate(selectedOrder.created_at) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Product List -->
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-bold text-slate-900">Detail Produk</h4>
+                    <div class="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      {{ selectedOrder.store.name }}
+                    </div>
+                  </div>
+
+                  <div class="space-y-4 rounded-md border border-slate-100 p-4">
+                    <div v-for="item in selectedOrder.items" :key="item.id" class="flex gap-4">
+                      <div
+                        class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                        <img v-if="item.image_url" :src="item.image_url" :alt="item.name"
+                          class="h-full w-full object-cover">
+                        <div v-else class="flex h-full w-full items-center justify-center text-slate-300">
+                          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="flex-1">
+                        <div class="font-bold text-slate-900 line-clamp-2">{{ item.name }}</div>
+                        <div class="mt-1 text-sm text-slate-500">{{ item.quantity }} x {{ formatPrice(item.unit_price)
+                          }}</div>
+                        <div v-if="item.note" class="mt-1 text-xs text-slate-500 italic">"{{ item.note }}"</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Shipping Info -->
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h4 class="font-bold text-slate-900">Info Pengiriman</h4>
+                  </div>
+                  <div class="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-sm">
+                    <div class="text-slate-500">Dikirim dari</div>
+                    <div class="text-slate-900 font-medium">
+                      {{ selectedOrder.store.city }} <span class="text-slate-400 font-normal">({{
+                        selectedOrder.store.name }})</span>
+                    </div>
+
+                    <div class="text-slate-500">Metode Pengiriman</div>
+                    <div class="text-slate-900 font-medium">
+                      {{ selectedOrder.shipping_info?.courier === 'pickup' ? 'Ambil di Toko' : 'Diantar ke Tempat' }}
+                      <span
+                        v-if="selectedOrder.shipping_info?.service && selectedOrder.shipping_info?.courier !== 'pickup'"
+                        class="text-slate-500">- {{ selectedOrder.shipping_info.service }}</span>
+                    </div>
+
+                    <template v-if="selectedOrder.shipping_info?.tracking_number">
+                      <div class="text-slate-500">No. Resi</div>
+                      <div class="text-slate-900 font-medium flex items-center gap-2">
+                        {{ selectedOrder.shipping_info.tracking_number }}
+                        <button class="text-sky-600 hover:text-sky-700" title="Salin">
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </template>
+
+                    <div class="text-slate-500">Alamat Tujuan</div>
+                    <div class="text-slate-900">
+                      <div class="font-medium">{{ selectedOrder.shipping_address?.recipient_name }}</div>
+                      <div class="text-slate-600">{{ selectedOrder.shipping_address?.phone }}</div>
+                      <div class="text-slate-600 mt-1">{{ selectedOrder.shipping_address?.full_address }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Payment Info -->
+                <div class="space-y-3">
+                  <h4 class="font-bold text-slate-900">Rincian Pembayaran</h4>
+                  <div class="rounded-md bg-slate-50 p-4 space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-slate-600">Metode Pembayaran</span>
+                      <span class="font-medium text-slate-900">{{ selectedOrder.payment_info?.method ?? '-' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-slate-600">Total Harga ({{ selectedOrder.items_count }} barang)</span>
+                      <span class="text-slate-900">{{ formatPrice(selectedOrder.grand_total -
+                        (selectedOrder.shipping_info?.cost || 0))
+                      }}</span>
+                    </div>
+                    <!-- Shipping Cost removed as requested -->
+
+                    <div
+                      class="border-t border-slate-200 mt-2 pt-2 flex justify-between text-base font-bold text-slate-900">
+                      <span>Total Belanja</span>
+                      <span>{{ formatPrice(selectedOrder.grand_total) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Actions (Sticky on desktop) -->
+              <div class="lg:sticky lg:top-0 space-y-3">
+                <button v-if="selectedOrder.status === 'pending_payment'" @click="handlePayment(selectedOrder)"
+                  class="w-full rounded-md bg-sky-600 px-4 py-2 font-bold text-white shadow hover:bg-sky-700">
+                  Bayar Sekarang
+                </button>
+
+                <a v-if="selectedOrder.store.phone"
+                  :href="chatStore(selectedOrder.store.phone, 'Halo, saya ingin bertanya tentang pesanan ' + selectedOrder.order_number)"
+                  target="_blank"
+                  class="flex items-center justify-center gap-2 w-full rounded-md border border-sky-600 px-4 py-2 font-bold text-sky-600 hover:bg-sky-50">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                      d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                  Chat Penjual
+                </a>
+
+                <button v-if="selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered'"
+                  class="w-full rounded-md bg-sky-600 px-4 py-2 font-bold text-white shadow hover:bg-sky-700">
+                  Lacak Pengiriman
+                </button>
+
+                <!-- Invoice Link -->
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span class="text-sm font-bold text-slate-900">Invoice</span>
+                  <a :href="selectedOrder.invoice_url" class="text-sm font-semibold text-sky-600 hover:text-sky-700">
+                    Lihat Invoice
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Transfer Information Modal -->
+    <Teleport to="body">
+      <div v-if="showTransferModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6"
+        role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeTransferModal">
+        </div>
+
+        <div
+          class="relative w-full max-w-md transform overflow-hidden rounded-md bg-white shadow-xl transition-all p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-bold text-slate-900">Info Transfer Manual</h3>
+            <button @click="closeTransferModal" class="rounded-full p-1 text-slate-400 hover:bg-slate-100">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <div class="border-l-4 border-sky-500 bg-sky-50 p-4 text-sm text-sky-700">
+              Silakan transfer sesuai total tagihan ke rekening di bawah ini.
+            </div>
+
+            <div class="rounded-md border border-slate-200 p-4">
+              <div class="text-sm text-slate-500 mb-1">Bank Tujuan</div>
+              <div class="flex items-center justify-between">
+                <div class="font-bold text-slate-900 text-lg">{{ selectedOrder?.store.bank_details.bank_name }}</div>
+              </div>
+              <div class="mt-4">
+                <div class="text-sm text-slate-500 mb-1">No. Rekening</div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-xl font-bold text-slate-900">{{
+                    selectedOrder?.store.bank_details.account_number }}</span>
+                  <button class="text-sky-600 text-xs font-bold uppercase" title="Salin">Salin</button>
+                </div>
+                <div class="text-sm text-slate-600 mt-1">a.n {{ selectedOrder?.store.bank_details.account_name }}</div>
+              </div>
+              <div class="mt-4 pt-4 border-t border-slate-100">
+                <div class="text-sm text-slate-500 mb-1">Total Tagihan</div>
+                <div class="font-bold text-slate-900 text-xl">{{ formatPrice(selectedOrder?.grand_total) }}</div>
+              </div>
+            </div>
+
+            <a v-if="selectedOrder" :href="generateTransferProofLink(selectedOrder)" target="_blank"
+              class="block w-full rounded-md bg-sky-600 px-4 py-3 text-center font-bold text-white shadow hover:bg-sky-700">
+              Kirim Bukti Pembayaran
+            </a>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- COD Info Modal -->
+    <Teleport to="body">
+      <div v-if="showCODModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6" role="dialog"
+        aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeCODModal"></div>
+
+        <div
+          class="relative w-full max-w-sm transform overflow-hidden rounded-md bg-white shadow-xl transition-all p-6 text-center">
+          <div class="mb-4 mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+            <svg class="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Pembayaran COD</h3>
+          <p class="text-slate-600 mb-6">Kamu memilih metode <strong>Cash on Delivery</strong>. Pembayaran akan
+            dilakukan
+            setelah barang diterima.</p>
+
+          <div class="space-y-3">
+            <a v-if="selectedOrder?.store?.phone"
+              :href="chatStore(selectedOrder.store.phone, 'Halo, saya ingin konfirmasi pesanan COD ' + selectedOrder.order_number)"
+              target="_blank"
+              class="flex items-center justify-center gap-2 w-full rounded-md bg-sky-600 px-4 py-2.5 font-bold text-white hover:bg-sky-700">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              Konfirmasi via WhatsApp
+            </a>
+            <button @click="closeCODModal"
+              class="w-full rounded-md border border-slate-200 px-4 py-2.5 font-bold text-slate-700 hover:bg-slate-50">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -6,9 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Order extends Model
+class Order extends Model implements HasMedia
 {
+    use InteractsWithMedia;
+
     protected $fillable = [
         'user_id',
         'store_id',
@@ -40,6 +44,20 @@ class Order extends Model
         'expires_at' => 'datetime',
     ];
 
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('payment_proof')
+            ->useDisk('public')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp'])
+            ->singleFile();
+    }
+
+    public function getPaymentProofUrlAttribute(): ?string
+    {
+        $url = $this->getFirstMediaUrl('payment_proof');
+        return $url ?: null;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -68,6 +86,40 @@ class Order extends Model
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function getCustomerWhatsAppLink(): ?string
+    {
+        $phone = $this->address?->phone ?? $this->user?->phone ?? null;
+
+        if (!$phone) {
+            return null;
+        }
+
+        $formattedPhone = $this->formatPhoneNumber($phone);
+        $message = urlencode($this->getCustomerWhatsAppMessage());
+
+        return "https://wa.me/{$formattedPhone}?text={$message}";
+    }
+
+    public function getCustomerWhatsAppMessage(): string
+    {
+        $customerName = $this->user?->name ?? 'Pelanggan';
+        $orderNumber = $this->order_number;
+        $storeName = $this->store?->name ?? 'Toko';
+
+        return <<<MSG
+Halo {$customerName},
+
+Terima kasih atas pesanan Anda di {$storeName}!
+
+📦 No. Pesanan: {$orderNumber}
+
+Jika ada pertanyaan terkait pesanan, kami siap membantu.
+
+Salam,
+{$storeName}
+MSG;
     }
 
     public function getWhatsAppLink(): ?string

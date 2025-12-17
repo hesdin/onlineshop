@@ -7,6 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Select,
   SelectContent,
@@ -296,37 +297,58 @@ const generateSlug = (value?: string | number | null) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') ?? '';
 
-const isSlugLocked = ref(props.mode === 'create');
-const hasManualSlug = ref(props.mode === 'edit');
+const isSlugLocked = ref(true);
+const hasManualSlug = ref(false);
+const slugDuplicateError = ref(false);
 
 watch(
   () => form.name,
   (value) => {
-    if (props.mode === 'create' && isSlugLocked.value && !hasManualSlug.value) {
+    if (!hasManualSlug.value) {
       form.slug = generateSlug(value);
+    }
+  },
+  { immediate: true },
+);
+
+// Watch for duplicate slug error from backend
+watch(
+  () => form.errors.slug,
+  (error) => {
+    if (error && (error.toLowerCase().includes('sudah digunakan') || error.toLowerCase().includes('already') || error.toLowerCase().includes('duplicate'))) {
+      slugDuplicateError.value = true;
+      isSlugLocked.value = false; // Unlock slug for editing
+    } else {
+      slugDuplicateError.value = false;
     }
   },
 );
 
 const unlockSlug = () => {
   isSlugLocked.value = false;
+  hasManualSlug.value = true;
+  slugDuplicateError.value = false;
 };
 
 const lockSlug = () => {
   isSlugLocked.value = true;
   hasManualSlug.value = false;
   form.slug = generateSlug(form.name);
+  slugDuplicateError.value = false;
 };
 
 const resetSlug = () => {
   hasManualSlug.value = false;
   isSlugLocked.value = true;
   form.slug = generateSlug(form.name);
+  slugDuplicateError.value = false;
 };
 
 const handleSlugInput = (value: string) => {
   hasManualSlug.value = true;
   form.slug = generateSlug(value);
+  slugDuplicateError.value = false;
+  form.clearErrors('slug');
 };
 
 const selectedCategory = computed(
@@ -539,29 +561,47 @@ onBeforeUnmount(() => {
             URL Slug
             <span class="text-red-500">*</span>
           </Label>
+
+          <!-- Duplicate Slug Alert -->
+          <div v-if="slugDuplicateError"
+            class="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+            <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clip-rule="evenodd" />
+            </svg>
+            <div class="flex-1">
+              <p class="font-semibold text-amber-900">Slug sudah digunakan</p>
+              <p class="mt-1 text-xs text-amber-700">{{ form.errors.slug }}</p>
+              <p class="mt-1 text-xs text-amber-700">Silakan edit slug di bawah untuk membuatnya unik.</p>
+            </div>
+          </div>
+
           <div class="relative flex items-center gap-2">
             <Input id="slug" :model-value="form.slug" :disabled="isSlugLocked"
               :class="[form.errors.slug ? 'border-red-500' : '', isSlugLocked ? 'bg-slate-50' : '']" class="pr-28"
               required @update:model-value="handleSlugInput" />
-            <div class="absolute right-2 flex gap-1 text-xs">
-              <Button v-if="isSlugLocked" type="button" size="sm" variant="outline" class="h-7 px-2"
-                @click="unlockSlug">
-                Edit
+            <div v-if="!hasManualSlug && !slugDuplicateError" class="absolute right-2 flex gap-1 text-xs">
+              <span
+                class="inline-flex h-7 items-center rounded-md bg-blue-50 px-2 text-[11px] font-medium text-blue-700">
+                Auto
+              </span>
+            </div>
+            <div v-else-if="slugDuplicateError && isSlugLocked" class="absolute right-2 flex gap-1 text-xs">
+              <Button type="button" size="sm" variant="outline" class="h-7 px-2 bg-white" @click="unlockSlug">
+                Edit Slug
               </Button>
-              <div v-else class="flex items-center gap-1">
-                <Button type="button" size="sm" variant="outline" class="h-7 px-2" @click="lockSlug">
-                  Kunci
-                </Button>
-                <Button type="button" size="sm" variant="ghost" class="h-7 px-2 text-slate-500" @click="resetSlug">
-                  Reset
-                </Button>
-              </div>
+            </div>
+            <div v-else-if="hasManualSlug" class="absolute right-2 flex gap-1 text-xs">
+              <Button type="button" size="sm" variant="ghost" class="h-7 px-2 text-slate-500" @click="resetSlug">
+                Reset
+              </Button>
             </div>
           </div>
           <p class="text-xs text-slate-500">
-            Slug otomatis dibuat dari nama produk. Klik Edit untuk menyesuaikan.
+            Slug otomatis dibuat dari nama produk dan tidak bisa diubah.
           </p>
-          <p v-if="form.errors.slug" class="text-xs text-red-600">
+          <p v-if="form.errors.slug && !slugDuplicateError" class="text-xs text-red-600">
             {{ form.errors.slug }}
           </p>
         </div>
@@ -686,9 +726,9 @@ onBeforeUnmount(() => {
             Deskripsi Produk
             <span class="text-red-500">*</span>
           </Label>
-          <Textarea id="description" v-model="form.description" rows="4" required
+          <RichTextEditor id="description" v-model="form.description"
             placeholder="Jelaskan detail produk, bahan, cara pakai, atau nilai tambah lain."
-            :class="form.errors.description ? 'border-red-500' : ''" />
+            :error="!!form.errors.description" />
           <p class="text-xs text-slate-500">
             Deskripsi yang jelas membantu meningkatkan konversi.
           </p>
@@ -1035,8 +1075,8 @@ onBeforeUnmount(() => {
               class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
           </label>
         </div>
-        <p v-if="!form.shipping_pickup && !form.shipping_delivery" class="text-xs text-amber-600 font-medium">
-          ⚠️ Pilih minimal satu metode pengiriman
+        <p v-if="!form.shipping_pickup && !form.shipping_delivery" class="text-xs text-red-600 font-medium">
+          Pilih minimal satu metode pengiriman
         </p>
       </CardContent>
       <CardFooter class="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">

@@ -15,47 +15,59 @@ class PaymentPageController extends Controller
     {
         $user = $request->user();
 
-        $selectedItems = collect(Arr::wrap($request->input('items')))
-            ->filter()
-            ->map(fn ($value) => (int) $value)
-            ->filter();
+        // Check if this is a buy-now flow
+        $buyNowData = session('buy_now');
+        $isBuyNow = !empty($buyNowData);
 
-        $cart = Cart::query()
-            ->open()
-            ->where('user_id', $user->id)
-            ->with([
-                'items' => function ($query) use ($selectedItems) {
-                    if ($selectedItems->isNotEmpty()) {
-                        $query->whereIn('id', $selectedItems);
-                    }
-                },
-                'items.product' => function ($query) {
-                    $query->select([
-                        'id',
-                        'name',
-                        'slug',
-                        'price',
-                        'sale_price',
-                        'stock',
-                        'min_order',
-                        'weight',
-                        'item_type',
-                        'location_city_id',
-                        'location_province_id',
-                        'location_district_id',
-                        'location_postal_code',
-                        'is_pdn',
-                        'store_id',
-                    ])->with([
-                        'store:id,name,is_umkm,tax_status,bumn_partner,province_id,city_id,district_id',
-                        'store.provinceRegion:id,name',
-                        'store.cityRegion:id,name',
-                    ]);
-                },
-            ])
-            ->first();
+        if ($isBuyNow) {
+            // Handle buy-now flow (product from session, not cart)
+            $orders = $this->buildBuyNowOrders($buyNowData, $request->input('shipping_selections', []));
+            $selectedItems = ['buy-now-'.$buyNowData['product_id']];
+        } else {
+            // Handle regular cart checkout
+            $selectedItems = collect(Arr::wrap($request->input('items')))
+                ->filter()
+                ->map(fn ($value) => (int) $value)
+                ->filter();
 
-        $orders = $cart ? $this->buildOrders($cart) : [];
+            $cart = Cart::query()
+                ->open()
+                ->where('user_id', $user->id)
+                ->with([
+                    'items' => function ($query) use ($selectedItems) {
+                        if ($selectedItems->isNotEmpty()) {
+                            $query->whereIn('id', $selectedItems);
+                        }
+                    },
+                    'items.product' => function ($query) {
+                        $query->select([
+                            'id',
+                            'name',
+                            'slug',
+                            'price',
+                            'sale_price',
+                            'stock',
+                            'min_order',
+                            'weight',
+                            'item_type',
+                            'location_city_id',
+                            'location_province_id',
+                            'location_district_id',
+                            'location_postal_code',
+                            'is_pdn',
+                            'store_id',
+                        ])->with([
+                            'store:id,name,is_umkm,tax_status,bumn_partner,province_id,city_id,district_id',
+                            'store.provinceRegion:id,name',
+                            'store.cityRegion:id,name',
+                        ]);
+                    },
+                ])
+                ->first();
+
+            $orders = $cart ? $this->buildOrders($cart) : [];
+            $selectedItems = $selectedItems->all();
+        }
 
         // Get default address
         $addresses = \App\Models\Address::query()
@@ -72,10 +84,73 @@ class PaymentPageController extends Controller
             'appName' => config('app.name', 'TP-PKK Marketplace'),
             'paymentMethods' => $this->paymentMethods(),
             'orders' => $orders,
-            'selectedItems' => $selectedItems->all(),
+            'selectedItems' => $selectedItems,
             'addressId' => $defaultAddress?->id,
             'shippingSelections' => $shippingSelections,
+            'isBuyNow' => $isBuyNow,
         ]);
+    }
+
+    protected function buildBuyNowOrders(array $buyNowData, array $shippingSelections): array
+    {
+        $product = Product::with([
+            'store:id,name,is_umkm,tax_status,bumn_partner,province_id,city_id,district_id,phone,rating,response_time_label',
+            'store.provinceRegion:id,name',
+            'store.cityRegion:id,name',
+        ])->find($buyNowData['product_id']);
+
+        if (!$product) {
+            return [];
+        }
+
+        $store = $product->store;
+        $price = $buyNowData['price'] ?? $product->sale_price ?? $product->price ?? 0;
+        $quantity = $buyNowData['quantity'] ?? 1;
+        $total = $price * $quantity;
+
+        $weight = $product->weight ? (int) $product->weight : 0;
+        $isService = $product->item_type === Product::ITEM_TYPE_SERVICE;
+        $typeLabel = $isService
+            ? 'Total Harga Jasa'
+            : "Total Harga {$quantity} Barang".($weight ? ' ('.number_format(($weight * $quantity) / 1000, 2).' kg)' : '');
+
+        $itemsList = [
+            [
+                'name' => $product->name,
+                'quantity' => $quantity,
+                'subtotal' => $total,
+            ],
+        ];
+
+        // Format phone for WhatsApp
+        $phone = $store?->phone;
+        $whatsappLink = null;
+        if ($phone) {
+            $formattedPhone = preg_replace('/[^0-9]/', '', $phone);
+            if (!str_starts_with($formattedPhone, '62')) {
+                $formattedPhone = '62' . ltrim($formattedPhone, '0');
+            }
+
+            $totalFormatted = number_format($total, 0, ',', '.');
+            $message = urlencode("Halo {$store->name},\n\nSaya tertarik dengan produk:\n{$product->name} x{$quantity}\n\nTotal: Rp {$totalFormatted}\n\nUntuk metode pembayaran Manual Transfer, mohon info rekening bank untuk transfer.\n\nTerima kasih!");
+            $whatsappLink = "https://wa.me/{$formattedPhone}?text={$message}";
+        }
+
+        return [
+            [
+                'title' => 'Pesanan 1',
+                'vendor' => $store?->name ?? 'Toko',
+                'store_phone' => $store?->phone,
+                'store_rating' => $store?->rating,
+                'store_response_time' => $store?->response_time_label,
+                'typeLabel' => $typeLabel,
+                'benefit' => $this->storeBenefit($store),
+                'shipping' => 0,
+                'total' => (int) $total,
+                'items' => $itemsList,
+                'whatsapp_link' => $whatsappLink,
+            ],
+        ];
     }
 
     protected function buildOrders(Cart $cart): array

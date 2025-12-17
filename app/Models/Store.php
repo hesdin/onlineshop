@@ -54,6 +54,8 @@ class Store extends Model implements HasMedia
         'city',
         'province',
         'district',
+        'logo_url',
+        'banner_url',
     ];
 
     public function products(): HasMany
@@ -98,10 +100,38 @@ class Store extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        $this->addMediaCollection('store_logo')
+            ->useDisk('public')
+            ->singleFile()
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+
+        $this->addMediaCollection('store_banner')
+            ->useDisk('public')
+            ->singleFile()
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+
         $this->addMediaCollection('owner_id_card')->useDisk('public')->singleFile();
         $this->addMediaCollection('nib_document')->useDisk('public')->singleFile();
         $this->addMediaCollection('npwp_document')->useDisk('public')->singleFile();
         $this->addMediaCollection('business_license')->useDisk('public')->singleFile();
         $this->addMediaCollection('pkp_document')->useDisk('public')->singleFile();
+    }
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        $media = $this->getFirstMedia('store_logo');
+        if (!$media) {
+            return null;
+        }
+        return '/storage/' . $media->id . '/' . $media->file_name;
+    }
+
+    public function getBannerUrlAttribute(): ?string
+    {
+        $media = $this->getFirstMedia('store_banner');
+        if (!$media) {
+            return null;
+        }
+        return '/storage/' . $media->id . '/' . $media->file_name;
     }
 }

@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, ShieldCheck } from 'lucide-vue-next';
+import { CheckCircle2, ShieldCheck, Camera, ImagePlus, X, Building2, MapPin } from 'lucide-vue-next';
 import RegionSelector from '@/components/RegionSelector.vue';
 
 type SelectOption = {
@@ -31,6 +31,8 @@ type StorePayload = {
   tax_status: string;
   bumn_partner: string | null;
   city: string | null;
+  province: string | null;
+  district: string | null;
   province_id: number | null;
   city_id: number | null;
   district_id: number | null;
@@ -39,6 +41,8 @@ type StorePayload = {
   is_verified: boolean;
   is_umkm: boolean;
   response_time_label: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
 };
 
 const props = defineProps<{
@@ -53,9 +57,10 @@ defineOptions({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? '');
-const flashInfo = computed(() => page.props.flash?.info ?? '');
-const flashError = computed(() => page.props.flash?.error ?? '');
+const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>);
+const flashSuccess = computed(() => flash.value.success ?? '');
+const flashInfo = computed(() => flash.value.info ?? '');
+const flashError = computed(() => flash.value.error ?? '');
 const showSuccess = ref(!!flashSuccess.value);
 
 watch(flashSuccess, (value) => {
@@ -82,15 +87,74 @@ const buildFormState = (store: StorePayload) => ({
   address_line: store.address_line ?? '',
   is_umkm: store.is_umkm ?? true,
   response_time_label: store.response_time_label ?? '',
+  logo: null as File | null,
+  banner: null as File | null,
 });
 
 const form = useForm(buildFormState(props.store));
 
+// Image preview states
+const logoPreview = ref<string | null>(props.store.logo_url);
+const bannerPreview = ref<string | null>(props.store.banner_url);
+const logoInput = ref<HTMLInputElement | null>(null);
+const bannerInput = ref<HTMLInputElement | null>(null);
+
+const handleLogoChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (file) {
+    form.logo = file;
+    logoPreview.value = URL.createObjectURL(file);
+  }
+};
+
+const handleBannerChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (file) {
+    form.banner = file;
+    bannerPreview.value = URL.createObjectURL(file);
+  }
+};
+
+const removeLogo = () => {
+  form.logo = null;
+  logoPreview.value = props.store.logo_url;
+  if (logoInput.value) {
+    logoInput.value.value = '';
+  }
+};
+
+const removeBanner = () => {
+  form.banner = null;
+  bannerPreview.value = props.store.banner_url;
+  if (bannerInput.value) {
+    bannerInput.value.value = '';
+  }
+};
+
 const submit = () => {
   if (props.hasStore) {
-    form.put('/seller/store', { preserveScroll: true });
+    form.transform((data) => {
+      const formData: Record<string, unknown> = {
+        ...data,
+        _method: 'PUT',
+      };
+      // Remove null files to avoid sending empty values
+      if (!formData.logo) delete formData.logo;
+      if (!formData.banner) delete formData.banner;
+      return formData;
+    }).post('/seller/store', {
+      preserveScroll: true,
+      forceFormData: true,
+    });
   } else {
-    form.post('/seller/store', { preserveScroll: true });
+    form.transform((data) => {
+      const formData: Record<string, unknown> = { ...data };
+      if (!formData.logo) delete formData.logo;
+      if (!formData.banner) delete formData.banner;
+      return formData;
+    }).post('/seller/store', { preserveScroll: true, forceFormData: true });
   }
 };
 
@@ -144,8 +208,12 @@ watch(
     form.reset();
     Object.assign(form, nextState);
     form.clearErrors();
+
+    // Update previews
+    logoPreview.value = nextStore.logo_url;
+    bannerPreview.value = nextStore.banner_url;
   },
-  { deep: true },
+  { deep: true, immediate: true },
 );
 </script>
 
@@ -156,7 +224,6 @@ watch(
 
     <div class="flex items-center justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-500">Profil Toko</p>
         <h1 class="text-2xl font-semibold text-slate-900">Kelola Toko</h1>
         <p class="text-sm text-slate-500">Lengkapi informasi toko agar pembeli lebih percaya.</p>
       </div>
@@ -187,14 +254,73 @@ watch(
     </Alert>
 
     <form @submit.prevent="submit" class="grid gap-6 lg:grid-cols-5">
+      <!-- Store Branding Card -->
+      <Card class="lg:col-span-5">
+        <CardHeader>
+          <div class="flex items-center gap-2">
+            <ImagePlus class="h-5 w-5 text-indigo-600" />
+            <CardTitle>Foto & Banner Toko</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent class="space-y-6">
+          <!-- Banner Upload -->
+          <div class="space-y-2">
+            <Label>Hero Banner</Label>
+            <div class="relative">
+              <div
+                class="relative h-48 w-full overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100 transition-colors cursor-pointer"
+                @click="bannerInput?.click()">
+                <img v-if="bannerPreview" :src="bannerPreview" alt="Store Banner" class="h-full w-full object-cover" />
+                <div v-else class="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
+                  <ImagePlus class="h-10 w-10" />
+                  <span class="text-sm font-medium">Klik untuk upload banner (1200 x 400 px)</span>
+                </div>
+              </div>
+              <button v-if="bannerPreview && form.banner" type="button" @click.stop="removeBanner"
+                class="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 text-white shadow-md hover:bg-red-600 transition-colors">
+                <X class="h-4 w-4" />
+              </button>
+            </div>
+            <input ref="bannerInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
+              @change="handleBannerChange" />
+            <p v-if="form.errors.banner" class="text-xs text-red-600">{{ form.errors.banner }}</p>
+          </div>
+
+          <!-- Logo Upload -->
+          <div class="space-y-2">
+            <Label>Logo Toko</Label>
+            <div class="flex items-center gap-6">
+              <div
+                class="relative h-28 w-28 overflow-hidden rounded-full border-2 border-dashed border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100 transition-colors cursor-pointer flex-shrink-0"
+                @click="logoInput?.click()">
+                <img v-if="logoPreview" :src="logoPreview" alt="Store Logo" class="h-full w-full object-cover" />
+                <div v-else class="flex h-full flex-col items-center justify-center gap-1 text-slate-400">
+                  <Camera class="h-8 w-8" />
+                  <span class="text-xs font-medium">Upload</span>
+                </div>
+                <button v-if="logoPreview && form.logo" type="button" @click.stop="removeLogo"
+                  class="absolute -top-1 -right-1 rounded-full bg-red-500 p-1 text-white shadow-md hover:bg-red-600 transition-colors">
+                  <X class="h-3 w-3" />
+                </button>
+              </div>
+              <div class="text-sm text-slate-500">
+                <p class="font-medium text-slate-700">Upload logo toko</p>
+                <p>Format: JPG, PNG, WEBP. Maksimal 2MB.</p>
+                <p>Ukuran yang disarankan: 200 x 200 px</p>
+              </div>
+            </div>
+            <input ref="logoInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
+              @change="handleLogoChange" />
+            <p v-if="form.errors.logo" class="text-xs text-red-600">{{ form.errors.logo }}</p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card class="lg:col-span-3">
         <CardHeader>
           <div class="flex items-center gap-2">
             <ShieldCheck class="h-5 w-5 text-indigo-600" />
-            <div>
-              <CardTitle>Identitas Toko</CardTitle>
-              <CardDescription>Nama, slug, dan deskripsi toko.</CardDescription>
-            </div>
+            <CardTitle>Identitas Toko</CardTitle>
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
@@ -247,14 +373,17 @@ watch(
 
       <Card class="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Jenis Toko & Perpajakan</CardTitle>
-          <CardDescription>Sesuaikan kategori usaha dan status pajak.</CardDescription>
+          <div class="flex items-center gap-2">
+            <Building2 class="h-5 w-5 text-indigo-600" />
+            <CardTitle>Jenis Toko & Perpajakan</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent class="grid gap-4 sm:grid-cols-2">
+        <CardContent class="space-y-4">
+          <!-- Jenis Toko - Full Width -->
           <div class="space-y-2">
             <Label for="type">Jenis Toko</Label>
-            <Select v-model="form.type">
-              <SelectTrigger id="type" :class="form.errors.type ? 'border-red-500' : ''">
+            <Select v-model="form.type" class="w-full">
+              <SelectTrigger id="type" class="w-full" :class="form.errors.type ? 'border-red-500' : ''">
                 <SelectValue placeholder="Pilih jenis" />
               </SelectTrigger>
               <SelectContent>
@@ -268,10 +397,11 @@ watch(
             </p>
           </div>
 
+          <!-- Status Pajak - Full Width -->
           <div class="space-y-2">
             <Label for="tax_status">Status Pajak</Label>
-            <Select v-model="form.tax_status">
-              <SelectTrigger id="tax_status" :class="form.errors.tax_status ? 'border-red-500' : ''">
+            <Select v-model="form.tax_status" class="w-full">
+              <SelectTrigger id="tax_status" class="w-full" :class="form.errors.tax_status ? 'border-red-500' : ''">
                 <SelectValue placeholder="Pilih status pajak" />
               </SelectTrigger>
               <SelectContent>
@@ -285,7 +415,7 @@ watch(
             </p>
           </div>
 
-          <div class="space-y-2 sm:col-span-2">
+          <div class="space-y-2">
             <Label for="bumn_partner">Mitra BUMN (opsional)</Label>
             <Input id="bumn_partner" v-model="form.bumn_partner" placeholder="Contoh: PT PLN Persero"
               :class="form.errors.bumn_partner ? 'border-red-500' : ''" />
@@ -306,8 +436,10 @@ watch(
 
       <Card class="lg:col-span-5">
         <CardHeader>
-          <CardTitle>Alamat & Respon</CardTitle>
-          <CardDescription>Lokasi pengiriman dan estimasi respon chat.</CardDescription>
+          <div class="flex items-center gap-2">
+            <MapPin class="h-5 w-5 text-indigo-600" />
+            <CardTitle>Alamat & Respon</CardTitle>
+          </div>
         </CardHeader>
         <CardContent class="space-y-4">
           <RegionSelector v-model:provinceId="form.province_id" v-model:cityId="form.city_id"
@@ -347,11 +479,7 @@ watch(
           </div>
         </CardContent>
         <Separator />
-        <CardContent class="flex items-center justify-between">
-          <div class="flex items-center gap-2 text-xs text-slate-500">
-            <ShieldCheck class="h-4 w-4 text-indigo-600" />
-            <span>{{ hasStore ? 'Perbarui detail toko Anda' : 'Buat profil toko baru' }}</span>
-          </div>
+        <CardContent class="flex items-center justify-end">
           <div class="flex items-center gap-3">
             <Button type="button" variant="outline" as-child>
               <Link href="/seller/dashboard">Batal</Link>

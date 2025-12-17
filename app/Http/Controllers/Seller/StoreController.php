@@ -37,7 +37,17 @@ class StoreController extends Controller
         $data['is_verified'] = false;
         $data['transactions_count'] = $data['transactions_count'] ?? 0;
 
-        Store::create($data);
+        $store = Store::create($data);
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            $store->addMediaFromRequest('logo')->toMediaCollection('store_logo');
+        }
+
+        // Handle banner upload
+        if ($request->hasFile('banner')) {
+            $store->addMediaFromRequest('banner')->toMediaCollection('store_banner');
+        }
 
         return Redirect::route('seller.store.edit')->with('success', 'Profil toko berhasil dibuat.');
     }
@@ -53,12 +63,22 @@ class StoreController extends Controller
             $data['is_verified'] = false;
             $data['transactions_count'] = $data['transactions_count'] ?? 0;
 
-            Store::create($data);
-
-            return Redirect::route('seller.store.edit')->with('success', 'Profil toko berhasil dibuat.');
+            $store = Store::create($data);
+        } else {
+            $store->update($data);
         }
 
-        $store->update($data);
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            $store->clearMediaCollection('store_logo');
+            $store->addMediaFromRequest('logo')->toMediaCollection('store_logo');
+        }
+
+        // Handle banner upload
+        if ($request->hasFile('banner')) {
+            $store->clearMediaCollection('store_banner');
+            $store->addMediaFromRequest('banner')->toMediaCollection('store_banner');
+        }
 
         return Redirect::route('seller.store.edit')->with('success', 'Profil toko berhasil diperbarui.');
     }
@@ -85,6 +105,8 @@ class StoreController extends Controller
             'is_verified' => $store->is_verified,
             'is_umkm' => $store->is_umkm,
             'response_time_label' => $store->response_time_label,
+            'logo_url' => $store->logo_url,
+            'banner_url' => $store->banner_url,
         ];
     }
 
@@ -106,6 +128,8 @@ class StoreController extends Controller
             'is_verified' => false,
             'is_umkm' => true,
             'response_time_label' => '',
+            'logo_url' => null,
+            'banner_url' => null,
         ];
     }
 

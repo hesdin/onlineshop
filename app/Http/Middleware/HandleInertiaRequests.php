@@ -49,6 +49,7 @@ class HandleInertiaRequests extends Middleware
                         'roles' => method_exists($request->user(), 'getRoleNames')
                             ? $request->user()->getRoleNames()->toArray()
                             : [],
+                        'avatar_url' => $request->user()->getFirstMediaUrl('profile_image') ?: null,
                     ]
                     : null,
             ],
