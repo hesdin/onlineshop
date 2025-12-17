@@ -77,9 +77,6 @@ class ProductSeeder extends Seeder
                     'category_id' => $categories->random()->id,
                     'min_order' => 1,
                     'weight' => 1000,
-                    'is_pdn' => true,
-                    'is_pkp' => false,
-                    'is_tkdn' => false,
                     'visibility_scope' => Product::VISIBILITY_GLOBAL,
                 ], $productData)
             );
