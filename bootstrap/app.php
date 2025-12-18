@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust all proxies (handle HTTPS behind reverse proxy)
+        $middleware->trustProxies(at: '*');
+
         $middleware->web([
             HandleInertiaRequests::class,
             NoCacheHeaders::class,
