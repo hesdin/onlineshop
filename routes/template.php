@@ -71,4 +71,4 @@ Route::get('register', function (Request $request) {
     }
 
     return view('auth.register');
-})->name('register');
+})->name('template.register');
