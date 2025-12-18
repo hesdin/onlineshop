@@ -47,7 +47,8 @@ onUnmounted(stop);
   <div class="flex flex-1 flex-col items-center justify-center text-center lg:items-start lg:text-left">
     <div class="max-w-md">
       <div v-for="(slide, index) in slides" :key="index" :class="index === current ? '' : 'hidden'" class="space-y-6">
-        <img :src="slide.image" alt="Login slide" class="mx-auto w-[230px] sm:w-[290px] lg:w-[320px] object-contain" />
+        <!-- Image commented out for now -->
+        <!-- <img :src="slide.image" alt="Login slide" class="mx-auto w-[230px] sm:w-[290px] lg:w-[320px] object-contain" /> -->
         <div>
           <h2 class="text-2xl sm:text-3xl font-bold">
             {{ slide.title }}
@@ -59,14 +60,9 @@ onUnmounted(stop);
       </div>
 
       <div class="mt-6 flex items-center justify-center gap-2 lg:justify-start">
-        <button
-          v-for="dot in dots"
-          :key="dot"
-          @click="showSlide(dot)"
+        <button v-for="dot in dots" :key="dot" @click="showSlide(dot)"
           :class="dot === current ? 'h-2 w-6 rounded-full bg-white' : 'h-2 w-2 rounded-full bg-white/50'"
-          class="transition-all"
-          type="button"
-        ></button>
+          class="transition-all" type="button"></button>
       </div>
     </div>
   </div>

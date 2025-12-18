@@ -37,6 +37,7 @@ import {
   Upload,
   Image,
 } from 'lucide-vue-next';
+import RestrictedActionTooltip from '@/components/RestrictedActionTooltip.vue';
 
 type StatusOption = {
   value: string;
@@ -617,9 +618,16 @@ const fullAddress = computed(() => {
                 </p>
               </div>
 
-              <Button type="submit" class="w-full" :disabled="form.processing">
-                {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
-              </Button>
+              <RestrictedActionTooltip :disabled="!($page.props.auth as any).seller_document?.is_approved" :reason="($page.props.auth as any).seller_document?.submission_status === 'submitted'
+                ? 'Dokumen sedang dalam proses verifikasi. Fitur ini akan aktif setelah disetujui.'
+                : 'Verifikasi dokumen toko Anda untuk memproses pesanan.'">
+                <div class="w-full">
+                  <Button type="submit" class="w-full"
+                    :disabled="form.processing || !($page.props.auth as any).seller_document?.is_approved">
+                    {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                  </Button>
+                </div>
+              </RestrictedActionTooltip>
             </form>
           </CardContent>
         </Card>

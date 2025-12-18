@@ -20,11 +20,13 @@ import {
   Layers,
   Package,
   ShieldCheck,
+  ShieldAlert,
   Users,
   FolderKanban,
   ShoppingCart,
   CreditCard,
   TicketPercent,
+  Image,
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -35,9 +37,11 @@ const navMain = [
   { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { title: 'Users', href: '/admin/users', icon: Users },
   { title: 'Toko', href: '/admin/stores', icon: ShieldCheck },
+  { title: 'Verifikasi Dokumen', href: '/admin/seller-documents', icon: ShieldAlert },
   { title: 'Kategori', href: '/admin/categories', icon: Layers },
   { title: 'Produk', href: '/admin/products', icon: Package },
   { title: 'Koleksi', href: '/admin/collections', icon: FolderKanban },
+  { title: 'Banner', href: '/admin/banners', icon: Image },
   { title: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
   { title: 'Metode Bayar', href: '/admin/payment-methods', icon: CreditCard },
   { title: 'Kode Promo', href: '/admin/promo-codes', icon: TicketPercent },
@@ -72,8 +76,8 @@ const isActive = (href) => {
             <SidebarMenuItem v-for="item in navMain" :key="item.title">
               <SidebarMenuButton :is-active="isActive(item.href)" :tooltip="item.title" as-child class="text-slate-600">
                 <Link :href="item.href">
-                <component :is="item.icon" class="h-4 w-4" />
-                <span>{{ item.title }}</span>
+                  <component :is="item.icon" class="h-4 w-4" />
+                  <span>{{ item.title }}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

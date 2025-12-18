@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-vue-next';
 
 defineOptions({
   layout: AdminDashboardLayout,
@@ -31,13 +30,11 @@ const submit = () => {
 
     <Head title="Tambah Metode Pembayaran" />
 
-    <div class="flex items-center gap-3">
-      <Button variant="ghost" size="icon" as-child>
-        <Link href="/admin/payment-methods">
-        <ArrowLeft class="h-4 w-4" />
-        </Link>
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-xl font-bold tracking-tight text-slate-900">Tambah Metode Pembayaran</h1>
+      <Button variant="outline" size="sm" @click="router.visit('/admin/payment-methods')" :disabled="form.processing">
+        Kembali
       </Button>
-      <h1 class="text-2xl font-semibold text-slate-900">Tambah Metode Pembayaran</h1>
     </div>
 
     <Card>

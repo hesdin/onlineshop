@@ -135,6 +135,11 @@ class OrderController extends Controller
 
         abort_if($order->store_id !== $store->id, 403);
 
+        $sellerDocument = $store->sellerDocument;
+        if (! $sellerDocument || ! $sellerDocument->isApproved()) {
+             return Redirect::back()->with('error', 'Verifikasi dokumen diperlukan untuk memproses pesanan.');
+        }
+
         // Store previous status for notification
         $previousStatus = $order->status;
         $previousPaymentStatus = $order->payment_status;

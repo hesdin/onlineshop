@@ -16,38 +16,21 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  heroBanners: {
+    type: Array,
+    default: () => [],
+  },
+  heroPromos: {
+    type: Array,
+    default: () => [],
+  },
 });
 
-const heroBanners = [
-  {
-    image: '/assets/img/hero/hero-1.png',
-    url: '#internet-bisnis',
-    label: 'Promo internet bisnis',
-  },
-  {
-    image: '/assets/img/hero/hero-2.png',
-    url: '#hibah-digital',
-    label: 'Hibah digitalisasi UMKM',
-  },
-  {
-    image: '/assets/img/hero/hero-3.jpg',
-    url: '#paket-hampers',
-    label: 'Paket hampers akhir tahun',
-  },
-];
+const heroBanners = computed(() => props.heroBanners ?? []);
 
-const heroPromos = [
-  {
-    image: '/assets/img/hero/hero-right-1.jpg',
-    alt: 'Gratis ongkir Jakarta dan diskon Sinar Bersih',
-    url: '#promo-rumah-tangga',
-  },
-  {
-    image: '/assets/img/hero/hero-right-2.png',
-    alt: 'Proses kilat dapur solo lunch box',
-    url: '#promo-kuliner',
-  },
-];
+const heroPromos = computed(() => props.heroPromos ?? []);
+
+const hasMultipleBanners = computed(() => heroBanners.value.length > 1);
 
 const categoryPalette = [
   'bg-amber-50 text-amber-700',
@@ -219,9 +202,10 @@ let heroTimer = null;
 
 const startHero = () => {
   if (typeof window === 'undefined') return;
+  if (!hasMultipleBanners.value) return;
   stopHero();
   heroTimer = window.setInterval(() => {
-    heroActive.value = (heroActive.value + 1) % heroBanners.length;
+    heroActive.value = (heroActive.value + 1) % heroBanners.value.length;
   }, 4500);
 };
 
@@ -233,11 +217,11 @@ const stopHero = () => {
 };
 
 const prevHero = () => {
-  heroActive.value = (heroActive.value + heroBanners.length - 1) % heroBanners.length;
+  heroActive.value = (heroActive.value + heroBanners.value.length - 1) % heroBanners.value.length;
 };
 
 const nextHero = () => {
-  heroActive.value = (heroActive.value + 1) % heroBanners.length;
+  heroActive.value = (heroActive.value + 1) % heroBanners.value.length;
 };
 
 const setHeroSlide = (index) => {
@@ -286,11 +270,25 @@ const scrollCollection = (index, direction) => {
 
     <Head :title="`${props.appName} - Marketplace B2B`" />
 
+    <!-- Hero Banner -->
     <section>
-      <div class="grid gap-4 lg:grid-cols-3 lg:items-stretch">
-        <article class="lg:col-span-2" @mouseenter="stopHero" @mouseleave="startHero">
-          <div class="relative h-full overflow-hidden rounded-lg bg-slate-50" style="aspect-ratio: 1440 / 620;">
-            <template v-for="(banner, index) in heroBanners" :key="banner.label">
+      <div class="grid gap-4 lg:grid-cols-[3fr_2fr] lg:items-stretch">
+        <article class="min-w-0 overflow-hidden rounded-lg" @mouseenter="stopHero" @mouseleave="startHero">
+          <div class="relative w-full overflow-hidden rounded-lg bg-slate-50" style="aspect-ratio: 16 / 7;">
+            <!-- Empty state -->
+            <div v-if="!heroBanners.length" class="flex h-full items-center justify-center">
+              <div class="text-center text-slate-400">
+                <svg class="mx-auto h-12 w-12 mb-2" fill="none" stroke="currentColor" stroke-width="1.5"
+                  viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+                <p class="text-sm font-medium">Belum ada banner</p>
+              </div>
+            </div>
+
+            <!-- Banner slides -->
+            <template v-for="(banner, index) in heroBanners" :key="banner.label || index">
               <a v-show="heroActive === index" class="block h-full w-full" :href="banner.url" target="_blank"
                 rel="noopener">
                 <img :src="banner.image" :alt="banner.label"
@@ -298,14 +296,16 @@ const scrollCollection = (index, direction) => {
               </a>
             </template>
 
-            <div class="pointer-events-none absolute inset-0 flex items-center justify-between px-4">
-              <button class="pointer-events-auto rounded-full bg-white/80 p-2 text-slate-700 shadow"
+            <!-- Navigation arrows (only if multiple banners) -->
+            <div v-if="hasMultipleBanners"
+              class="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4">
+              <button class="pointer-events-auto rounded-full bg-white/80 p-2 text-slate-700 shadow hover:bg-white"
                 @click="prevHero(); restartHero();">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path d="m15 18-6-6 6-6" />
                 </svg>
               </button>
-              <button class="pointer-events-auto rounded-full bg-white/80 p-2 text-slate-700 shadow"
+              <button class="pointer-events-auto rounded-full bg-white/80 p-2 text-slate-700 shadow hover:bg-white"
                 @click="nextHero(); restartHero();">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path d="m9 6 6 6-6 6" />
@@ -313,9 +313,11 @@ const scrollCollection = (index, direction) => {
               </button>
             </div>
 
-            <div class="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 shadow">
+            <!-- Dots indicator (only if multiple banners) -->
+            <div v-if="hasMultipleBanners"
+              class="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 shadow">
               <span class="h-[6px] w-10 rounded-full bg-slate-200"></span>
-              <button v-for="(banner, index) in heroBanners" :key="`dot-${banner.label}`"
+              <button v-for="(banner, index) in heroBanners" :key="`dot-${banner.label || index}`"
                 class="h-2 w-2 rounded-full bg-slate-200 transition hover:bg-sky-500"
                 :class="heroActive === index ? 'scale-100 bg-sky-500' : 'opacity-80'"
                 @click="setHeroSlide(index); restartHero();" :aria-label="`Slide ${index + 1}`"></button>
@@ -324,11 +326,16 @@ const scrollCollection = (index, direction) => {
         </article>
 
         <article class="flex h-full flex-col gap-4">
-          <a v-for="promo in heroPromos" :key="promo.alt" :href="promo.url"
-            class="group flex-1 overflow-hidden rounded-lg ring-1 ring-slate-100">
-            <img :src="promo.image" :alt="promo.alt"
-              class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
-          </a>
+          <template v-if="heroPromos.length">
+            <a v-for="promo in heroPromos" :key="promo.alt || promo.url" :href="promo.url"
+              class="group flex-1 overflow-hidden rounded-lg ring-1 ring-slate-100">
+              <img :src="promo.image" :alt="promo.alt"
+                class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+            </a>
+          </template>
+          <div v-else class="flex flex-1 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+            <p class="text-sm">Belum ada promo</p>
+          </div>
         </article>
       </div>
 

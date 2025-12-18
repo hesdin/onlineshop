@@ -1,9 +1,18 @@
-<script setup>
-import { Link } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Bell } from 'lucide-vue-next';
+<script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import SellerDashboardSidebar from './SellerDashboardSidebar.vue';
+import SellerDashboardHeader from '@/components/SellerDashboardHeader.vue';
+import DocumentStatusBanner from '@/components/DocumentStatusBanner.vue';
+import { computed } from 'vue';
+
+const page = usePage();
+
+const needsAttention = computed(() => {
+  const docStatus = (page.props.auth as any).seller_document;
+  if (!docStatus) return true;
+  return !docStatus.is_approved;
+});
 </script>
 
 <template>
@@ -12,29 +21,11 @@ import SellerDashboardSidebar from './SellerDashboardSidebar.vue';
       <SellerDashboardSidebar />
 
       <SidebarInset class="flex-1 w-full !m-0">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-4">
-          <div class="flex items-center gap-3">
-            <SidebarTrigger class="-ml-1" />
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Seller Center
-              </p>
-              <p class="text-sm text-slate-500">Pantau performa tokomu dan respon pesanan.</p>
-            </div>
-          </div>
+        <SellerDashboardHeader />
 
-          <div class="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="icon" class="text-slate-500 hover:text-slate-700">
-              <Bell class="h-4 w-4" />
-              <span class="sr-only">Notifikasi</span>
-            </Button>
-            <Button variant="secondary" as-child>
-              <Link href="/logout" method="post" as="button">
-                Keluar
-              </Link>
-            </Button>
-          </div>
-        </header>
+        <DocumentStatusBanner v-if="needsAttention"
+          :status="($page.props.auth as any).seller_document?.submission_status"
+          :admin-notes="($page.props.auth as any).seller_document?.admin_notes" />
 
         <main class="flex-1 w-full max-w-full bg-slate-50 px-6 py-6">
           <slot />

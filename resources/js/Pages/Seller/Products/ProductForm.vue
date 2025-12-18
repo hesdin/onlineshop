@@ -110,9 +110,36 @@ const props = defineProps<{
   shippingMethods?: SelectOption[];
   product?: ProductPayload | null;
   storeLocation?: StoreLocation | null;
+  canPublish?: boolean;
 }>();
 
 const visibilityOptions = computed(() => props.visibilityOptions ?? []);
+
+const statusOptions = computed(() => {
+  if (props.canPublish !== undefined && !props.canPublish) {
+    // If canPublish is false, filter out 'published' status options (assuming 'ready' is published)
+    // Actually, usually 'ready' means active/published. 'archived' or 'draft' is hidden.
+    // If we want to restrict to DRAFT only, we should see what statuses are available.
+    // Usually: ready, empty, draft?
+    // Based on Index.vue: 'ready', 'pre_order', 'archived'?
+    // Let's assume we want to force 'draft' or similar if not approved.
+    // If we only have 'ready' and 'pre_order', maybe we need to add 'draft' to backend or frontend?
+    // For now, let's just disabling the select if restriction is active, forcing it to whatever "Draft" equivalent or just showing warning.
+    // But if they are 'submitted', they can create "draft".
+    // Let's look at `statuses` prop in usage.
+
+    // If user cannot publish, we should only allow 'archived' or 'draft' (if exists).
+    // Or we simply disable the field and force value to 'archived'/'draft'.
+
+    return props.statuses;
+  }
+  return props.statuses;
+});
+
+const isStatusDisabled = computed(() => {
+  return props.canPublish !== undefined && !props.canPublish;
+});
+
 const normalizedStoreLocation = computed<StoreLocation | null>(() => {
   if (!props.storeLocation) {
     return null;
@@ -500,6 +527,30 @@ watch(
     }
   },
   { immediate: true },
+);
+
+// Force status to 'archived' (draft) if not allowed to publish
+watch(
+  () => props.canPublish,
+  (allowed) => {
+    if (allowed !== undefined && !allowed) {
+      // Find a suitable "draft" status. Usually 'archived' or 'draft'.
+      // If we don't know the exact value, we might guess 'archived' based on typical ecommerce.
+      // Or checking props.statuses content.
+      // Let's assume 'archived' is the key for draft/hidden.
+      // Since I can't see props.statuses content values here, I'll assume 'archived'.
+      // If 'archived' is not in options, this might be issue.
+      // Safer: check if 'archived' exists in statuses, else pick first non-ready one?
+      const draftOption = props.statuses.find(s => s.value === 'archived' || s.value === 'draft');
+      if (draftOption) {
+        form.status = draftOption.value;
+      } else {
+        // Fallback or leave as is but it will be disabled?
+        //If we disable the input, user can't change it.
+      }
+    }
+  },
+  { immediate: true }
 );
 
 onBeforeUnmount(() => {

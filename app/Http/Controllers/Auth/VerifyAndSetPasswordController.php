@@ -55,6 +55,13 @@ class VerifyAndSetPasswordController extends Controller
             event(new Verified($user));
         }
 
+        // For sellers, redirect to document upload page
+        if ($user->hasRole('seller')) {
+            auth()->login($user);
+            return redirect()->route('seller.documents.show')
+                ->with('success', 'Password berhasil dibuat. Silakan lengkapi dokumen usaha Anda.');
+        }
+
         return redirect()->route($this->loginRouteName($user))->with('success', 'Password berhasil diubah. Silakan login.');
     }
 

@@ -28,6 +28,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { AlertTriangle, CheckCircle2, Edit2, Filter, Plus, Search, Trash2 } from 'lucide-vue-next';
+import RestrictedActionTooltip from '@/components/RestrictedActionTooltip.vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 
 type Option = {
@@ -81,7 +82,7 @@ defineOptions({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? '');
+const flashSuccess = computed(() => (page.props as any).flash?.success ?? '');
 const successVisible = ref(false);
 let successTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -425,17 +426,25 @@ const hasActiveFilters = computed(
       <span>{{ flashSuccess }}</span>
     </Alert>
 
+
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-semibold text-slate-900">Produk Toko</h1>
         <p class="text-sm text-slate-500">Kelola katalog dan stok yang tampil di etalase.</p>
       </div>
-      <Button as-child>
-        <Link href="/seller/products/create">
-          <Plus class="h-4 w-4" />
-          Produk
-        </Link>
-      </Button>
+      <RestrictedActionTooltip :disabled="!($page.props.auth as any).seller_document?.is_approved" :reason="($page.props.auth as any).seller_document?.submission_status === 'submitted'
+        ? 'Dokumen sedang dalam proses verifikasi. Fitur ini akan aktif setelah disetujui.'
+        : 'Lengkapi dan verifikasi dokumen toko untuk menambah produk.'">
+        <div class="w-full">
+          <Button as-child :disabled="!($page.props.auth as any).seller_document?.is_approved">
+            <Link href="/seller/products/create"
+              :class="{ 'pointer-events-none opacity-50': !($page.props.auth as any).seller_document?.is_approved }">
+              <Plus class="h-4 w-4" />
+              Produk
+            </Link>
+          </Button>
+        </div>
+      </RestrictedActionTooltip>
     </div>
 
     <section class="space-y-4">

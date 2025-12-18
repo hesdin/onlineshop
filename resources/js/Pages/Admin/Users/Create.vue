@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
@@ -43,13 +42,11 @@ const submit = () => {
     <Head title="Tambah User" />
 
     <!-- Header -->
-    <div class="flex items-center gap-3">
-      <Button variant="ghost" size="icon" as-child>
-        <Link href="/admin/users">
-        <ArrowLeft class="h-4 w-4" />
-        </Link>
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-xl font-bold tracking-tight text-slate-900">Tambah User Baru</h1>
+      <Button variant="outline" size="sm" @click="router.visit('/admin/users')" :disabled="form.processing">
+        Kembali
       </Button>
-      <h1 class="text-2xl font-semibold text-slate-900">Tambah User Baru</h1>
     </div>
 
     <Card>
@@ -72,7 +69,8 @@ const submit = () => {
           </div>
 
           <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-            Password awal di-set otomatis (password123) dan user akan diminta membuat password baru via email verifikasi.
+            Password awal di-set otomatis (password123) dan user akan diminta membuat password baru via email
+            verifikasi.
           </p>
 
           <div class="space-y-2">
@@ -83,7 +81,8 @@ const submit = () => {
                 {{ role }}
               </option>
             </select>
-            <p class="text-xs text-slate-500">Hanya dapat menambahkan role seller atau superadmin (customer daftar sendiri).</p>
+            <p class="text-xs text-slate-500">Hanya dapat menambahkan role seller atau superadmin (customer daftar
+              sendiri).</p>
             <p v-if="form.errors.roles" class="text-xs text-red-600">{{ form.errors.roles }}</p>
           </div>
 

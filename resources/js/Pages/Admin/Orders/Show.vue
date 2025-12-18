@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft } from 'lucide-vue-next';
 
 const props = defineProps<{
   order: any;
@@ -43,16 +42,14 @@ const formatCurrency = (value: number) => {
 
     <Head :title="`Pesanan #${order.order_number}`" />
 
-    <div class="flex items-center gap-3">
-      <Button variant="ghost" size="icon" as-child>
-        <Link href="/admin/orders">
-        <ArrowLeft class="h-4 w-4" />
-        </Link>
-      </Button>
+    <div class="flex items-center justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Detail Pesanan</h1>
+        <h1 class="text-xl font-bold tracking-tight text-slate-900">Detail Pesanan</h1>
         <p class="text-sm text-slate-500">{{ order.order_number }}</p>
       </div>
+      <Button variant="outline" size="sm" @click="router.visit('/admin/orders')" :disabled="form.processing">
+        Kembali
+      </Button>
     </div>
 
     <div class="grid gap-6 md:grid-cols-3">

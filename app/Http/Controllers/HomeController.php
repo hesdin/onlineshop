@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Banner;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Support\CustomerLocationResolver;
@@ -48,10 +49,36 @@ class HomeController extends Controller
             ->map(fn (Collection $collection) => $this->transformCollection($collection))
             ->values();
 
+        $heroBanners = Banner::active()
+            ->heroSlider()
+            ->ordered()
+            ->take(5)
+            ->get()
+            ->map(fn (Banner $banner) => [
+                'image' => $banner->image_url,
+                'url' => $banner->url ?? '#',
+                'label' => $banner->alt_text ?? $banner->title,
+            ])
+            ->values();
+
+        $heroPromos = Banner::active()
+            ->heroPromo()
+            ->ordered()
+            ->take(2)
+            ->get()
+            ->map(fn (Banner $banner) => [
+                'image' => $banner->image_url,
+                'alt' => $banner->alt_text ?? $banner->title,
+                'url' => $banner->url ?? '#',
+            ])
+            ->values();
+
         return Inertia::render('Home', [
             'appName' => config('app.name', 'TP-PKK Marketplace'),
             'categories' => $categories,
             'collections' => $collections,
+            'heroBanners' => $heroBanners,
+            'heroPromos' => $heroPromos,
         ]);
     }
 

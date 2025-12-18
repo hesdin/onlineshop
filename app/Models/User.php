@@ -58,6 +58,11 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
         return $this->hasOne(UserProfile::class);
     }
 
+    public function store(): HasOne
+    {
+        return $this->hasOne(Store::class);
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('profile_image')

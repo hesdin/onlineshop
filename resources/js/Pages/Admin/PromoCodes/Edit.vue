@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-vue-next';
 
 const props = defineProps<{
   promoCode: any;
@@ -49,13 +48,11 @@ const submit = () => {
 
     <Head title="Edit Kode Promo" />
 
-    <div class="flex items-center gap-3">
-      <Button variant="ghost" size="icon" as-child>
-        <Link href="/admin/promo-codes">
-        <ArrowLeft class="h-4 w-4" />
-        </Link>
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-xl font-bold tracking-tight text-slate-900">Edit Kode Promo</h1>
+      <Button variant="outline" size="sm" @click="router.visit('/admin/promo-codes')" :disabled="form.processing">
+        Kembali
       </Button>
-      <h1 class="text-2xl font-semibold text-slate-900">Edit Kode Promo</h1>
     </div>
 
     <Card>

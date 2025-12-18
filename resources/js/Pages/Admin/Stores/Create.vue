@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import {
   Card,
   CardContent,
@@ -23,7 +23,7 @@ import {
   CommandItem,
 } from '@/components/ui/command';
 import { computed, ref, watch } from 'vue';
-import { ArrowLeft, Factory, Check, ChevronsUpDown } from 'lucide-vue-next';
+import { Factory, Check, ChevronsUpDown } from 'lucide-vue-next';
 import RegionSelector from '@/components/RegionSelector.vue';
 
 const props = defineProps({
@@ -149,11 +149,8 @@ const filteredSellerOptions = computed(() => {
         <h1 class="text-2xl font-bold text-slate-900">Lengkapi Profil Toko Baru</h1>
         <p class="text-sm text-slate-500">Pastikan detail vendor diisi lengkap sebelum proses verifikasi.</p>
       </div>
-      <Button variant="outline" as-child>
-        <Link href="/admin/stores">
-          <ArrowLeft class="mr-2 h-4 w-4" />
-          Kembali
-        </Link>
+      <Button variant="outline" size="sm" @click="router.visit('/admin/stores')" :disabled="form.processing">
+        Kembali
       </Button>
     </div>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SellerDashboardLayout from '@/Layouts/SellerDashboardLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import ProductForm from './ProductForm.vue';
 
@@ -91,7 +91,8 @@ defineOptions({
     <ProductForm mode="edit" :product="props.product" :category-options="props.categoryOptions"
       :statuses="props.statuses" :item-types="props.itemTypes" :visibility-options="props.visibilityOptions"
       :shipping-methods="props.shippingMethods" :store-location="props.storeLocation"
-      :submit-url="`/seller/products/${product.id}`">
+      :submit-url="`/seller/products/${product.id}`"
+      :can-publish="($page.props.auth as any).seller_document?.is_approved">
       <template #cancel>
         <Link href="/seller/products">Batal</Link>
       </template>

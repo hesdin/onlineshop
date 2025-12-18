@@ -61,17 +61,15 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
       <LoginHeroSlider :slides="slides" />
 
       <div class="relative flex-1">
-        <div class="relative z-10 ml-auto w-full max-w-lg rounded-lg bg-white p-8 sm:p-10 text-slate-900 shadow-sm">
+        <div class="relative z-10 ml-auto w-full max-w-lg rounded-md bg-white p-8 sm:p-10 text-slate-900 shadow-sm">
+          <Link href="/login"
+            class="inline-flex items-center text-2xl font-bold text-slate-500 hover:text-slate-700 mb-4">
+            <span>&larr;</span>
+          </Link>
           <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <Link href="/login"
-                class="flex h-10 w-10 items-center justify-center rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
-                <span class="text-xl font-semibold leading-none">&larr;</span>
-              </Link>
-              <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login Pembeli</h3>
-            </div>
+            <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login Pembeli</h3>
             <div
-              class="flex h-10 w-28 items-center justify-center rounded-lg border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
+              class="flex h-10 w-28 items-center justify-center rounded-md border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
               TP-PKK Marketplace
             </div>
           </div>
@@ -113,8 +111,15 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
             </div>
 
             <button type="submit"
-              class="mt-4 flex w-full items-center justify-center rounded-md bg-sky-600 py-3 text-sm sm:text-base font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
+              class="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-sky-600 py-3 text-sm sm:text-base font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
               :disabled="form.processing">
+              <svg v-if="form.processing" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
               {{ form.processing ? 'Memproses...' : 'Login' }}
             </button>
 

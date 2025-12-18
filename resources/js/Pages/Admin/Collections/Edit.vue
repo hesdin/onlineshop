@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-vue-next';
 
 const props = defineProps<{
   collection: {
@@ -41,13 +40,11 @@ const submit = () => {
 
     <Head title="Edit Koleksi" />
 
-    <div class="flex items-center gap-3">
-      <Button variant="ghost" size="icon" as-child>
-        <Link href="/admin/collections">
-        <ArrowLeft class="h-4 w-4" />
-        </Link>
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-xl font-bold tracking-tight text-slate-900">Edit Koleksi</h1>
+      <Button variant="outline" size="sm" @click="router.visit('/admin/collections')" :disabled="form.processing">
+        Kembali
       </Button>
-      <h1 class="text-2xl font-semibold text-slate-900">Edit Koleksi</h1>
     </div>
 
     <Card>

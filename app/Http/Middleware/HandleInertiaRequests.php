@@ -50,8 +50,10 @@ class HandleInertiaRequests extends Middleware
                             ? $request->user()->getRoleNames()->toArray()
                             : [],
                         'avatar_url' => $request->user()->getFirstMediaUrl('profile_image') ?: null,
+                        'store' => $this->getStoreData($request),
                     ]
                     : null,
+                'seller_document' => $this->getSellerDocumentData($request),
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
@@ -60,6 +62,9 @@ class HandleInertiaRequests extends Middleware
             'cart' => fn () => $this->cartData($request),
             'megaMenu' => fn () => $this->megaMenuData(),
             'csrf_token' => csrf_token(),
+            'recaptcha' => [
+                'siteKey' => config('recaptchav3.sitekey', ''),
+            ],
         ];
     }
 
@@ -159,5 +164,72 @@ class HandleInertiaRequests extends Middleware
                 ->values()
                 ->all();
         });
+    }
+
+    protected function getStoreData(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return null;
+        }
+
+        // Check if user has a store (seller role)
+        $store = $user->store;
+
+        if (!$store) {
+            return null;
+        }
+
+        return [
+            'id' => $store->id,
+            'name' => $store->name,
+            'slug' => $store->slug,
+        ];
+    }
+
+    protected function getSellerDocumentData(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->store) {
+            return null;
+        }
+
+        $sellerDocument = $user->store->sellerDocument;
+
+        if (!$sellerDocument) {
+            return [
+                'exists' => false,
+                'submission_status' => 'draft',
+                'is_approved' => false,
+                'is_submitted' => false,
+                'is_rejected' => false,
+                'documents_uploaded' => 0,
+                'admin_notes' => null,
+            ];
+        }
+
+        // Count uploaded required documents
+        $documentsUploaded = 0;
+        if ($sellerDocument->getFirstMedia('ktp')) {
+            $documentsUploaded++;
+        }
+        if ($sellerDocument->getFirstMedia('npwp')) {
+            $documentsUploaded++;
+        }
+        if ($sellerDocument->getFirstMedia('nib')) {
+            $documentsUploaded++;
+        }
+
+        return [
+            'exists' => true,
+            'submission_status' => $sellerDocument->submission_status ?? 'draft',
+            'is_approved' => $sellerDocument->isApproved(),
+            'is_submitted' => $sellerDocument->isPending(),
+            'is_rejected' => $sellerDocument->isRejected(),
+            'documents_uploaded' => $documentsUploaded,
+            'admin_notes' => $sellerDocument->admin_notes,
+        ];
     }
 }

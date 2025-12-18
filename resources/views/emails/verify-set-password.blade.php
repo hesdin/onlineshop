@@ -8,14 +8,14 @@
     @php
         $variant = $variant ?? 'default';
         $isAdminCreated = in_array($variant, ['admin_created', 'admin_seller'], true);
-        $isCustomerSelf = $variant === 'customer_self';
+        $isSelfRegistration = in_array($variant, ['customer_self', 'seller_self'], true);
         $roleText = $user->hasRole('seller') ? 'sebagai penjual di TP-PKK Marketplace.' : 'di TP-PKK Marketplace.';
     @endphp
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
         <tr>
             <td style="padding: 24px;">
                 <h2 style="margin: 0 0 12px 0; color: #0f172a;">Halo, {{ $user->name }}</h2>
-                @if($isCustomerSelf)
+                @if($isSelfRegistration)
                     <p style="margin: 0 0 12px 0;">Terima kasih sudah mendaftar {{ $roleText }}</p>
                 @elseif($isAdminCreated)
                     <p style="margin: 0 0 12px 0;">Kami membuat akun untukmu {{ $roleText }}</p>

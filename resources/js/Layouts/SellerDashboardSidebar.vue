@@ -13,35 +13,85 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
-import { Box, CircleUserRound, LayoutDashboard, ShoppingBag, Store } from 'lucide-vue-next';
+import { Box, CircleUserRound, LayoutDashboard, ShoppingBag, Store, Users } from 'lucide-vue-next';
+import DocumentProgressTracker from '@/components/DocumentProgressTracker.vue';
 
 const page = usePage();
 const currentUrl = computed(() => page.url);
-const authUser = computed(() => page.props.auth?.user ?? null);
+const needsVerification = computed(() => {
+  const docStatus = (page.props.auth as any).seller_document;
+  if (!docStatus) return true;
+  return !docStatus.is_approved;
+});
+const authUser = computed(() => (page.props.auth as any)?.user ?? null);
+const store = computed(() => (page.props.auth as any)?.user?.store ?? null);
+
+const { toggleSidebar, state } = useSidebar();
+const isCollapsed = computed(() => state.value === 'collapsed');
 
 const navMain = [
   { title: 'Dashboard', href: '/seller/dashboard', icon: LayoutDashboard },
   { title: 'Produk Saya', href: '/seller/products', icon: Box },
   { title: 'Pesanan', href: '/seller/orders', icon: ShoppingBag },
+  { title: 'Customer', href: '/seller/customers', icon: Users },
   { title: 'Toko', href: '/seller/store', icon: Store },
 ];
 
 const isActive = (href: string) => currentUrl.value === href || currentUrl.value.startsWith(href);
+
+const storeInitials = computed(() => {
+  if (!store.value?.name) return 'SC';
+  return store.value.name.substring(0, 2).toUpperCase();
+});
+
+const storeName = computed(() => store.value?.name || 'Seller Center');
 </script>
 
 <template>
   <Sidebar collapsible="icon" variant="sidebar" class="border-r border-slate-200 bg-white">
-    <SidebarHeader class="gap-3 border-b border-slate-100 px-4 py-4">
-      <div class="flex flex-col">
-        <span class="text-sm font-semibold tracking-tight text-slate-900">Seller Center</span>
-        <span class="text-xs text-slate-500">Kelola toko & pesanan</span>
+    <SidebarHeader class="border-b border-slate-100" :class="isCollapsed ? 'px-2 py-3' : 'px-4 py-4'">
+      <div class="flex items-center gap-2" :class="isCollapsed ? 'flex-col' : 'justify-between'">
+        <div class="flex items-center gap-2 min-w-0" :class="{ 'flex-1': !isCollapsed }">
+          <div
+            class="h-7 w-7 rounded-sm bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">
+            <span class="text-white font-bold text-sm">{{ storeInitials }}</span>
+          </div>
+          <div v-if="!isCollapsed" class="flex flex-col min-w-0">
+            <span class="text-xl font-bold tracking-tight text-slate-900 truncate">{{ storeName }}</span>
+          </div>
+        </div>
+        <button @click="toggleSidebar"
+          class="shrink-0 p-1.5 bg-slate-200 hover:bg-slate-300 rounded-sm transition-colors">
+          <svg v-if="!isCollapsed" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+            class="text-slate-600" viewBox="0 0 16 16">
+            <path fill-rule="evenodd"
+              d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0z" />
+            <path fill-rule="evenodd"
+              d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708z" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+            class="text-slate-600" viewBox="0 0 16 16">
+            <path fill-rule="evenodd"
+              d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0z" />
+            <path fill-rule="evenodd"
+              d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z" />
+          </svg>
+        </button>
       </div>
     </SidebarHeader>
 
     <SidebarContent class="px-3">
+      <div
+        v-if="($page.props.auth as any).seller_document?.exists && !($page.props.auth as any).seller_document?.is_approved"
+        class="mb-4 mt-2">
+        <DocumentProgressTracker :documents-uploaded="($page.props.auth as any).seller_document.documents_uploaded"
+          :submission-status="($page.props.auth as any).seller_document.submission_status" />
+      </div>
+
       <SidebarGroup>
-        <SidebarGroupLabel>Navigasi</SidebarGroupLabel>
+        <SidebarGroupLabel>GENERAL</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="item in navMain" :key="item.title">

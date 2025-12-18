@@ -58,15 +58,13 @@ const showPassword = ref(false);
       <LoginHeroSlider :slides="slides" />
 
       <div class="relative flex-1">
-        <div class="relative z-10 ml-auto w-full max-w-lg rounded-lg bg-white p-8 sm:p-10 text-slate-900 shadow-2xl">
+        <div class="relative z-10 ml-auto w-full max-w-lg rounded-lg bg-white p-8 sm:p-10 text-slate-900 shadow-sm">
+          <Link href="/login"
+            class="inline-flex items-center text-2xl font-bold text-slate-500 hover:text-slate-700 mb-4">
+            <span>&larr;</span>
+          </Link>
           <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <Link href="/login"
-                class="flex h-10 w-10 items-center justify-center rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
-                <span class="text-xl font-semibold leading-none">&larr;</span>
-              </Link>
-              <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login {{ roleLabel }}</h3>
-            </div>
+            <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login {{ roleLabel }}</h3>
             <div
               class="flex h-10 w-28 items-center justify-center rounded-lg border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
               TP-PKK Marketplace
@@ -90,17 +88,20 @@ const showPassword = ref(false);
                   autocomplete="current-password"
                   class="w-full bg-transparent py-3 text-sm sm:text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   placeholder="Masukan Kata Sandi" :disabled="form.processing" />
-                <button type="button" class="p-1 text-slate-400 hover:text-slate-600"
-                  @click="showPassword = !showPassword" :aria-pressed="showPassword">
-                  <span class="sr-only">{{ showPassword ? 'Sembunyikan' : 'Tampilkan' }} kata sandi</span>
+                <button type="button" @click="showPassword = !showPassword"
+                  class="p-1 text-slate-400 hover:text-slate-600">
+                  <!-- Eye Icon (Show) -->
                   <svg v-if="!showPassword" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="1.8">
                     <path d="M1 12s3.5-7 11-7 11 7 11 7-3.5 7-11 7S1 12 1 12Z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
+                  <!-- Eye Off Icon (Hide) -->
                   <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M1 12s3.5-7 11-7 11 7 11 7-3.5 7-11 7S1 12 1 12Z" />
-                    <path d="m4 4 16 16" />
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7.5 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s3.5 7 11 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" y1="2" x2="22" y2="22" />
                   </svg>
                 </button>
               </div>
@@ -108,8 +109,15 @@ const showPassword = ref(false);
             </div>
 
             <button type="submit"
-              class="mt-4 flex w-full items-center justify-center rounded-md bg-sky-600 py-3 text-sm sm:text-base font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
+              class="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-sky-600 py-3 text-sm sm:text-base font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
               :disabled="form.processing">
+              <svg v-if="form.processing" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
               {{ form.processing ? 'Memproses...' : 'Login' }}
             </button>
 

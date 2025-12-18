@@ -8,7 +8,7 @@ const phone = rawPhone.replace(/[^0-9]/g, '');
 const waLink = phone ? `https://wa.me/${phone}` : '#';
 
 const baseClasses =
-  'inline-flex items-center gap-2 rounded-full bg-white/90 px-5 py-2 text-sm font-semibold text-sky-600 shadow-lg transition hover:shadow-xl';
+  'inline-flex items-center gap-2 rounded-md bg-white/90 px-5 py-2 text-sm font-semibold text-sky-600 shadow-lg transition hover:shadow-xl';
 const floatingClasses = 'fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6';
 </script>
 

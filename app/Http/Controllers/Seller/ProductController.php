@@ -64,6 +64,12 @@ class ProductController extends Controller
             return $store;
         }
 
+        // Restriction: Cannot create product if document not approved
+        $sellerDocument = $store->sellerDocument;
+        if (! $sellerDocument || ! $sellerDocument->isApproved()) {
+             return Redirect::route('seller.documents.show')->with('error', 'Silakan lengkapi dan verifikasi dokumen toko untuk menambah produk.');
+        }
+
         return Inertia::render('Seller/Products/Create', [
             'categoryOptions' => Category::orderBy('name')
                 ->get(['id', 'name'])
@@ -84,6 +90,12 @@ class ProductController extends Controller
         $store = $this->getStoreOrRedirect($request);
         if (! ($store instanceof Store)) {
             return $store;
+        }
+
+        // Restriction: Cannot create product if document not approved
+        $sellerDocument = $store->sellerDocument;
+        if (! $sellerDocument || ! $sellerDocument->isApproved()) {
+             return Redirect::back()->with('error', 'Silakan lengkapi dan verifikasi dokumen toko untuk menambah produk.');
         }
 
         $data = $request->validated();
@@ -134,6 +146,11 @@ class ProductController extends Controller
         }
 
         abort_if($product->store_id !== $store->id, 403);
+
+        $sellerDocument = $store->sellerDocument;
+        if ($request->input('status') === 'ready' && (! $sellerDocument || ! $sellerDocument->isApproved())) {
+             return Redirect::back()->with('error', 'Verifikasi dokumen diperlukan untuk mempublikasikan produk.');
+        }
 
         // Debug: Log raw request data
         \Log::info('Raw request data for product update', [

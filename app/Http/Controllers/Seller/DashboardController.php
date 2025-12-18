@@ -24,6 +24,10 @@ class DashboardController extends Controller
                 'stats' => [],
                 'recentOrders' => [],
                 'topProducts' => [],
+                'revenueChart' => [
+                    'labels' => [],
+                    'data' => [],
+                ],
             ]);
         }
 
@@ -85,7 +89,31 @@ class DashboardController extends Controller
                     'name' => $product->name,
                     'total_sold' => 0,
                     'total_amount' => 0,
+                    'image_url' => $product->image_url, // Ensure accessor exists or use default
                 ]);
+        }
+
+        // Chart Data: Last 7 Days Revenue
+        $endDate = now()->endOfDay();
+        $startDate = now()->subDays(6)->startOfDay();
+
+        $revenueData = Order::where('store_id', $store->id)
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, SUM(grand_total) as total')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->pluck('total', 'date');
+
+        $chartLabels = [];
+        $chartValues = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $dateString = $date->toDateString();
+            $chartLabels[] = $date->locale('id')->dayName; // e.g., "Senin", "Selasa"
+            $chartValues[] = $revenueData[$dateString] ?? 0;
         }
 
         return Inertia::render('Seller/Dashboard/Index', [
@@ -126,6 +154,10 @@ class DashboardController extends Controller
             ],
             'recentOrders' => $recentOrders,
             'topProducts' => $topProducts,
+            'revenueChart' => [
+                'labels' => $chartLabels,
+                'data' => $chartValues,
+            ],
         ]);
     }
 }

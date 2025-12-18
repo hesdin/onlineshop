@@ -73,8 +73,9 @@ onUnmounted(stop);
         <div class="max-w-md">
           <div v-for="(slide, index) in slides" :key="index" :class="index === current ? '' : 'hidden'"
             class="space-y-6">
-            <img :src="slide.image" alt="Login TP-PKK Marketplace"
-              class="mx-auto w-[230px] sm:w-[290px] lg:w-[340px]" />
+            <!-- Image commented out for now -->
+            <!-- <img :src="slide.image" alt="Login TP-PKK Marketplace"
+              class="mx-auto w-[230px] sm:w-[290px] lg:w-[340px]" /> -->
             <div>
               <h2 class="text-2xl sm:text-3xl font-bold">
                 {{ slide.title }}
@@ -93,7 +94,8 @@ onUnmounted(stop);
         </div>
       </div>
 
-      <button type="button" @click="prevSlide"
+      <!-- Arrow buttons commented out for now -->
+      <!-- <button type="button" @click="prevSlide"
         class="pointer-events-auto absolute left-8 top-1/2 hidden h-10 w-10 -translate-y-1/2 transform items-center justify-center rounded-full bg-white text-sky-500 shadow-lg hover:bg-sky-50 lg:inline-flex">
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 7l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
@@ -104,24 +106,24 @@ onUnmounted(stop);
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M10 7l5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-      </button>
+      </button> -->
 
-      <div class="relative flex-1">
+      <div class="relative flex-1 flex items-center justify-center">
         <div
-          class="relative z-10 ml-auto w-full max-w-xl rounded-xl bg-white p-8 sm:p-10 text-slate-900 shadow-lg min-h-[520px]">
+          class="relative z-10 w-full max-w-xl rounded-md bg-white p-8 sm:p-10 text-slate-900 shadow-lg min-h-[520px]">
           <div class="mb-8 flex items-center justify-between gap-6">
             <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">
               Login Sebagai
             </h3>
             <div
-              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
+              class="flex h-10 min-w-28 items-center justify-center rounded-md border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
               TP-PKK Marketplace
             </div>
           </div>
 
           <div class="space-y-4">
             <Link href="/seller/login"
-              class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 p-5 transition hover:border-sky-300 hover:bg-white hover:shadow-sm">
+              class="flex min-h-[100px] items-center justify-between rounded-2xl border border-slate-300 bg-slate-50/80 p-5 transition hover:border-sky-300 hover:bg-white hover:shadow-sm">
               <div class="flex items-center gap-4">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
                   <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -143,7 +145,7 @@ onUnmounted(stop);
             </Link>
 
             <Link href="/customer/login"
-              class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 p-5 transition hover:border-sky-300 hover:bg-white hover:shadow-sm">
+              class="flex min-h-[100px] items-center justify-between rounded-2xl border border-slate-300 bg-slate-50/80 p-5 transition hover:border-sky-300 hover:bg-white hover:shadow-sm">
               <div class="flex items-center gap-4">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                   <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">

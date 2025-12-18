@@ -2,7 +2,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import CustomerCareButton from '@/components/CustomerCareButton.vue';
-import heroIllustration from '@/../images/illustrations/online-shopping.svg';
+// import heroIllustration from '@/../images/illustrations/online-shopping.svg';
 
 const form = useForm({
   name: '',
@@ -111,7 +111,7 @@ const submit = async () => {
   await form.post('/register/customer', {
     preserveScroll: true,
     onSuccess: () => {
-      localSuccess.value = flashSuccess.value || 'Registrasi berhasil. Cek email untuk verifikasi dan buat password baru.';
+      localSuccess.value = flashSuccess.value || 'Registrasi berhasil. Cek email Anda.';
     },
   });
 };
@@ -144,14 +144,14 @@ const handleRecaptcha = async (event: Event) => {
 
   <section class="relative flex min-h-screen items-center justify-center bg-slate-100 px-4 py-6">
     <div
-      class="relative mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-sm md:flex-row">
+      class="relative mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-sm bg-white shadow-sm md:flex-row">
       <div
         class="flex w-full flex-col justify-between border-b border-slate-100 px-8 py-10 sm:py-12 md:w-1/2 md:border-b-0 md:border-r">
         <div>
           <div class="mb-8 flex items-start justify-between gap-4">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Daftar</h1>
             <div
-              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 px-3 text-[11px] font-bold text-sky-600">
+              class="flex h-10 min-w-28 items-center justify-center rounded-sm border border-slate-200 px-3 text-[11px] font-bold text-sky-600">
               TP-PKK Marketplace
             </div>
           </div>
@@ -160,7 +160,7 @@ const handleRecaptcha = async (event: Event) => {
             <div class="space-y-1">
               <label class="block text-sm font-semibold text-slate-700">Nama</label>
               <input type="text" name="name" v-model="form.name" required
-                :class="['w-full rounded-lg border bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none', form.errors.name ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400']"
+                :class="['w-full rounded-sm border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none', form.errors.name ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400']"
                 placeholder="John" />
               <p v-if="form.errors.name" class="text-xs text-red-500">{{ form.errors.name }}</p>
             </div>
@@ -168,7 +168,7 @@ const handleRecaptcha = async (event: Event) => {
             <div class="space-y-1">
               <label class="block text-sm font-semibold text-slate-700">Alamat Email</label>
               <input type="email" name="email" v-model="form.email" required
-                :class="['w-full rounded-lg border bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none', form.errors.email ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400']"
+                :class="['w-full rounded-sm border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none', form.errors.email ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400']"
                 placeholder="john@email.com" />
               <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
             </div>
@@ -176,7 +176,7 @@ const handleRecaptcha = async (event: Event) => {
             <div class="space-y-1">
               <label class="block text-sm font-semibold text-slate-700">Telepon</label>
               <div
-                :class="['flex items-center rounded-lg border bg-slate-50 text-sm text-slate-800 focus-within:bg-white', form.errors.phone ? 'border-red-400 focus-within:border-red-500' : 'border-slate-200 focus-within:border-sky-400']">
+                :class="['flex items-center rounded-sm border bg-white text-sm text-slate-800', form.errors.phone ? 'border-red-400' : 'border-slate-200 focus-within:border-sky-400']">
                 <span class="flex h-10 items-center border-r border-slate-200 px-3 text-slate-600">+62</span>
                 <input type="tel" name="phone" v-model="form.phone" required
                   class="w-full bg-transparent px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
@@ -186,11 +186,12 @@ const handleRecaptcha = async (event: Event) => {
             </div>
 
             <div class="space-y-1">
-              <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Kode Referal <span class="normal-case font-normal text-slate-400">(Tidak Wajib)</span>
+              <label class="block text-sm font-semibold text-slate-600">
+                Kode Referal
+                <span class="normal-case font-normal text-slate-400">(Tidak Wajib)</span>
               </label>
               <input type="text" name="referral" v-model="form.referral"
-                :class="['w-full rounded-lg border bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none', form.errors.referral ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400']"
+                :class="['w-full rounded-sm border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none', form.errors.referral ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400']"
                 placeholder="Masukkan kode referal" />
               <p v-if="form.errors.referral" class="text-xs text-red-500">{{ form.errors.referral }}</p>
             </div>
@@ -275,9 +276,16 @@ const handleRecaptcha = async (event: Event) => {
             </div>
 
             <button type="submit"
-              class="mt-4 w-full rounded-md bg-sky-600 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
+              class="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-sky-600 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
               :disabled="form.processing || !form.agree || !form.notRobot">
-              Daftar
+              <svg v-if="form.processing" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              {{ form.processing ? 'Memproses...' : 'Daftar' }}
             </button>
 
             <p v-if="localSuccess" class="text-center text-sm text-green-600">
@@ -289,26 +297,27 @@ const handleRecaptcha = async (event: Event) => {
           </form>
         </div>
 
-        <div class="mt-8 border-t border-slate-100 pt-6 text-center text-xs sm:text-sm text-slate-500">
+        <div class="mt-8 border-t border-slate-400 pt-6 text-center text-xs sm:text-sm text-slate-500">
           Sudah punya akun TP-PKK Marketplace?
           <Link href="/login" class="font-semibold text-sky-600 hover:underline">Masuk</Link>
         </div>
       </div>
 
       <div
-        class="flex w-full flex-col bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 px-8 py-10 text-white sm:px-10 sm:py-12 md:w-1/2">
+        class="flex w-full flex-col items-center justify-center bg-gradient-to-br from-sky-600 via-sky-500 to-sky-400 px-8 py-10 text-white sm:px-10 sm:py-12 md:w-1/2">
         <div class="max-w-sm">
           <h2 class="text-2xl font-bold">Belanja Efisien Kemana Saja</h2>
-          <p class="mt-4 text-sm leading-relaxed text-white/90">
+          <p class="mt-4 text-md leading-relaxed text-white font-semibold">
             Dengan berbagai kemudahan berbelanja di TP-PKK Marketplace, proses transaksi menjadi cepat dan efisien tanpa
             harus
             melewati proses yang merepotkan. Barang akan sampai kemana pun yang Anda inginkan dengan aman.
           </p>
         </div>
 
-        <div class="mt-10 flex flex-1 items-center justify-center">
+        <!-- Image commented out for now -->
+        <!-- <div class="mt-10 flex flex-1 items-center justify-center">
           <img :src="heroIllustration" alt="Belanja di TP-PKK Marketplace" class="w-56 sm:w-64 lg:w-72" />
-        </div>
+        </div> -->
       </div>
     </div>
 
