@@ -206,6 +206,12 @@ const isSeller = computed(() => {
   const roles = props.authUser?.roles ?? [];
   return roles.includes('seller') || roles.includes('toko');
 });
+
+const isAdmin = computed(() => {
+  const roles = props.authUser?.roles ?? [];
+  const lowerRoles = roles.map(r => String(r).toLowerCase());
+  return lowerRoles.includes('admin') || lowerRoles.includes('super_admin') || lowerRoles.includes('superadmin') || lowerRoles.includes('super admin');
+});
 </script>
 
 <template>
@@ -423,7 +429,7 @@ const isSeller = computed(() => {
                   <div>
                     <p class="text-base font-semibold text-slate-900">{{ authUser?.name }}</p>
                   </div>
-                  <Link href="/customer/dashboard/profile"
+                  <Link v-if="!isAdmin" href="/customer/dashboard/profile"
                     class="inline-flex items-center rounded-sm bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-700">
                     Lihat Profile
                   </Link>
@@ -433,8 +439,33 @@ const isSeller = computed(() => {
 
 
 
+            <!-- Admin Menu -->
+            <div v-if="isAdmin" class="divide-y divide-slate-100">
+              <Link href="/admin/dashboard"
+                class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
+                <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                <span class="text-sm font-semibold">Dashboard Admin</span>
+              </Link>
+              <button type="button" @click="handleLogout"
+                class="flex w-full items-center gap-3 px-5 py-3 text-left text-red-600 transition hover:bg-red-50">
+                <svg class="h-6 w-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+                <span class="text-sm font-semibold">Keluar</span>
+              </button>
+            </div>
+
             <!-- Seller Menu -->
-            <div v-if="isSeller" class="divide-y divide-slate-100">
+            <div v-else-if="isSeller" class="divide-y divide-slate-100">
               <Link href="/seller/dashboard"
                 class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
                 <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"

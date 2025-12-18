@@ -53,7 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // -> redirect to customer login with intended URL
             $loginUrl = route('customer.login');
             if ($intendedUrl && $intendedUrl !== url('/')) {
-                $loginUrl .= '?intended=' . urlencode($intendedUrl);
+                $loginUrl .= '?intended='.urlencode($intendedUrl);
             }
 
             return redirect()->guest($loginUrl);
