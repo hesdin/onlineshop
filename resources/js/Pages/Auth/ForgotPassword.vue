@@ -4,6 +4,8 @@ import { computed } from 'vue';
 import CustomerCareButton from '@/components/CustomerCareButton.vue';
 import heroIllustration from '@/../images/illustrations/online-shopping.svg';
 
+const logoUrl = '/images/logo-pkk.png';
+
 const props = defineProps<{
   loginUrl?: string;
 }>();
@@ -56,9 +58,9 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
               class="flex h-10 w-10 items-center justify-center rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
               <span class="text-xl font-semibold leading-none">&larr;</span>
             </Link>
-            <div
-              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 text-[11px] font-bold text-sky-600 px-3">
-              TP-PKK Marketplace
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
+                draggable="false" />
             </div>
           </div>
 

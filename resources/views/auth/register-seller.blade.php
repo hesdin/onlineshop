@@ -95,9 +95,9 @@
               <h2 class="text-2xl font-bold text-slate-900">Daftar Sebagai Penjual</h2>
               <p class="mt-1 text-sm text-slate-600">Masukkan data pemilik usaha untuk memulai.</p>
             </div>
-            <div class="flex flex-col items-end leading-none text-right">
-              <span class="text-[10px] font-semibold tracking-wide text-sky-500">PaDi</span>
-              <span class="text-xs font-bold text-sky-700">UMKM</span>
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img src="{{ asset('images/logo-pkk.png') }}" alt="TP-PKK Marketplace" class="h-full w-full object-contain"
+                decoding="async" draggable="false" />
             </div>
           </div>
 

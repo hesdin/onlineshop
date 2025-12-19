@@ -238,7 +238,7 @@ const orderStatusBadge = (status: string) => {
       </div>
       <div class="flex items-center gap-2">
         <Button variant="outline" class="hidden sm:flex" as-child>
-          <Link href="/seller/store">
+          <Link href="/seller/settings">
             <StoreIcon class="mr-2 h-4 w-4" />
             Kelola Toko
           </Link>
@@ -258,7 +258,7 @@ const orderStatusBadge = (status: string) => {
       <AlertTitle class="text-amber-800">Lengkapi Profil Toko</AlertTitle>
       <AlertDescription class="text-amber-700/90 mt-1">
         Agar toko terlihat profesional dan dipercaya pembeli, segera lengkapi informasi toko Anda.
-        <Link href="/seller/store" class="font-medium underline underline-offset-4 hover:text-amber-900 ml-1">
+        <Link href="/seller/settings" class="font-medium underline underline-offset-4 hover:text-amber-900 ml-1">
           Setup sekarang &rarr;
         </Link>
       </AlertDescription>

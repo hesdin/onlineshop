@@ -25,8 +25,11 @@ type CollectionRow = {
   title: string;
   slug: string;
   is_active: boolean;
+  display_mode: 'slider' | 'image_only';
   products_count: number;
+  home_image_url: string | null;
   cover_image_url: string | null;
+  color_theme: string | null;
   created_at: string;
 };
 
@@ -96,10 +99,61 @@ const paginateTo = (url?: string | null) => {
 
 const columns = computed<ColumnDef<CollectionRow>[]>(() => [
   {
+    accessorKey: 'home_image_url',
+    header: () => 'Gambar Home',
+    cell: ({ row }) =>
+      row.original.home_image_url
+        ? h('img', {
+          src: row.original.home_image_url,
+          alt: row.original.title,
+          class: 'h-10 w-20 rounded-md border border-slate-200 object-cover',
+          loading: 'lazy',
+        })
+        : h(
+          'div',
+          {
+            class:
+              'flex h-10 w-20 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-500',
+          },
+          'No Image',
+        ),
+    meta: { class: 'w-28' },
+  },
+  {
     accessorKey: 'title',
     header: () => 'Judul',
     cell: ({ row }) =>
       h('span', { class: 'font-semibold text-slate-900' }, row.original.title),
+  },
+  {
+    accessorKey: 'display_mode',
+    header: () => 'Tipe',
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class:
+            row.original.display_mode === 'image_only'
+              ? 'rounded-sm bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-100'
+              : 'rounded-sm bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700',
+        },
+        row.original.display_mode === 'image_only' ? 'Gambar saja' : 'Gambar + slider',
+      ),
+    meta: { class: 'w-40' },
+  },
+  {
+    accessorKey: 'color_theme',
+    header: () => 'Tema',
+    cell: ({ row }) =>
+      h(
+        'div',
+        { class: 'inline-flex items-center gap-2' },
+        [
+          h('span', { class: `h-3 w-6 rounded bg-linear-to-r ${row.original.color_theme || 'from-slate-400 to-slate-300'}` }),
+          h('span', { class: 'text-xs font-semibold text-slate-600' }, row.original.color_theme || '-'),
+        ],
+      ),
+    meta: { class: 'w-64' },
   },
   {
     accessorKey: 'products_count',

@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, ShieldCheck, Camera, ImagePlus, X, Building2, MapPin } from 'lucide-vue-next';
+import { CheckCircle2, ShieldCheck, Camera, ImagePlus, X, Building2, MapPin, Landmark } from 'lucide-vue-next';
 import RegionSelector from '@/components/RegionSelector.vue';
 
 type SelectOption = {
@@ -25,6 +25,7 @@ type StorePayload = {
   id?: number;
   name: string;
   slug: string;
+  phone: string | null;
   tagline: string | null;
   description: string | null;
   type: string;
@@ -38,9 +39,11 @@ type StorePayload = {
   district_id: number | null;
   postal_code: string | null;
   address_line: string | null;
-  is_verified: boolean;
   is_umkm: boolean;
   response_time_label: string | null;
+  bank_name: string | null;
+  bank_account_number: string | null;
+  bank_account_name: string | null;
   logo_url: string | null;
   banner_url: string | null;
 };
@@ -75,6 +78,7 @@ watch(flashSuccess, (value) => {
 const buildFormState = (store: StorePayload) => ({
   name: store.name ?? '',
   slug: store.slug ?? '',
+  phone: store.phone ?? '',
   tagline: store.tagline ?? '',
   description: store.description ?? '',
   type: store.type ?? props.typeOptions[0]?.value ?? 'umkm',
@@ -87,6 +91,9 @@ const buildFormState = (store: StorePayload) => ({
   address_line: store.address_line ?? '',
   is_umkm: store.is_umkm ?? true,
   response_time_label: store.response_time_label ?? '',
+  bank_name: store.bank_name ?? '',
+  bank_account_number: store.bank_account_number ?? '',
+  bank_account_name: store.bank_account_name ?? '',
   logo: null as File | null,
   banner: null as File | null,
 });
@@ -144,7 +151,7 @@ const submit = () => {
       if (!formData.logo) delete formData.logo;
       if (!formData.banner) delete formData.banner;
       return formData;
-    }).post('/seller/store', {
+    }).post('/seller/settings', {
       preserveScroll: true,
       forceFormData: true,
     });
@@ -154,7 +161,7 @@ const submit = () => {
       if (!formData.logo) delete formData.logo;
       if (!formData.banner) delete formData.banner;
       return formData;
-    }).post('/seller/store', { preserveScroll: true, forceFormData: true });
+    }).post('/seller/settings', { preserveScroll: true, forceFormData: true });
   }
 };
 
@@ -253,9 +260,9 @@ watch(
       <AlertDescription>{{ flashInfo }}</AlertDescription>
     </Alert>
 
-    <form @submit.prevent="submit" class="grid gap-6 lg:grid-cols-5">
+    <form @submit.prevent="submit" class="space-y-6">
       <!-- Store Branding Card -->
-      <Card class="lg:col-span-5">
+      <Card>
         <CardHeader>
           <div class="flex items-center gap-2">
             <ImagePlus class="h-5 w-5 text-indigo-600" />
@@ -263,6 +270,34 @@ watch(
           </div>
         </CardHeader>
         <CardContent class="space-y-6">
+          <!-- Logo Upload (moved to top) -->
+          <div class="space-y-2">
+            <Label>Logo Toko</Label>
+            <div class="flex items-center gap-6">
+              <div
+                class="relative h-20 w-20 overflow-hidden rounded-full border-2 border-dashed border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100 transition-colors cursor-pointer flex-shrink-0"
+                @click="logoInput?.click()">
+                <img v-if="logoPreview" :src="logoPreview" alt="Store Logo" class="h-full w-full object-cover" />
+                <div v-else class="flex h-full flex-col items-center justify-center gap-1 text-slate-400">
+                  <Camera class="h-6 w-6" />
+                  <span class="text-[10px] font-medium">Upload</span>
+                </div>
+                <button v-if="logoPreview && form.logo" type="button" @click.stop="removeLogo"
+                  class="absolute -top-1 -right-1 rounded-full bg-red-500 p-1 text-white shadow-md hover:bg-red-600 transition-colors">
+                  <X class="h-3 w-3" />
+                </button>
+              </div>
+              <div class="text-sm text-slate-500">
+                <p class="font-medium text-slate-700">Upload logo toko</p>
+                <p>Format: JPG, PNG, WEBP. Maksimal 2MB.</p>
+                <p>Ukuran yang disarankan: 200 x 200 px</p>
+              </div>
+            </div>
+            <input ref="logoInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
+              @change="handleLogoChange" />
+            <p v-if="form.errors.logo" class="text-xs text-red-600">{{ form.errors.logo }}</p>
+          </div>
+
           <!-- Banner Upload -->
           <div class="space-y-2">
             <Label>Hero Banner</Label>
@@ -285,156 +320,181 @@ watch(
               @change="handleBannerChange" />
             <p v-if="form.errors.banner" class="text-xs text-red-600">{{ form.errors.banner }}</p>
           </div>
+        </CardContent>
+      </Card>
 
-          <!-- Logo Upload -->
-          <div class="space-y-2">
-            <Label>Logo Toko</Label>
-            <div class="flex items-center gap-6">
-              <div
-                class="relative h-28 w-28 overflow-hidden rounded-full border-2 border-dashed border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100 transition-colors cursor-pointer flex-shrink-0"
-                @click="logoInput?.click()">
-                <img v-if="logoPreview" :src="logoPreview" alt="Store Logo" class="h-full w-full object-cover" />
-                <div v-else class="flex h-full flex-col items-center justify-center gap-1 text-slate-400">
-                  <Camera class="h-8 w-8" />
-                  <span class="text-xs font-medium">Upload</span>
+      <!-- Grid for side-by-side cards -->
+      <div class="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div class="flex items-center gap-2">
+              <ShieldCheck class="h-5 w-5 text-indigo-600" />
+              <CardTitle>Identitas Toko</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="space-y-2 sm:col-span-2">
+                <Label for="name">Nama Toko</Label>
+                <Input id="name" v-model="form.name" placeholder="Nama toko"
+                  :class="form.errors.name ? 'border-red-500' : ''" />
+                <p v-if="form.errors.name" class="text-xs text-red-600">
+                  {{ form.errors.name }}
+                </p>
+              </div>
+
+              <div class="space-y-2 sm:col-span-2">
+                <Label for="slug">Slug</Label>
+                <div class="relative">
+                  <Input id="slug" v-model="form.slug" :disabled="hasStore" class="bg-slate-50 pr-20"
+                    :class="form.errors.slug ? 'border-red-500' : ''" />
+                  <Badge variant="secondary" class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px]">
+                    {{ hasStore ? 'Terkunci' : 'Auto' }}
+                  </Badge>
                 </div>
-                <button v-if="logoPreview && form.logo" type="button" @click.stop="removeLogo"
-                  class="absolute -top-1 -right-1 rounded-full bg-red-500 p-1 text-white shadow-md hover:bg-red-600 transition-colors">
-                  <X class="h-3 w-3" />
-                </button>
+                <p class="text-xs text-slate-500">Slug digunakan di URL toko.</p>
+                <p v-if="form.errors.slug" class="text-xs text-red-600">
+                  {{ form.errors.slug }}
+                </p>
               </div>
-              <div class="text-sm text-slate-500">
-                <p class="font-medium text-slate-700">Upload logo toko</p>
-                <p>Format: JPG, PNG, WEBP. Maksimal 2MB.</p>
-                <p>Ukuran yang disarankan: 200 x 200 px</p>
+
+              <div class="space-y-2 sm:col-span-2">
+                <Label for="phone">Nomor Telepon</Label>
+                <Input id="phone" v-model="form.phone" type="tel" placeholder="Contoh: 081234567890"
+                  :class="form.errors.phone ? 'border-red-500' : ''" />
+                <p v-if="form.errors.phone" class="text-xs text-red-600">
+                  {{ form.errors.phone }}
+                </p>
+              </div>
+
+              <div class="space-y-2 sm:col-span-2">
+                <Label for="tagline">Tagline</Label>
+                <Input id="tagline" v-model="form.tagline" placeholder="Contoh: UMKM pangan sehat"
+                  :class="form.errors.tagline ? 'border-red-500' : ''" />
+                <p v-if="form.errors.tagline" class="text-xs text-red-600">
+                  {{ form.errors.tagline }}
+                </p>
+              </div>
+
+              <div class="space-y-2 sm:col-span-2">
+                <Label for="description">Deskripsi</Label>
+                <Textarea id="description" v-model="form.description" rows="4"
+                  placeholder="Ceritakan keunggulan toko, jenis produk, atau layanan yang ditawarkan."
+                  :class="form.errors.description ? 'border-red-500' : ''" />
+                <p v-if="form.errors.description" class="text-xs text-red-600">
+                  {{ form.errors.description }}
+                </p>
               </div>
             </div>
-            <input ref="logoInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
-              @change="handleLogoChange" />
-            <p v-if="form.errors.logo" class="text-xs text-red-600">{{ form.errors.logo }}</p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card class="lg:col-span-3">
+        <Card>
+          <CardHeader>
+            <div class="flex items-center gap-2">
+              <Building2 class="h-5 w-5 text-indigo-600" />
+              <CardTitle>Jenis Toko & Perpajakan</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <!-- Jenis Toko - Full Width -->
+            <div class="space-y-2">
+              <Label for="type">Jenis Toko</Label>
+              <Select v-model="form.type" class="w-full">
+                <SelectTrigger id="type" class="w-full" :class="form.errors.type ? 'border-red-500' : ''">
+                  <SelectValue placeholder="Pilih jenis" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="option in typeOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p v-if="form.errors.type" class="text-xs text-red-600">
+                {{ form.errors.type }}
+              </p>
+            </div>
+
+            <!-- Status Pajak - Full Width -->
+            <div class="space-y-2">
+              <Label for="tax_status">Status Pajak</Label>
+              <Select v-model="form.tax_status" class="w-full">
+                <SelectTrigger id="tax_status" class="w-full" :class="form.errors.tax_status ? 'border-red-500' : ''">
+                  <SelectValue placeholder="Pilih status pajak" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="option in taxStatusOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p v-if="form.errors.tax_status" class="text-xs text-red-600">
+                {{ form.errors.tax_status }}
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <Label for="bumn_partner">Mitra BUMN (opsional)</Label>
+              <Input id="bumn_partner" v-model="form.bumn_partner" placeholder="Contoh: PT PLN Persero"
+                :class="form.errors.bumn_partner ? 'border-red-500' : ''" />
+              <p v-if="form.errors.bumn_partner" class="text-xs text-red-600">
+                {{ form.errors.bumn_partner }}
+              </p>
+            </div>
+
+            <label
+              class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50/70 px-4 py-3">
+              <div>
+                <p class="text-sm font-medium text-slate-800">Toko UMKM</p>
+                <p class="text-xs text-slate-500">Tandai jika toko Anda merupakan UMKM.</p>
+              </div>
+              <Switch v-model:checked="form.is_umkm" />
+            </label>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- Bank Account Card -->
+      <Card>
         <CardHeader>
           <div class="flex items-center gap-2">
-            <ShieldCheck class="h-5 w-5 text-indigo-600" />
-            <CardTitle>Identitas Toko</CardTitle>
+            <Landmark class="h-5 w-5 text-indigo-600" />
+            <CardTitle>Rekening Bank</CardTitle>
           </div>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="space-y-2 sm:col-span-2">
-              <Label for="name">Nama Toko</Label>
-              <Input id="name" v-model="form.name" placeholder="Nama toko"
-                :class="form.errors.name ? 'border-red-500' : ''" />
-              <p v-if="form.errors.name" class="text-xs text-red-600">
-                {{ form.errors.name }}
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div class="space-y-2">
+              <Label for="bank_name">Nama Bank</Label>
+              <Input id="bank_name" v-model="form.bank_name" placeholder="Contoh: BCA, Mandiri, BRI"
+                :class="form.errors.bank_name ? 'border-red-500' : ''" />
+              <p v-if="form.errors.bank_name" class="text-xs text-red-600">
+                {{ form.errors.bank_name }}
               </p>
             </div>
 
-            <div class="space-y-2 sm:col-span-2">
-              <Label for="slug">Slug</Label>
-              <div class="relative">
-                <Input id="slug" v-model="form.slug" :disabled="hasStore" class="bg-slate-50 pr-20"
-                  :class="form.errors.slug ? 'border-red-500' : ''" />
-                <Badge variant="secondary" class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px]">
-                  {{ hasStore ? 'Terkunci' : 'Auto' }}
-                </Badge>
-              </div>
-              <p class="text-xs text-slate-500">Slug digunakan di URL toko.</p>
-              <p v-if="form.errors.slug" class="text-xs text-red-600">
-                {{ form.errors.slug }}
+            <div class="space-y-2">
+              <Label for="bank_account_number">Nomor Rekening</Label>
+              <Input id="bank_account_number" v-model="form.bank_account_number" placeholder="Contoh: 1234567890"
+                :class="form.errors.bank_account_number ? 'border-red-500' : ''" />
+              <p v-if="form.errors.bank_account_number" class="text-xs text-red-600">
+                {{ form.errors.bank_account_number }}
               </p>
             </div>
 
-            <div class="space-y-2 sm:col-span-2">
-              <Label for="tagline">Tagline</Label>
-              <Input id="tagline" v-model="form.tagline" placeholder="Contoh: UMKM pangan sehat"
-                :class="form.errors.tagline ? 'border-red-500' : ''" />
-              <p v-if="form.errors.tagline" class="text-xs text-red-600">
-                {{ form.errors.tagline }}
-              </p>
-            </div>
-
-            <div class="space-y-2 sm:col-span-2">
-              <Label for="description">Deskripsi</Label>
-              <Textarea id="description" v-model="form.description" rows="4"
-                placeholder="Ceritakan keunggulan toko, jenis produk, atau layanan yang ditawarkan."
-                :class="form.errors.description ? 'border-red-500' : ''" />
-              <p v-if="form.errors.description" class="text-xs text-red-600">
-                {{ form.errors.description }}
+            <div class="space-y-2">
+              <Label for="bank_account_name">Atas Nama</Label>
+              <Input id="bank_account_name" v-model="form.bank_account_name" placeholder="Nama pemilik rekening"
+                :class="form.errors.bank_account_name ? 'border-red-500' : ''" />
+              <p v-if="form.errors.bank_account_name" class="text-xs text-red-600">
+                {{ form.errors.bank_account_name }}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card class="lg:col-span-2">
-        <CardHeader>
-          <div class="flex items-center gap-2">
-            <Building2 class="h-5 w-5 text-indigo-600" />
-            <CardTitle>Jenis Toko & Perpajakan</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <!-- Jenis Toko - Full Width -->
-          <div class="space-y-2">
-            <Label for="type">Jenis Toko</Label>
-            <Select v-model="form.type" class="w-full">
-              <SelectTrigger id="type" class="w-full" :class="form.errors.type ? 'border-red-500' : ''">
-                <SelectValue placeholder="Pilih jenis" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="option in typeOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p v-if="form.errors.type" class="text-xs text-red-600">
-              {{ form.errors.type }}
-            </p>
-          </div>
-
-          <!-- Status Pajak - Full Width -->
-          <div class="space-y-2">
-            <Label for="tax_status">Status Pajak</Label>
-            <Select v-model="form.tax_status" class="w-full">
-              <SelectTrigger id="tax_status" class="w-full" :class="form.errors.tax_status ? 'border-red-500' : ''">
-                <SelectValue placeholder="Pilih status pajak" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="option in taxStatusOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p v-if="form.errors.tax_status" class="text-xs text-red-600">
-              {{ form.errors.tax_status }}
-            </p>
-          </div>
-
-          <div class="space-y-2">
-            <Label for="bumn_partner">Mitra BUMN (opsional)</Label>
-            <Input id="bumn_partner" v-model="form.bumn_partner" placeholder="Contoh: PT PLN Persero"
-              :class="form.errors.bumn_partner ? 'border-red-500' : ''" />
-            <p v-if="form.errors.bumn_partner" class="text-xs text-red-600">
-              {{ form.errors.bumn_partner }}
-            </p>
-          </div>
-
-          <label class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50/70 px-4 py-3">
-            <div>
-              <p class="text-sm font-medium text-slate-800">Toko UMKM</p>
-              <p class="text-xs text-slate-500">Tandai jika toko Anda merupakan UMKM.</p>
-            </div>
-            <Switch v-model:checked="form.is_umkm" />
-          </label>
-        </CardContent>
-      </Card>
-
-      <Card class="lg:col-span-5">
+      <Card>
         <CardHeader>
           <div class="flex items-center gap-2">
             <MapPin class="h-5 w-5 text-indigo-600" />

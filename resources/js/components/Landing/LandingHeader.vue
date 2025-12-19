@@ -1,14 +1,135 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import axios from 'axios';
 
 const props = defineProps({
   isAuthenticated: Boolean,
   authUser: Object,
   megaMenuData: Array,
   cartItems: Array,
-  notifications: Array,
 });
+
+// Notification state (API-based)
+const notifications = ref([]);
+const unreadCount = ref(0);
+let notificationPollingInterval = null;
+
+const fetchNotifications = async () => {
+  if (!props.isAuthenticated) return;
+  try {
+    const response = await axios.get('/customer/notifications');
+    notifications.value = response.data.notifications;
+    unreadCount.value = response.data.unread_count;
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error);
+  }
+};
+
+const markAsRead = async (id) => {
+  try {
+    await axios.post(`/customer/notifications/${id}/read`);
+    const notification = notifications.value.find(n => n.id === id);
+    if (notification) {
+      notification.read_at = new Date().toISOString();
+    }
+    unreadCount.value = Math.max(0, unreadCount.value - 1);
+  } catch (error) {
+    console.error('Failed to mark as read:', error);
+  }
+};
+
+const markAllAsRead = async () => {
+  try {
+    await axios.post('/customer/notifications/read-all');
+    notifications.value.forEach(n => {
+      n.read_at = new Date().toISOString();
+    });
+    unreadCount.value = 0;
+  } catch (error) {
+    console.error('Failed to mark all as read:', error);
+  }
+};
+
+const handleNotificationClick = (notification) => {
+  if (!notification.read_at) {
+    markAsRead(notification.id);
+  }
+  state.notificationsOpen = false;
+  if (notification.action_url) {
+    router.visit(notification.action_url);
+  }
+};
+
+const deleteNotification = async (id, event) => {
+  event.stopPropagation();
+  try {
+    await axios.delete(`/customer/notifications/${id}`);
+    const wasUnread = notifications.value.find(n => n.id === id)?.read_at === null;
+    notifications.value = notifications.value.filter(n => n.id !== id);
+    if (wasUnread) {
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
+    }
+  } catch (error) {
+    console.error('Failed to delete notification:', error);
+  }
+};
+
+const deleteAllNotifications = async () => {
+  try {
+    await axios.delete('/customer/notifications');
+    notifications.value = [];
+    unreadCount.value = 0;
+  } catch (error) {
+    console.error('Failed to delete all notifications:', error);
+  }
+};
+
+const getIconBgColor = (icon) => {
+  switch (icon) {
+    case 'shopping-bag': return 'bg-blue-100 text-blue-700';
+    case 'truck': return 'bg-purple-100 text-purple-700';
+    case 'credit-card': return 'bg-green-100 text-green-700';
+    case 'check-circle': return 'bg-green-100 text-green-700';
+    case 'x-circle': return 'bg-red-100 text-red-700';
+    case 'star': return 'bg-amber-100 text-amber-700';
+    default: return 'bg-cyan-100 text-cyan-700';
+  }
+};
+
+// Chat state (API-based)
+const conversations = ref([]);
+const chatUnreadCount = ref(0);
+let chatPollingInterval = null;
+
+const fetchConversations = async () => {
+  if (!props.isAuthenticated) return;
+  try {
+    const response = await axios.get('/customer/chats');
+    conversations.value = response.data.conversations || [];
+    const countResponse = await axios.get('/customer/chats/unread-count');
+    chatUnreadCount.value = countResponse.data.unread_count || 0;
+  } catch (error) {
+    console.error('Failed to fetch conversations:', error);
+  }
+};
+
+const formatChatTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  } else if (days === 1) {
+    return 'Kemarin';
+  } else {
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  }
+};
+
+const logoUrl = '/images/logo-pkk.png';
 
 const emit = defineEmits(['toggleMobileMenu']);
 
@@ -17,6 +138,7 @@ const timers = {
   profile: null,
   notifications: null,
   cart: null,
+  chat: null,
 };
 
 const clearTimer = (key) => {
@@ -31,6 +153,7 @@ const state = reactive({
   profileOpen: false,
   notificationsOpen: false,
   cartOpen: false,
+  chatOpen: false,
   activeIndex: 0,
   showLogoutConfirmation: false,
 });
@@ -171,9 +294,18 @@ const closeCartWithDelay = () => {
   }, 120);
 };
 
-onBeforeUnmount(() => {
-  Object.keys(timers).forEach((key) => clearTimer(key));
-});
+const openChat = () => {
+  clearTimer('chat');
+  state.chatOpen = true;
+  fetchConversations();
+};
+
+const closeChatWithDelay = () => {
+  clearTimer('chat');
+  timers.chat = window.setTimeout(() => {
+    state.chatOpen = false;
+  }, 120);
+};
 
 // Handle browser back button - reload page if loaded from bfcache
 onMounted(() => {
@@ -186,7 +318,23 @@ onMounted(() => {
 
   window.addEventListener('pageshow', handlePageShow);
 
-  // Cleanup on unmount is handled via component lifecycle
+  // Fetch notifications and chats if authenticated
+  if (props.isAuthenticated) {
+    fetchNotifications();
+    notificationPollingInterval = setInterval(fetchNotifications, 30000);
+    fetchConversations();
+    chatPollingInterval = setInterval(fetchConversations, 30000);
+  }
+});
+
+onBeforeUnmount(() => {
+  Object.keys(timers).forEach((key) => clearTimer(key));
+  if (notificationPollingInterval) {
+    clearInterval(notificationPollingInterval);
+  }
+  if (chatPollingInterval) {
+    clearInterval(chatPollingInterval);
+  }
 });
 
 
@@ -228,12 +376,14 @@ const isAdmin = computed(() => {
           </svg>
         </button>
         <Link href="/" aria-label="Kembali ke halaman utama"
-          class="hidden h-10 w-24 items-center justify-center rounded-md bg-sky-50 p-2 text-xs font-bold text-sky-600 sm:flex">
-          TP-PKK Marketplace
+          class="hidden h-14 w-24 items-center justify-center text-xs font-bold text-sky-600 sm:flex">
+          <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
+            draggable="false" />
         </Link>
         <Link href="/" aria-label="Kembali ke halaman utama"
-          class="flex h-10 w-10 items-center justify-center rounded-md bg-sky-50 text-xs font-bold text-sky-600 sm:hidden">
-          TP
+          class="flex h-12 w-24 items-center justify-center text-xs font-bold text-sky-600 sm:hidden">
+          <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
+            draggable="false" />
         </Link>
       </div>
 
@@ -275,137 +425,279 @@ const isAdmin = computed(() => {
       </div>
 
       <!-- User Actions (Authenticated) -->
-      <div class="ml-auto flex items-center gap-4" v-if="isAuthenticated">
+      <div v-if="isAuthenticated" class="ml-auto flex items-center gap-2 lg:gap-4">
+        <div class="flex items-center gap-2">
+          <!-- Notifications -->
+          <div class="static lg:relative" @mouseenter="openNotifications" @mouseleave="closeNotificationsWithDelay"
+            @focusin="openNotifications" @focusout="closeNotificationsWithDelay">
+            <button
+              class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 focus:outline-none"
+              type="button" aria-haspopup="true" :aria-expanded="state.notificationsOpen">
+              <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12.02 21.0299C9.68999 21.0299 7.35999 20.6599 5.14999 19.9199C4.30999 19.6299 3.66999 19.0399 3.38999 18.2699C3.09999 17.4999 3.19999 16.6499 3.65999 15.8899L4.80999 13.9799C5.04999 13.5799 5.26999 12.7799 5.26999 12.3099V9.41992C5.26999 5.69992 8.29999 2.66992 12.02 2.66992C15.74 2.66992 18.77 5.69992 18.77 9.41992V12.3099C18.77 12.7699 18.99 13.5799 19.23 13.9899L20.37 15.8899C20.8 16.6099 20.88 17.4799 20.59 18.2699C20.3 19.0599 19.67 19.6599 18.88 19.9199C16.68 20.6599 14.35 21.0299 12.02 21.0299ZM12.02 4.16992C9.12999 4.16992 6.76999 6.51992 6.76999 9.41992V12.3099C6.76999 13.0399 6.46999 14.1199 6.09999 14.7499L4.94999 16.6599C4.72999 17.0299 4.66999 17.4199 4.79999 17.7499C4.91999 18.0899 5.21999 18.3499 5.62999 18.4899C9.80999 19.8899 14.24 19.8899 18.42 18.4899C18.78 18.3699 19.06 18.0999 19.19 17.7399C19.32 17.3799 19.29 16.9899 19.09 16.6599L17.94 14.7499C17.56 14.0999 17.27 13.0299 17.27 12.2999V9.41992C17.27 6.51992 14.92 4.16992 12.02 4.16992Z"
+                  fill="#686E76" />
+                <path
+                  d="M13.88 4.43993C13.81 4.43993 13.74 4.42993 13.67 4.40993C13.38 4.32993 13.1 4.26993 12.83 4.22993C11.98 4.11993 11.16 4.17993 10.39 4.40993C10.11 4.49993 9.80999 4.40993 9.61999 4.19993C9.42999 3.98993 9.36999 3.68993 9.47999 3.41993C9.88999 2.36993 10.89 1.67993 12.03 1.67993C13.17 1.67993 14.17 2.35993 14.58 3.41993C14.68 3.68993 14.63 3.98993 14.44 4.19993C14.29 4.35993 14.08 4.43993 13.88 4.43993Z"
+                  fill="#686E76" />
+                <path
+                  d="M12.02 23.3101C11.03 23.3101 10.07 22.9101 9.36999 22.2101C8.66999 21.5101 8.26999 20.5501 8.26999 19.5601H9.76999C9.76999 20.1501 10.01 20.7301 10.43 21.1501C10.85 21.5701 11.43 21.8101 12.02 21.8101C13.26 21.8101 14.27 20.8001 14.27 19.5601H15.77C15.77 21.6301 14.09 23.3101 12.02 23.3101Z"
+                  fill="#686E76" />
+              </svg>
+              <!-- Unread badge -->
+              <span v-if="unreadCount > 0"
+                class="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-white">
+                {{ unreadCount > 9 ? '9+' : unreadCount }}
+              </span>
+            </button>
 
-        <!-- Notifications -->
-        <div class="static lg:relative" @mouseenter="openNotifications" @mouseleave="closeNotificationsWithDelay"
-          @focusin="openNotifications" @focusout="closeNotificationsWithDelay">
-          <button class="rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 focus:outline-none"
-            type="button" aria-haspopup="true" :aria-expanded="state.notificationsOpen">
-            <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M12.02 21.0299C9.68999 21.0299 7.35999 20.6599 5.14999 19.9199C4.30999 19.6299 3.66999 19.0399 3.38999 18.2699C3.09999 17.4999 3.19999 16.6499 3.65999 15.8899L4.80999 13.9799C5.04999 13.5799 5.26999 12.7799 5.26999 12.3099V9.41992C5.26999 5.69992 8.29999 2.66992 12.02 2.66992C15.74 2.66992 18.77 5.69992 18.77 9.41992V12.3099C18.77 12.7699 18.99 13.5799 19.23 13.9899L20.37 15.8899C20.8 16.6099 20.88 17.4799 20.59 18.2699C20.3 19.0599 19.67 19.6599 18.88 19.9199C16.68 20.6599 14.35 21.0299 12.02 21.0299ZM12.02 4.16992C9.12999 4.16992 6.76999 6.51992 6.76999 9.41992V12.3099C6.76999 13.0399 6.46999 14.1199 6.09999 14.7499L4.94999 16.6599C4.72999 17.0299 4.66999 17.4199 4.79999 17.7499C4.91999 18.0899 5.21999 18.3499 5.62999 18.4899C9.80999 19.8899 14.24 19.8899 18.42 18.4899C18.78 18.3699 19.06 18.0999 19.19 17.7399C19.32 17.3799 19.29 16.9899 19.09 16.6599L17.94 14.7499C17.56 14.0999 17.27 13.0299 17.27 12.2999V9.41992C17.27 6.51992 14.92 4.16992 12.02 4.16992Z"
-                fill="#686E76" />
-              <path
-                d="M13.88 4.43993C13.81 4.43993 13.74 4.42993 13.67 4.40993C13.38 4.32993 13.1 4.26993 12.83 4.22993C11.98 4.11993 11.16 4.17993 10.39 4.40993C10.11 4.49993 9.80999 4.40993 9.61999 4.19993C9.42999 3.98993 9.36999 3.68993 9.47999 3.41993C9.88999 2.36993 10.89 1.67993 12.03 1.67993C13.17 1.67993 14.17 2.35993 14.58 3.41993C14.68 3.68993 14.63 3.98993 14.44 4.19993C14.29 4.35993 14.08 4.43993 13.88 4.43993Z"
-                fill="#686E76" />
-              <path
-                d="M12.02 23.3101C11.03 23.3101 10.07 22.9101 9.36999 22.2101C8.66999 21.5101 8.26999 20.5501 8.26999 19.5601H9.76999C9.76999 20.1501 10.01 20.7301 10.43 21.1501C10.85 21.5701 11.43 21.8101 12.02 21.8101C13.26 21.8101 14.27 20.8001 14.27 19.5601H15.77C15.77 21.6301 14.09 23.3101 12.02 23.3101Z"
-                fill="#686E76" />
-            </svg>
-          </button>
-
-          <div
-            class="absolute inset-x-4 top-full mt-2 w-auto overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-200/70 lg:inset-x-auto lg:right-0 lg:w-[380px] lg:max-w-[90vw]"
-            v-show="state.notificationsOpen">
-            <div class="border-b border-slate-100 px-5 pt-5 pb-3">
-              <p class="text-xl font-semibold text-slate-900">Notifikasi</p>
-            </div>
-            <div class="divide-y divide-slate-100">
-              <div class="px-5 py-3" v-for="(notif, index) in notifications" :key="`notif-${index}`">
-                <div class="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <div class="grid h-6 w-6 place-items-center rounded-full bg-cyan-100 text-cyan-700">
+            <div
+              class="absolute inset-x-4 top-full mt-2 w-auto overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-200/70 lg:inset-x-auto lg:right-0 lg:w-[380px] lg:max-w-[90vw]"
+              v-show="state.notificationsOpen">
+              <div class="flex items-center justify-between border-b border-slate-100 px-5 pt-5 pb-3">
+                <p class="text-xl font-semibold text-slate-900">Notifikasi</p>
+                <div class="flex items-center gap-3">
+                  <button v-if="unreadCount > 0" @click="markAllAsRead"
+                    class="text-xs font-medium text-cyan-600 hover:text-cyan-700">
+                    Tandai dibaca
+                  </button>
+                  <button v-if="notifications.length > 0" @click="deleteAllNotifications"
+                    class="text-xs font-medium text-red-500 hover:text-red-600">
+                    Hapus semua
+                  </button>
+                </div>
+              </div>
+              <div class="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+                <div v-if="notifications.length === 0" class="px-5 py-8 text-center">
+                  <svg class="mx-auto h-10 w-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.5">
+                    <path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2Z" />
+                    <path
+                      d="M18 16v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z" />
+                  </svg>
+                  <p class="mt-2 text-sm text-slate-500">Belum ada notifikasi</p>
+                </div>
+                <div v-else v-for="notif in notifications" :key="notif.id" @click="handleNotificationClick(notif)"
+                  class="flex cursor-pointer gap-3 px-5 py-3 transition hover:bg-slate-50"
+                  :class="{ 'bg-cyan-50/50': !notif.read_at }">
+                  <div
+                    :class="['grid h-8 w-8 flex-shrink-0 place-items-center rounded-full', getIconBgColor(notif.icon)]">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="5" width="18" height="14" rx="2" />
-                      <path d="M3 10h18" />
+                      <template v-if="notif.icon === 'shopping-bag'">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                      </template>
+                      <template v-else-if="notif.icon === 'truck'">
+                        <rect x="1" y="3" width="15" height="13" rx="2" />
+                        <path d="M16 8h4l3 3v5a2 2 0 0 1-2 2h-1" />
+                        <circle cx="5.5" cy="18.5" r="2.5" />
+                        <circle cx="18.5" cy="18.5" r="2.5" />
+                      </template>
+                      <template v-else-if="notif.icon === 'credit-card'">
+                        <rect x="1" y="4" width="22" height="16" rx="2" />
+                        <line x1="1" y1="10" x2="23" y2="10" />
+                      </template>
+                      <template v-else-if="notif.icon === 'check-circle'">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </template>
+                      <template v-else-if="notif.icon === 'star'">
+                        <polygon
+                          points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </template>
+                      <template v-else>
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                      </template>
                     </svg>
                   </div>
-                  <span>{{ notif.date }}</span>
-                </div>
-                <p class="mt-3 text-[15px] font-semibold text-slate-700">{{ notif.title }}</p>
-                <p class="mt-1 text-sm text-slate-600">{{ notif.description }}</p>
-              </div>
-            </div>
-            <div class="bg-slate-50 px-5 py-3">
-              <a href="#" class="text-sm font-semibold text-cyan-700 hover:text-cyan-800">Lihat Semua Notifikasi</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Cart -->
-        <div class="static lg:relative" @mouseenter="openCart" @mouseleave="closeCartWithDelay">
-          <button class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
-            <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M18.19 18.25H7.53999C6.54999 18.25 5.59999 17.83 4.92999 17.1C4.25999 16.37 3.92 15.39 4 14.4L4.83 4.44C4.86 4.13 4.74999 3.83001 4.53999 3.60001C4.32999 3.37001 4.04 3.25 3.73 3.25H2C1.59 3.25 1.25 2.91 1.25 2.5C1.25 2.09 1.59 1.75 2 1.75H3.74001C4.47001 1.75 5.15999 2.06 5.64999 2.59C5.91999 2.89 6.12 3.24 6.23 3.63H18.72C19.73 3.63 20.66 4.03 21.34 4.75C22.01 5.48 22.35 6.43 22.27 7.44L21.73 14.94C21.62 16.77 20.02 18.25 18.19 18.25ZM6.28 5.12L5.5 14.52C5.45 15.1 5.64 15.65 6.03 16.08C6.42 16.51 6.95999 16.74 7.53999 16.74H18.19C19.23 16.74 20.17 15.86 20.25 14.82L20.79 7.32001C20.83 6.73001 20.64 6.17001 20.25 5.76001C19.86 5.34001 19.32 5.10999 18.73 5.10999H6.28V5.12Z"
-                fill="#686E76" />
-              <path
-                d="M16.25 23.25C15.15 23.25 14.25 22.35 14.25 21.25C14.25 20.15 15.15 19.25 16.25 19.25C17.35 19.25 18.25 20.15 18.25 21.25C18.25 22.35 17.35 23.25 16.25 23.25ZM16.25 20.75C15.97 20.75 15.75 20.97 15.75 21.25C15.75 21.53 15.97 21.75 16.25 21.75C16.53 21.75 16.75 21.53 16.75 21.25C16.75 20.97 16.53 20.75 16.25 20.75Z"
-                fill="#686E76" />
-              <path
-                d="M8.25 23.25C7.15 23.25 6.25 22.35 6.25 21.25C6.25 20.15 7.15 19.25 8.25 19.25C9.35 19.25 10.25 20.15 10.25 21.25C10.25 22.35 9.35 23.25 8.25 23.25ZM8.25 20.75C7.97 20.75 7.75 20.97 7.75 21.25C7.75 21.53 7.97 21.75 8.25 21.75C8.53 21.75 8.75 21.53 8.75 21.25C8.75 20.97 8.53 20.75 8.25 20.75Z"
-                fill="#686E76" />
-              <path
-                d="M21 9.25H9C8.59 9.25 8.25 8.91 8.25 8.5C8.25 8.09 8.59 7.75 9 7.75H21C21.41 7.75 21.75 8.09 21.75 8.5C21.75 8.91 21.41 9.25 21 9.25Z"
-                fill="#686E76" />
-            </svg>
-            <span v-if="cartCount"
-              class="absolute -right-0.5 -top-0.5 grid h-4 min-w-[1rem] place-items-center rounded-full bg-red-500 px-0.5 text-[10px] font-semibold text-white">
-              {{ cartCount }}
-            </span>
-          </button>
-
-          <div
-            class="absolute inset-x-4 top-full mt-2 w-auto rounded-lg border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:inset-x-auto lg:right-0 lg:w-[460px] lg:max-w-[90vw]"
-            v-show="state.cartOpen" @mouseenter="openCart" @mouseleave="closeCartWithDelay">
-            <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <p class="text-xl font-semibold text-slate-900">Keranjang</p>
-              <Link href="/cart" class="text-sm font-semibold text-sky-600 hover:text-sky-700">Lihat Selengkapnya</Link>
-            </div>
-            <div v-if="cartItems.length" class="divide-y divide-slate-100">
-              <div class="flex gap-3 px-4 py-3" v-for="(item, index) in cartItems" :key="`cart-${item.id ?? index}`">
-                <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden"
-                  :class="cartItemImage(item) ? 'bg-slate-100' : ''">
-                  <img v-if="cartItemImage(item)" class="h-full w-full object-cover" :src="cartItemImage(item)"
-                    :alt="cartItemName(item)" />
-                  <div v-else
-                    class="flex h-full w-full items-center justify-center text-[10px] font-medium text-slate-400">
-                    No Image
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-700">{{ notif.title }}</p>
+                    <p class="mt-0.5 text-xs text-slate-600 line-clamp-2">{{ notif.message }}</p>
+                    <p class="mt-1 text-xs text-slate-400">{{ notif.created_at }}</p>
+                  </div>
+                  <div class="flex-shrink-0 flex items-center gap-2">
+                    <button @click="deleteNotification(notif.id, $event)"
+                      class="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-500 transition-colors"
+                      title="Hapus">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                    <span v-if="!notif.read_at" class="block h-2 w-2 rounded-full bg-cyan-500"></span>
                   </div>
                 </div>
-                <div class="flex-1">
-                  <p class="text-sm font-semibold text-slate-900">{{ cartItemName(item) }}</p>
-                  <p class="text-xs text-slate-500">{{ cartItemQty(item) }} Barang</p>
-                </div>
-                <div class="text-sm font-semibold text-slate-900">{{ formatPrice(cartItemPrice(item)) }}</div>
+              </div>
+              <div class="border-t border-slate-100 bg-slate-50 px-5 py-3">
+                <Link href="/customer/dashboard/transactions"
+                  class="text-sm font-semibold text-cyan-700 hover:text-cyan-800">Lihat
+                  Semua Pesanan</Link>
               </div>
             </div>
-            <div v-else class="px-4 py-3 text-sm text-slate-500">
-              Keranjangmu masih kosong.
+          </div>
+
+          <!-- Cart -->
+          <div class="static lg:relative" @mouseenter="openCart" @mouseleave="closeCartWithDelay">
+            <button class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
+              <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M18.19 18.25H7.53999C6.54999 18.25 5.59999 17.83 4.92999 17.1C4.25999 16.37 3.92 15.39 4 14.4L4.83 4.44C4.86 4.13 4.74999 3.83001 4.53999 3.60001C4.32999 3.37001 4.04 3.25 3.73 3.25H2C1.59 3.25 1.25 2.91 1.25 2.5C1.25 2.09 1.59 1.75 2 1.75H3.74001C4.47001 1.75 5.15999 2.06 5.64999 2.59C5.91999 2.89 6.12 3.24 6.23 3.63H18.72C19.73 3.63 20.66 4.03 21.34 4.75C22.01 5.48 22.35 6.43 22.27 7.44L21.73 14.94C21.62 16.77 20.02 18.25 18.19 18.25ZM6.28 5.12L5.5 14.52C5.45 15.1 5.64 15.65 6.03 16.08C6.42 16.51 6.95999 16.74 7.53999 16.74H18.19C19.23 16.74 20.17 15.86 20.25 14.82L20.79 7.32001C20.83 6.73001 20.64 6.17001 20.25 5.76001C19.86 5.34001 19.32 5.10999 18.73 5.10999H6.28V5.12Z"
+                  fill="#686E76" />
+                <path
+                  d="M16.25 23.25C15.15 23.25 14.25 22.35 14.25 21.25C14.25 20.15 15.15 19.25 16.25 19.25C17.35 19.25 18.25 20.15 18.25 21.25C18.25 22.35 17.35 23.25 16.25 23.25ZM16.25 20.75C15.97 20.75 15.75 20.97 15.75 21.25C15.75 21.53 15.97 21.75 16.25 21.75C16.53 21.75 16.75 21.53 16.75 21.25C16.75 20.97 16.53 20.75 16.25 20.75Z"
+                  fill="#686E76" />
+                <path
+                  d="M8.25 23.25C7.15 23.25 6.25 22.35 6.25 21.25C6.25 20.15 7.15 19.25 8.25 19.25C9.35 19.25 10.25 20.15 10.25 21.25C10.25 22.35 9.35 23.25 8.25 23.25ZM8.25 20.75C7.97 20.75 7.75 20.97 7.75 21.25C7.75 21.53 7.97 21.75 8.25 21.75C8.53 21.75 8.75 21.53 8.75 21.25C8.75 20.97 8.53 20.75 8.25 20.75Z"
+                  fill="#686E76" />
+                <path
+                  d="M21 9.25H9C8.59 9.25 8.25 8.91 8.25 8.5C8.25 8.09 8.59 7.75 9 7.75H21C21.41 7.75 21.75 8.09 21.75 8.5C21.75 8.91 21.41 9.25 21 9.25Z"
+                  fill="#686E76" />
+              </svg>
+              <span v-if="cartCount"
+                class="absolute -right-0.5 -top-0.5 grid h-4 min-w-[1rem] place-items-center rounded-full bg-red-500 px-0.5 text-[10px] font-semibold text-white">
+                {{ cartCount }}
+              </span>
+            </button>
+
+            <div
+              class="absolute inset-x-4 top-full mt-2 w-auto rounded-lg border border-slate-200 bg-white shadow-xl shadow-slate-200/60 lg:inset-x-auto lg:right-0 lg:w-[460px] lg:max-w-[90vw]"
+              v-show="state.cartOpen" @mouseenter="openCart" @mouseleave="closeCartWithDelay">
+              <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <p class="text-xl font-semibold text-slate-900">Keranjang</p>
+                <Link href="/cart" class="text-sm font-semibold text-sky-600 hover:text-sky-700">Lihat Selengkapnya
+                </Link>
+              </div>
+              <div v-if="cartItems.length" class="divide-y divide-slate-100">
+                <div class="flex gap-3 px-4 py-3" v-for="(item, index) in cartItems" :key="`cart-${item.id ?? index}`">
+                  <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden"
+                    :class="cartItemImage(item) ? 'bg-slate-100' : ''">
+                    <img v-if="cartItemImage(item)" class="h-full w-full object-cover" :src="cartItemImage(item)"
+                      :alt="cartItemName(item)" />
+                    <div v-else
+                      class="flex h-full w-full items-center justify-center text-[10px] font-medium text-slate-400">
+                      No Image
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-slate-900">{{ cartItemName(item) }}</p>
+                    <p class="text-xs text-slate-500">{{ cartItemQty(item) }} Barang</p>
+                  </div>
+                  <div class="text-sm font-semibold text-slate-900">{{ formatPrice(cartItemPrice(item)) }}</div>
+                </div>
+              </div>
+              <div v-else class="px-4 py-3 text-sm text-slate-500">
+                Keranjangmu masih kosong.
+              </div>
             </div>
           </div>
+
+          <!-- Messages / Chat Button -->
+          <div v-if="isAuthenticated" class="static lg:relative" @mouseenter="openChat"
+            @mouseleave="closeChatWithDelay">
+            <button class="relative rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
+              <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 23.31C11.31 23.31 10.66 22.96 10.2 22.35L8.7 20.35C8.67 20.31 8.55 20.26 8.5 20.25H8C3.83 20.25 1.25 19.12 1.25 13.5V8.5C1.25 4.08 3.58 1.75 8 1.75H16C20.42 1.75 22.75 4.08 22.75 8.5V13.5C22.75 17.92 20.42 20.25 16 20.25H15.5C15.42 20.25 15.35 20.29 15.3 20.35L13.8 22.35C13.34 22.96 12.69 23.31 12 23.31ZM8 3.25C4.42 3.25 2.75 4.92 2.75 8.5V13.5C2.75 18.02 4.3 18.75 8 18.75H8.5C9.01 18.75 9.59 19.04 9.9 19.45L11.4 21.45C11.75 21.91 12.25 21.91 12.6 21.45L14.1 19.45C14.43 19.01 14.95 18.75 15.5 18.75H16C19.58 18.75 21.25 17.08 21.25 13.5V8.5C21.25 4.92 19.58 3.25 16 3.25H8Z"
+                  fill="#686E76" />
+                <path
+                  d="M17 9.25H7C6.59 9.25 6.25 8.91 6.25 8.5C6.25 8.09 6.59 7.75 7 7.75H17C17.41 7.75 17.75 8.09 17.75 8.5C17.75 8.91 17.41 9.25 17 9.25Z"
+                  fill="#686E76" />
+                <path
+                  d="M13 14.25H7C6.59 14.25 6.25 13.91 6.25 13.5C6.25 13.09 6.59 12.75 7 12.75H13C13.41 12.75 13.75 13.09 13.75 13.5C13.75 13.91 13.41 14.25 13 14.25Z"
+                  fill="#686E76" />
+              </svg>
+              <span v-if="chatUnreadCount > 0"
+                class="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-white">
+                {{ chatUnreadCount > 9 ? '9+' : chatUnreadCount }}
+              </span>
+            </button>
+
+            <!-- Chat Dropdown -->
+            <div v-show="state.chatOpen"
+              class="absolute inset-x-4 top-full mt-2 w-auto overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-200/70 lg:inset-x-auto lg:right-0 lg:w-[340px] lg:max-w-[90vw]">
+              <div class="flex items-center justify-between border-b border-slate-100 px-5 pt-5 pb-3">
+                <p class="text-xl font-semibold text-slate-900">Pesan</p>
+              </div>
+              <div class="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+                <div v-if="conversations.length === 0" class="px-5 py-8 text-center">
+                  <svg class="mx-auto h-10 w-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.5">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <p class="mt-2 text-sm text-slate-500">Belum ada percakapan</p>
+                </div>
+                <div v-else v-for="conv in conversations" :key="conv.id"
+                  class="flex items-center gap-3 px-5 py-3 cursor-pointer transition hover:bg-slate-50"
+                  :class="{ 'bg-blue-50/50': conv.unread_count > 0 }"
+                  @click="state.chatOpen = false; router.visit(`/customer/dashboard/chat/${conv.id}`)">
+                  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+                    <img v-if="conv.store?.logo" :src="conv.store.logo" class="h-10 w-10 rounded-full object-cover" />
+                    <svg v-else class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="m9 9 6 6" />
+                      <path d="m15 9-6 6" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between">
+                      <p class="font-semibold text-slate-900 truncate" :class="{ 'font-bold': conv.unread_count > 0 }">
+                        {{ conv.store?.name || 'Toko' }}
+                      </p>
+                      <span class="text-xs text-slate-400">{{ formatChatTime(conv.last_message_at) }}</span>
+                    </div>
+                    <p class="text-sm text-slate-500 truncate"
+                      :class="{ 'font-medium text-slate-700': conv.unread_count > 0 }">
+                      {{ conv.last_message?.content || 'Belum ada pesan' }}
+                    </p>
+                  </div>
+                  <span v-if="conv.unread_count > 0" class="flex-shrink-0 h-2 w-2 rounded-full bg-sky-500"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button v-else class="rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+            @click="router.visit('/customer/login')">
+            <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12 23.31C11.31 23.31 10.66 22.96 10.2 22.35L8.7 20.35C8.67 20.31 8.55 20.26 8.5 20.25H8C3.83 20.25 1.25 19.12 1.25 13.5V8.5C1.25 4.08 3.58 1.75 8 1.75H16C20.42 1.75 22.75 4.08 22.75 8.5V13.5C22.75 17.92 20.42 20.25 16 20.25H15.5C15.42 20.25 15.35 20.29 15.3 20.35L13.8 22.35C13.34 22.96 12.69 23.31 12 23.31ZM8 3.25C4.42 3.25 2.75 4.92 2.75 8.5V13.5C2.75 18.02 4.3 18.75 8 18.75H8.5C9.01 18.75 9.59 19.04 9.9 19.45L11.4 21.45C11.75 21.91 12.25 21.91 12.6 21.45L14.1 19.45C14.43 19.01 14.95 18.75 15.5 18.75H16C19.58 18.75 21.25 17.08 21.25 13.5V8.5C21.25 4.92 19.58 3.25 16 3.25H8Z"
+                fill="#686E76" />
+              <path
+                d="M17 9.25H7C6.59 9.25 6.25 8.91 6.25 8.5C6.25 8.09 6.59 7.75 7 7.75H17C17.41 7.75 17.75 8.09 17.75 8.5C17.75 8.91 17.41 9.25 17 9.25Z"
+                fill="#686E76" />
+              <path
+                d="M13 14.25H7C6.59 14.25 6.25 13.91 6.25 13.5C6.25 13.09 6.59 12.75 7 12.75H13C13.41 12.75 13.75 13.09 13.75 13.5C13.75 13.91 13.41 14.25 13 14.25Z"
+                fill="#686E76" />
+            </svg>
+          </button>
         </div>
 
-        <!-- Messages / Chat Button -->
-        <button class="rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
-          <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M12 23.31C11.31 23.31 10.66 22.96 10.2 22.35L8.7 20.35C8.67 20.31 8.55 20.26 8.5 20.25H8C3.83 20.25 1.25 19.12 1.25 13.5V8.5C1.25 4.08 3.58 1.75 8 1.75H16C20.42 1.75 22.75 4.08 22.75 8.5V13.5C22.75 17.92 20.42 20.25 16 20.25H15.5C15.42 20.25 15.35 20.29 15.3 20.35L13.8 22.35C13.34 22.96 12.69 23.31 12 23.31ZM8 3.25C4.42 3.25 2.75 4.92 2.75 8.5V13.5C2.75 18.02 4.3 18.75 8 18.75H8.5C9.01 18.75 9.59 19.04 9.9 19.45L11.4 21.45C11.75 21.91 12.25 21.91 12.6 21.45L14.1 19.45C14.43 19.01 14.95 18.75 15.5 18.75H16C19.58 18.75 21.25 17.08 21.25 13.5V8.5C21.25 4.92 19.58 3.25 16 3.25H8Z"
-              fill="#686E76" />
-            <path
-              d="M17 9.25H7C6.59 9.25 6.25 8.91 6.25 8.5C6.25 8.09 6.59 7.75 7 7.75H17C17.41 7.75 17.75 8.09 17.75 8.5C17.75 8.91 17.41 9.25 17 9.25Z"
-              fill="#686E76" />
-            <path
-              d="M13 14.25H7C6.59 14.25 6.25 13.91 6.25 13.5C6.25 13.09 6.59 12.75 7 12.75H13C13.41 12.75 13.75 13.09 13.75 13.5C13.75 13.91 13.41 14.25 13 14.25Z"
-              fill="#686E76" />
-          </svg>
-        </button>
-
         <!-- Profile Dropdown -->
-        <div class="static lg:relative" @mouseenter="openProfile" @mouseleave="closeProfileWithDelay"
+        <div class="static flex-shrink-0 lg:relative" @mouseenter="openProfile" @mouseleave="closeProfileWithDelay"
           @focusin="openProfile" @focusout="closeProfileWithDelay">
           <button type="button"
-            class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-left transition hover:bg-slate-100 focus:outline-none"
+            class="flex items-center rounded-full p-1.5 transition hover:bg-slate-50 focus:outline-none sm:max-w-full sm:gap-2 sm:rounded-lg sm:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-left sm:hover:bg-slate-100"
             aria-haspopup="true" :aria-expanded="state.profileOpen">
-            <div class="grid h-8 w-8 place-items-center rounded-full bg-slate-300">
-              <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="8" r="3" />
-                <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-              </svg>
+            <div class="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-slate-300">
+              <img v-if="authUser?.avatar_url" :src="authUser.avatar_url" alt="Profile"
+                class="h-full w-full object-cover" />
+              <div v-else class="grid h-full w-full place-items-center">
+                <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="8" r="3" />
+                  <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                </svg>
+              </div>
             </div>
-            <div class="text-left">
-              <p class="text-sm font-semibold text-slate-800">{{ authUser?.name }}</p>
-              <p class="text-[11px] text-slate-500">{{ authUser?.roles?.[0] ?? 'Super Admin' }}</p>
+            <div class="hidden min-w-0 text-left sm:block">
+              <p class="max-w-[10rem] truncate text-sm font-semibold text-slate-800 sm:max-w-[14rem]">
+                {{ authUser?.name }}
+              </p>
+              <p class="text-[11px] text-slate-500">
+                {{ authUser?.roles?.[0] ?? 'Super Admin' }}
+              </p>
             </div>
           </button>
 
@@ -498,7 +790,7 @@ const isAdmin = computed(() => {
                 </svg>
                 <span class="text-sm font-semibold">Pesanan Masuk</span>
               </Link>
-              <Link href="/seller/store"
+              <Link href="/seller/settings"
                 class="flex items-center gap-3 px-5 py-3 text-slate-800 transition hover:bg-slate-50">
                 <svg class="h-6 w-6 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="2">

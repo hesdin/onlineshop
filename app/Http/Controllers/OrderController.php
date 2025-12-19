@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Notifications\NewOrderNotification;
+use App\Notifications\OrderConfirmedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -120,6 +122,14 @@ class OrderController extends Controller
 
                 $orderIds[] = $order->id;
 
+                // Send notification to seller
+                if ($store && $store->user) {
+                    $store->user->notify(new NewOrderNotification($order));
+                }
+
+                // Send notification to customer
+                $user->notify(new OrderConfirmedNotification($order));
+
                 // Delete cart items
                 foreach ($items as $item) {
                     $item->delete();
@@ -192,6 +202,14 @@ class OrderController extends Controller
             ]);
 
             $orderId = $order->id;
+
+            // Send notification to seller
+            if ($store && $store->user) {
+                $store->user->notify(new NewOrderNotification($order));
+            }
+
+            // Send notification to customer
+            $user->notify(new OrderConfirmedNotification($order));
         });
 
         // Clear buy-now session data
@@ -229,6 +247,7 @@ class OrderController extends Controller
             return [
                 'id' => $order->id,
                 'order_number' => $order->order_number,
+                'store_id' => $order->store_id,
                 'store_name' => $order->store->name,
                 'store_phone' => $order->store->phone ?? null,
                 'store_rating' => $order->store->rating ?? null,

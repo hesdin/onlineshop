@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Store;
+use App\Models\User;
+use App\Notifications\SellerDocumentSubmittedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -125,6 +129,10 @@ class SellerDocumentController extends Controller
             'submission_status' => 'submitted',
             'submitted_at' => now(),
         ]);
+
+        // Notify all admins about new document submission
+        $admins = User::role('superadmin')->get();
+        Notification::send($admins, new SellerDocumentSubmittedNotification($store));
 
         return back()->with('success', 'Dokumen berhasil disubmit untuk diverifikasi. Tim kami akan meninjau dalam 1-3 hari kerja.');
     }

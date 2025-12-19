@@ -95,9 +95,9 @@
             <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">
               Login Sebagai
             </h3>
-            <div
-              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
-              TP-PKK Marketplace
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img src="{{ asset('images/logo-pkk.png') }}" alt="TP-PKK Marketplace" class="h-full w-full object-contain"
+                decoding="async" draggable="false" />
             </div>
           </div>
 

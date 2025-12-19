@@ -36,6 +36,7 @@ class SellerStoreRequest extends FormRequest
                 'max:255',
                 Rule::unique('stores', 'slug')->ignore($storeId),
             ],
+            'phone' => ['nullable', 'string', 'max:20'],
             'tagline' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'type' => ['required', 'string', Rule::in(['umkm', 'vendor', 'koperasi', 'premium'])],
@@ -47,6 +48,9 @@ class SellerStoreRequest extends FormRequest
             'postal_code' => ['nullable', 'string', 'max:10'],
             'address_line' => ['nullable', 'string'],
             'response_time_label' => ['nullable', 'string', 'max:255'],
+            'bank_name' => ['nullable', 'string', 'max:100'],
+            'bank_account_number' => ['nullable', 'string', 'max:50'],
+            'bank_account_name' => ['nullable', 'string', 'max:255'],
             'is_umkm' => ['sometimes', 'boolean'],
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
             'banner' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:4096'],
@@ -58,6 +62,7 @@ class SellerStoreRequest extends FormRequest
         $data = parent::validated($key, $default);
 
         $nullableFields = [
+            'phone',
             'tagline',
             'description',
             'bumn_partner',
@@ -67,6 +72,9 @@ class SellerStoreRequest extends FormRequest
             'postal_code',
             'address_line',
             'response_time_label',
+            'bank_name',
+            'bank_account_number',
+            'bank_account_name',
         ];
 
         foreach ($nullableFields as $field) {

@@ -54,12 +54,60 @@ const formatDate = (value) => {
 };
 
 // Modal Logic
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import axios from 'axios';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { MessageSquare, PhoneOff, Copy, Check, ExternalLink, Info } from 'lucide-vue-next';
+
+// ... existing refs ...
+
+const getPaymentValidation = (order) => {
+  if (!order) return { valid: false, message: '' };
+
+  // Important: Check phone for ALL payment methods if we rely on it for confirmation
+  // But based on previous logic, strictly:
+  const isCOD = order.payment_info?.method?.toLowerCase().includes('cod');
+
+  if (!order.store.phone) {
+    return { valid: false, message: 'Toko belum mengatur nomor WhatsApp.' };
+  }
+
+  if (!isCOD && (!order.store.bank_details?.bank_name || !order.store.bank_details?.account_number)) {
+    return { valid: false, message: 'Toko belum mengatur informasi rekening bank.' };
+  }
+
+  return { valid: true };
+};
+
+const getChatValidation = (order) => {
+  if (!order?.store?.phone) {
+    return { valid: false, message: 'Toko belum mengatur nomor WhatsApp.' };
+  }
+  return { valid: true };
+};
 
 const showDetailModal = ref(false);
 const showTransferModal = ref(false);
 const showCODModal = ref(false);
+const showFallbackDialog = ref(false);
+const isStartingChat = ref(false);
 const selectedOrder = ref(null);
+const copiedField = ref(null);
 
 const openDetailModal = (order) => {
   selectedOrder.value = order;
@@ -81,22 +129,19 @@ const closeTransferModal = () => {
 };
 
 const handlePayment = (order) => {
-  // Set selected order so modal can display its data
-  selectedOrder.value = order;
-
-  // Check payment method - assumes 'cod' or 'transfer' code from backend
-  // Since we access payment_info.method name in template, we utilize order.payment_method_code or similar if available
-  // Or check based on the label text if code isn't easily available, but controller sends payment_status.
-  // We need to ensure we have the code. Let's assume 'cod' vs 'bank_transfer'
-
-  // NOTE: Controller didn't explicitly send payment_method_code in the 'payment_info' array,
-  // but it is likely in the full order object if we look closely or we can infer.
-  // Let's rely on the text for now or check if we need to add code to controller.
-
-  // Actually, let's look at the controller again. It sends `paymentMethod:id,name`.
-  // Logic: "COD" usually contains "COD" in name or we should add code to response.
-
   const isCOD = order.payment_info?.method?.toLowerCase().includes('cod');
+
+  // Check if store has necessary contact/payment info immediately
+  const hasPhone = !!order.store.phone;
+  const hasBankInfo = isCOD || (order.store.bank_details?.bank_name && order.store.bank_details?.account_number);
+
+  if (!hasPhone || !hasBankInfo) {
+    pendingOrder.value = order;
+    showFallbackDialog.value = true;
+    return;
+  }
+
+  selectedOrder.value = order;
 
   if (isCOD) {
     showCODModal.value = true;
@@ -106,6 +151,52 @@ const handlePayment = (order) => {
     showTransferModal.value = true;
     document.body.style.overflow = 'hidden';
   }
+};
+
+const handleWhatsAppClick = (order, customText = null) => {
+  const phone = order.store.phone;
+  if (!phone) {
+    pendingOrder.value = order;
+    showFallbackDialog.value = true;
+    return;
+  }
+
+  const text = customText || `Halo ${order.store.name}, saya ingin konfirmasi pesanan: ${order.order_number}`;
+  const link = chatStore(phone, text);
+  window.open(link, '_blank');
+};
+
+const startInternalChat = async () => {
+  const order = selectedOrder.value || pendingOrder.value;
+  if (!order) return;
+
+  try {
+    isStartingChat.value = true;
+    showFallbackDialog.value = false;
+    showTransferModal.value = false;
+    showCODModal.value = false;
+
+    const response = await axios.post('/customer/chats/start', {
+      store_id: order.store.id,
+      message: `Halo ${order.store.name}, saya ingin konfirmasi pesanan: ${order.order_number}`
+    });
+
+    if (response.data.conversation_id) {
+      router.visit(`/customer/dashboard/chat/${response.data.conversation_id}`);
+    }
+  } catch (error) {
+    console.error('Failed to start chat:', error);
+  } finally {
+    isStartingChat.value = false;
+  }
+};
+
+const copyToClipboard = (text, field) => {
+  navigator.clipboard.writeText(text);
+  copiedField.value = field;
+  setTimeout(() => {
+    copiedField.value = null;
+  }, 2000);
 };
 
 const closeCODModal = () => {
@@ -122,8 +213,6 @@ const chatStore = (phone, text) => {
 };
 
 const generateTransferProofLink = (order) => {
-  if (!order?.store?.phone) return '#';
-
   const text = `Halo, saya ingin konfirmasi pembayaran untuk pesanan ${order.order_number}.
 
 Berikut bukti transfer saya untuk produk:
@@ -131,8 +220,22 @@ ${order.first_item?.name} ${order.items_count > 1 ? '(+' + (order.items_count - 
 
 Total Transfer: ${formatPrice(order.grand_total)}`;
 
-  return chatStore(order.store.phone, text);
+  return text; // Return text to be used in handleWhatsAppClick
 };
+
+const pendingOrder = ref(null);
+
+const fallbackReason = computed(() => {
+  const order = selectedOrder.value || pendingOrder.value;
+  if (!order) return "belum melengkapi informasi kontak";
+
+  const isCOD = order.payment_info?.method?.toLowerCase().includes('cod');
+  if (!order.store.phone) return "belum mengatur nomor WhatsApp";
+  if (!isCOD && (!order.store.bank_details?.bank_name || !order.store.bank_details?.account_number)) {
+    return "belum melengkapi informasi rekening bank";
+  }
+  return "belum melengkapi informasi kontak";
+});
 
 // Buy Again Logic
 const isBuyingAgain = ref(false);
@@ -288,7 +391,8 @@ const buyAgain = async (order) => {
                     </button>
 
                     <button v-if="order.status === 'pending_payment'" @click="handlePayment(order)"
-                      class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700">
+                      :disabled="isStartingChat"
+                      class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700 transition-colors hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
                       Bayar
                     </button>
                     <button v-else @click="buyAgain(order)" :disabled="isBuyingAgain"
@@ -300,16 +404,37 @@ const buyAgain = async (order) => {
                       </svg>
                       {{ isBuyingAgain ? 'Memproses...' : 'Beli Lagi' }}
                     </button>
-                    <button
-                      class="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-400 hover:bg-slate-50 hover:text-slate-600">
-                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                      </svg>
-                    </button>
+                    <!-- More menu placeholder -->
                   </div>
                 </div>
               </div>
+
+              <!-- AlertDialog Fallback -->
+              <AlertDialog :open="showFallbackDialog" @update:open="showFallbackDialog = $event">
+                <AlertDialogContent class="max-w-[400px]">
+                  <AlertDialogHeader>
+                    <div
+                      class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-600 mb-2">
+                      <PhoneOff class="h-8 w-8" />
+                    </div>
+                    <AlertDialogTitle class="text-center text-xl font-bold">Informasi Belum Lengkap</AlertDialogTitle>
+                    <AlertDialogDescription class="text-center text-slate-600 pt-2">
+                      Toko <span class="font-semibold text-slate-900">{{ (selectedOrder || pendingOrder)?.store.name
+                      }}</span> {{ fallbackReason }}. Apakah Anda ingin menghubungi mereka melalui chat
+                      internal?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter class="sm:flex-col gap-2 mt-4">
+                    <AlertDialogAction @click="startInternalChat" :disabled="isStartingChat"
+                      class="w-full bg-sky-600 hover:bg-sky-700 font-bold py-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-opacity">
+                      <MessageSquare class="h-4 w-4 mr-2" />
+                      Hubungi via Chat Internal
+                    </AlertDialogAction>
+                    <AlertDialogCancel class="w-full border-slate-200 font-semibold py-6 rounded-xl">Tutup
+                    </AlertDialogCancel>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
 
             <!-- Empty State -->
@@ -479,21 +604,46 @@ const buyAgain = async (order) => {
 
               <!-- Right Column: Actions (Sticky on desktop) -->
               <div class="lg:sticky lg:top-0 space-y-3">
-                <button v-if="selectedOrder.status === 'pending_payment'" @click="handlePayment(selectedOrder)"
-                  class="w-full rounded-md bg-sky-600 px-4 py-2 font-bold text-white shadow hover:bg-sky-700">
-                  Bayar Sekarang
-                </button>
+                <TooltipProvider>
+                  <Tooltip :delay-duration="0">
+                    <TooltipTrigger as-child>
+                      <div class="w-full"
+                        :class="{ 'cursor-not-allowed opacity-50': !getPaymentValidation(selectedOrder).valid }">
+                        <button v-if="selectedOrder.status === 'pending_payment'" @click="handlePayment(selectedOrder)"
+                          :disabled="isStartingChat || !getPaymentValidation(selectedOrder).valid"
+                          class="w-full rounded-md bg-sky-600 px-4 py-2.5 font-bold text-white shadow hover:bg-sky-700 flex items-center justify-center gap-2 disabled:pointer-events-none transition-opacity">
+                          <ExternalLink class="h-4 w-4" />
+                          Bayar Sekarang
+                        </button>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent v-if="!getPaymentValidation(selectedOrder).valid">
+                      <p>{{ getPaymentValidation(selectedOrder).message }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
-                <a v-if="selectedOrder.store.phone"
-                  :href="chatStore(selectedOrder.store.phone, 'Halo, saya ingin bertanya tentang pesanan ' + selectedOrder.order_number)"
-                  target="_blank"
-                  class="flex items-center justify-center gap-2 w-full rounded-md border border-sky-600 px-4 py-2 font-bold text-sky-600 hover:bg-sky-50">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                      d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
-                  Chat Penjual
-                </a>
+                <TooltipProvider>
+                  <Tooltip :delay-duration="0">
+                    <TooltipTrigger as-child>
+                      <div class="w-full"
+                        :class="{ 'cursor-not-allowed opacity-50': !getChatValidation(selectedOrder).valid }">
+                        <button @click="handleWhatsAppClick(selectedOrder)"
+                          :disabled="isStartingChat || !getChatValidation(selectedOrder).valid"
+                          class="flex items-center justify-center gap-2 w-full rounded-md border border-emerald-600 px-4 py-2.5 font-bold text-emerald-600 hover:bg-emerald-50 transition-colors disabled:pointer-events-none transition-opacity">
+                          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                              d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                          </svg>
+                          Chat Penjual
+                        </button>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent v-if="!getChatValidation(selectedOrder).valid">
+                      <p>{{ getChatValidation(selectedOrder).message }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
                 <button v-if="selectedOrder.status === 'shipped' || selectedOrder.status === 'delivered'"
                   class="w-full rounded-md bg-sky-600 px-4 py-2 font-bold text-white shadow hover:bg-sky-700">
@@ -537,30 +687,58 @@ const buyAgain = async (order) => {
               Silakan transfer sesuai total tagihan ke rekening di bawah ini.
             </div>
 
-            <div class="rounded-md border border-slate-200 p-4">
-              <div class="text-sm text-slate-500 mb-1">Bank Tujuan</div>
-              <div class="flex items-center justify-between">
-                <div class="font-bold text-slate-900 text-lg">{{ selectedOrder?.store.bank_details.bank_name }}</div>
-              </div>
-              <div class="mt-4">
-                <div class="text-sm text-slate-500 mb-1">No. Rekening</div>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-xl font-bold text-slate-900">{{
-                    selectedOrder?.store.bank_details.account_number }}</span>
-                  <button class="text-sky-600 text-xs font-bold uppercase" title="Salin">Salin</button>
+            <div class="rounded-xl border border-slate-200 p-5 space-y-5 bg-slate-50/50">
+              <div>
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bank Tujuan</div>
+                <div class="font-bold text-slate-900 text-xl">{{ selectedOrder?.store.bank_details?.bank_name || '-' }}
                 </div>
-                <div class="text-sm text-slate-600 mt-1">a.n {{ selectedOrder?.store.bank_details.account_name }}</div>
               </div>
-              <div class="mt-4 pt-4 border-t border-slate-100">
-                <div class="text-sm text-slate-500 mb-1">Total Tagihan</div>
-                <div class="font-bold text-slate-900 text-xl">{{ formatPrice(selectedOrder?.grand_total) }}</div>
+
+              <div class="pt-4 border-t border-slate-200/60">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">No. Rekening</div>
+                <div class="flex items-center justify-between group">
+                  <span class="font-mono text-2xl font-bold text-slate-900 tracking-tight">{{
+                    selectedOrder?.store.bank_details?.account_number || '-' }}</span>
+                  <button @click="copyToClipboard(selectedOrder?.store.bank_details?.account_number, 'account')"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sky-600 text-xs font-bold transition-all hover:border-sky-300 hover:bg-sky-50 active:scale-95 shadow-sm">
+                    <component :is="copiedField === 'account' ? Check : Copy" class="h-3.5 w-3.5" />
+                    {{ copiedField === 'account' ? 'Berhasil' : 'Salin' }}
+                  </button>
+                </div>
+                <div class="text-sm font-medium text-slate-600 mt-2 flex items-center gap-1.5">
+                  <span class="text-slate-400">a.n</span>
+                  {{ selectedOrder?.store.bank_details?.account_name || '-' }}
+                </div>
+              </div>
+
+              <div class="pt-5 border-t border-slate-200/60">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Total Tagihan</div>
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-sky-600 text-2xl tracking-tight">{{
+                    formatPrice(selectedOrder?.grand_total)
+                  }}</span>
+                  <button @click="copyToClipboard(selectedOrder?.grand_total, 'amount')"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sky-600 text-xs font-bold transition-all hover:border-sky-300 hover:bg-sky-50 active:scale-95 shadow-sm">
+                    <component :is="copiedField === 'amount' ? Check : Copy" class="h-3.5 w-3.5" />
+                    {{ copiedField === 'amount' ? 'Berhasil' : 'Salin' }}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <a v-if="selectedOrder" :href="generateTransferProofLink(selectedOrder)" target="_blank"
-              class="block w-full rounded-md bg-sky-600 px-4 py-3 text-center font-bold text-white shadow hover:bg-sky-700">
+            <button v-if="selectedOrder"
+              @click="handleWhatsAppClick(selectedOrder, generateTransferProofLink(selectedOrder))"
+              class="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 px-4 py-4 text-center font-bold text-white shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all hover:-translate-y-0.5 active:translate-y-0">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
               Kirim Bukti Pembayaran
-            </a>
+            </button>
+
+            <p class="text-[11px] text-center text-slate-400 mt-2">
+              Pesanan otomatis dibatalkan jika pembayaran tidak diterima dalam 24 jam.
+            </p>
           </div>
         </div>
       </div>
@@ -573,32 +751,32 @@ const buyAgain = async (order) => {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeCODModal"></div>
 
         <div
-          class="relative w-full max-w-sm transform overflow-hidden rounded-md bg-white shadow-xl transition-all p-6 text-center">
-          <div class="mb-4 mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
-            <svg class="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          class="relative w-full max-w-sm transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all p-8 text-center">
+          <div
+            class="mb-6 mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500 shadow-inner">
+            <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor font-bold">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
 
-          <h3 class="text-lg font-bold text-slate-900 mb-2">Pembayaran COD</h3>
-          <p class="text-slate-600 mb-6">Kamu memilih metode <strong>Cash on Delivery</strong>. Pembayaran akan
-            dilakukan
-            setelah barang diterima.</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-2">Pembayaran COD</h3>
+          <p class="text-slate-500 mb-8 leading-relaxed">Metode <strong>Cash on Delivery</strong> dipilih. Silakan
+            siapkan
+            uang tunai dan lakukan konfirmasi ke penjual.</p>
 
           <div class="space-y-3">
-            <a v-if="selectedOrder?.store?.phone"
-              :href="chatStore(selectedOrder.store.phone, 'Halo, saya ingin konfirmasi pesanan COD ' + selectedOrder.order_number)"
-              target="_blank"
-              class="flex items-center justify-center gap-2 w-full rounded-md bg-sky-600 px-4 py-2.5 font-bold text-white hover:bg-sky-700">
+            <button
+              @click="handleWhatsAppClick(selectedOrder, 'Halo, saya ingin konfirmasi pesanan COD ' + selectedOrder.order_number)"
+              class="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 px-4 py-3.5 font-bold text-white hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                 <path
                   d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
               </svg>
               Konfirmasi via WhatsApp
-            </a>
+            </button>
             <button @click="closeCODModal"
-              class="w-full rounded-md border border-slate-200 px-4 py-2.5 font-bold text-slate-700 hover:bg-slate-50">
+              class="w-full rounded-xl border border-slate-200 px-4 py-3.5 font-bold text-slate-500 hover:bg-slate-50 transition-colors">
               Tutup
             </button>
           </div>

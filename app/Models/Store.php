@@ -40,6 +40,9 @@ class Store extends Model implements HasMedia
         'rating',
         'transactions_count',
         'response_time_label',
+        'bank_name',
+        'bank_account_number',
+        'bank_account_name',
     ];
 
     protected $casts = [

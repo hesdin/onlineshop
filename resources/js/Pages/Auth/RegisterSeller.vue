@@ -3,6 +3,8 @@ import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import heroIllustration from '@/../images/illustrations/delivering.svg';
 
+const logoUrl = '/images/logo-pkk.png';
+
 const form = useForm({
   owner_name: '',
   email: '',
@@ -258,9 +260,9 @@ const handleRecaptcha = async (event: Event) => {
               <h2 class="text-2xl font-bold text-slate-900">Daftar Sebagai Penjual</h2>
               <p class="mt-1 text-sm text-slate-600">Masukkan data pemilik usaha untuk memulai.</p>
             </div>
-            <div
-              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 px-3 text-[11px] font-bold text-sky-600">
-              TP-PKK Marketplace
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
+                draggable="false" />
             </div>
           </div>
 

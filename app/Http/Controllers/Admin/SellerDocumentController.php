@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SellerDocument;
+use App\Notifications\StoreVerifiedNotification;
+use App\Notifications\StoreRejectedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -128,8 +130,9 @@ class SellerDocumentController extends Controller
 
     public function update(Request $request, SellerDocument $sellerDocument): RedirectResponse
     {
-        $sellerDocument->loadMissing(['store', 'media']);
+        $sellerDocument->loadMissing(['store.user', 'media']);
         $store = $sellerDocument->store;
+        $previousStatus = $sellerDocument->submission_status;
 
         $data = $request->validate([
             'submission_status' => ['required', Rule::in(['submitted', 'approved', 'rejected', 'draft'])],
@@ -169,13 +172,24 @@ class SellerDocumentController extends Controller
 
         if ($store && $data['submission_status'] === 'approved') {
             $store->update(['is_verified' => true]);
+
+            // Notify seller about store verification (database + email)
+            if ($store->user) {
+                $store->user->notify(new StoreVerifiedNotification($store->name));
+            }
         }
 
-        if ($store && $data['submission_status'] === 'rejected') {
+        if ($store && $data['submission_status'] === 'rejected' && $previousStatus !== 'rejected') {
             $store->update(['is_verified' => false]);
+
+            // Notify seller about rejection (database only)
+            if ($store->user) {
+                $store->user->notify(new StoreRejectedNotification($store->name, $data['admin_notes']));
+            }
         }
 
         return back()->with('success', 'Review dokumen berhasil disimpan.');
     }
 }
+
 

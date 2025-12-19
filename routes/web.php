@@ -12,6 +12,7 @@ use App\Http\Controllers\CartPageController;
 use App\Http\Controllers\CategoryIndexPageController;
 use App\Http\Controllers\CategoryPageController;
 use App\Http\Controllers\CheckoutPageController;
+use App\Http\Controllers\CollectionPageController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PaymentPageController;
 use App\Http\Controllers\ProductPageController;
@@ -26,6 +27,7 @@ Route::get('/', HomeController::class)->name('home');
 Route::get('/c', CategoryIndexPageController::class)->name('category.index');
 Route::get('/c/{category:slug}', CategoryPageController::class)->name('category.show');
 Route::get('/product/{slug}/{product}', ProductPageController::class)->name('product.detail');
+Route::get('/collection/{collection:slug}', CollectionPageController::class)->name('collection.show');
 Route::get('/store/{store:slug}', StorePageController::class)->name('store.show');
 Route::get('/search', SearchPageController::class)->name('search');
 Route::middleware(['auth', 'role:customer'])

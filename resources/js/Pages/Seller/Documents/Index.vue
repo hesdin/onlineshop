@@ -2,7 +2,7 @@
 import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import SellerDashboardLayout from '@/Layouts/SellerDashboardLayout.vue';
-import { Upload, FileText, CheckCircle, Clock, XCircle, Trash2, AlertCircle, Building2, FileCheck } from 'lucide-vue-next';
+import { Upload, FileText, CheckCircle, Clock, XCircle, Trash2, AlertCircle, Building2, FileCheck, Loader2 } from 'lucide-vue-next';
 
 interface CompanyType {
   value: string;
@@ -46,6 +46,7 @@ const page = usePage();
 const flashSuccess = computed(() => (page.props.flash as { success?: string })?.success ?? '');
 const flashError = computed(() => (page.props.flash as { error?: string })?.error ?? '');
 const localError = ref('');
+const isSubmitting = ref(false);
 
 const isPdf = (value: string) => value.toLowerCase().endsWith('.pdf');
 const revokeIfBlob = (url: string | null) => {
@@ -159,6 +160,7 @@ const saveDocuments = () => {
 
 const submitForReview = () => {
   localError.value = '';
+  isSubmitting.value = true;
 
   if (hasUnsavedFiles.value) {
     form.post('/seller/documents', {
@@ -176,8 +178,14 @@ const submitForReview = () => {
           {},
           {
             preserveScroll: true,
+            onFinish: () => {
+              isSubmitting.value = false;
+            },
           },
         );
+      },
+      onError: () => {
+        isSubmitting.value = false;
       },
     });
     return;
@@ -185,6 +193,7 @@ const submitForReview = () => {
 
   if (!requiredUploaded.value) {
     localError.value = 'Dokumen wajib belum tersimpan. Klik "Simpan Draft" setelah upload dokumen.';
+    isSubmitting.value = false;
     return;
   }
 
@@ -193,6 +202,9 @@ const submitForReview = () => {
     {},
     {
       preserveScroll: true,
+      onFinish: () => {
+        isSubmitting.value = false;
+      },
     },
   );
 };
@@ -325,25 +337,25 @@ watch(
           <h2 class="mb-4 text-lg font-semibold text-slate-900">Informasi Toko</h2>
 
           <div class="grid gap-4 sm:grid-cols-2">
-	            <div class="space-y-2">
-	              <label class="text-sm font-medium text-slate-700">Nama Toko <span class="text-red-500">*</span></label>
-	              <input type="text" v-model="form.name" :disabled="!canEdit"
-	                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
-	                placeholder="Nama toko" />
-	              <p v-if="form.errors.name" class="text-xs text-red-500">{{ form.errors.name }}</p>
-	            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-slate-700">Nama Toko <span class="text-red-500">*</span></label>
+              <input type="text" v-model="form.name" :disabled="!canEdit"
+                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+                placeholder="Nama toko" />
+              <p v-if="form.errors.name" class="text-xs text-red-500">{{ form.errors.name }}</p>
+            </div>
 
-	            <div class="space-y-2">
-	              <label class="text-sm font-medium text-slate-700">Jenis Toko <span class="text-red-500">*</span></label>
-	              <select v-model="form.type" :disabled="!canEdit"
-	                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 focus:border-sky-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500">
-	                <option value="">Pilih jenis toko</option>
-	                <option v-for="type in typeOptions" :key="type.value" :value="type.value">
-	                  {{ type.label }}
-	                </option>
-	              </select>
-	              <p v-if="form.errors.type" class="text-xs text-red-500">{{ form.errors.type }}</p>
-	            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-slate-700">Jenis Toko <span class="text-red-500">*</span></label>
+              <select v-model="form.type" :disabled="!canEdit"
+                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 focus:border-sky-400 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500">
+                <option value="">Pilih jenis toko</option>
+                <option v-for="type in typeOptions" :key="type.value" :value="type.value">
+                  {{ type.label }}
+                </option>
+              </select>
+              <p v-if="form.errors.type" class="text-xs text-red-500">{{ form.errors.type }}</p>
+            </div>
 
             <div class="space-y-2 sm:col-span-2">
               <label class="text-sm font-medium text-slate-700">Alamat Toko</label>
@@ -373,7 +385,8 @@ watch(
               <div v-if="ktpPreview" class="relative">
                 <a :href="ktpPreview" target="_blank" class="block">
                   <div class="h-44 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-48">
-                    <img v-if="!ktpPreviewIsPdf" :src="ktpPreview" alt="Preview KTP" class="h-full w-full object-cover" />
+                    <img v-if="!ktpPreviewIsPdf" :src="ktpPreview" alt="Preview KTP"
+                      class="h-full w-full object-cover" />
                     <div v-else class="flex h-full items-center justify-center">
                       <FileText class="h-12 w-12 text-sky-500" />
                     </div>
@@ -403,7 +416,8 @@ watch(
               <div v-if="npwpPreview" class="relative">
                 <a :href="npwpPreview" target="_blank" class="block">
                   <div class="h-44 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-48">
-                    <img v-if="!npwpPreviewIsPdf" :src="npwpPreview" alt="Preview NPWP" class="h-full w-full object-cover" />
+                    <img v-if="!npwpPreviewIsPdf" :src="npwpPreview" alt="Preview NPWP"
+                      class="h-full w-full object-cover" />
                     <div v-else class="flex h-full items-center justify-center">
                       <FileText class="h-12 w-12 text-sky-500" />
                     </div>
@@ -433,7 +447,8 @@ watch(
               <div v-if="nibPreview" class="relative">
                 <a :href="nibPreview" target="_blank" class="block">
                   <div class="h-44 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-48">
-                    <img v-if="!nibPreviewIsPdf" :src="nibPreview" alt="Preview NIB" class="h-full w-full object-cover" />
+                    <img v-if="!nibPreviewIsPdf" :src="nibPreview" alt="Preview NIB"
+                      class="h-full w-full object-cover" />
                     <div v-else class="flex h-full items-center justify-center">
                       <FileText class="h-12 w-12 text-sky-500" />
                     </div>
@@ -464,7 +479,8 @@ watch(
               <div v-if="companyStatementPreview" class="relative">
                 <a :href="companyStatementPreview" target="_blank" class="block">
                   <div class="h-32 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-36">
-                    <img v-if="!companyStatementPreviewIsPdf" :src="companyStatementPreview" alt="Preview Surat" class="h-full w-full object-cover" />
+                    <img v-if="!companyStatementPreviewIsPdf" :src="companyStatementPreview" alt="Preview Surat"
+                      class="h-full w-full object-cover" />
                     <div v-else class="flex h-full items-center justify-center">
                       <FileText class="h-10 w-10 text-sky-500" />
                     </div>
@@ -479,7 +495,8 @@ watch(
                 <input type="file" class="hidden" accept="image/*,.pdf"
                   @change="(e) => handleFileChange(e, 'company_statement')" />
               </label>
-              <p v-if="form.errors.company_statement" class="text-xs text-red-500">{{ form.errors.company_statement }}</p>
+              <p v-if="form.errors.company_statement" class="text-xs text-red-500">{{ form.errors.company_statement }}
+              </p>
             </div>
 
             <!-- Multiple Supporting Documents -->
@@ -514,7 +531,8 @@ watch(
                   <li v-for="file in form.supporting_documents" :key="file.name">{{ file.name }}</li>
                 </ul>
               </div>
-              <p v-if="form.errors.supporting_documents" class="text-xs text-red-500">{{ form.errors.supporting_documents }}</p>
+              <p v-if="form.errors.supporting_documents" class="text-xs text-red-500">{{
+                form.errors.supporting_documents }}</p>
             </div>
           </div>
         </div>
@@ -528,14 +546,15 @@ watch(
           </div>
 
           <div class="flex items-center gap-3">
-            <button type="submit" :disabled="form.processing"
+            <button type="submit" :disabled="form.processing || isSubmitting"
               class="rounded-lg border border-slate-300 bg-white px-6 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50">
               {{ form.processing ? 'Menyimpan...' : 'Simpan Draft' }}
             </button>
 
-            <button type="button" @click="submitForReview" :disabled="form.processing"
-              class="rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-sky-700 disabled:opacity-50">
-              Submit untuk Verifikasi
+            <button type="button" @click="submitForReview" :disabled="form.processing || isSubmitting"
+              class="flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-sky-700 disabled:opacity-50">
+              <Loader2 v-if="isSubmitting" class="h-4 w-4 animate-spin" />
+              {{ isSubmitting ? 'Mengirim...' : 'Submit untuk Verifikasi' }}
             </button>
           </div>
         </div>

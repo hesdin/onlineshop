@@ -17,7 +17,7 @@ class StoreController extends Controller
     {
         $store = Store::where('user_id', $request->user()->id)->first();
 
-        return Inertia::render('Seller/Store/Edit', [
+        return Inertia::render('Seller/Settings/Edit', [
             'store' => $store ? $this->formatStore($store) : $this->defaultStorePayload(),
             'hasStore' => (bool) $store,
             'typeOptions' => $this->typeOptions(),
@@ -29,7 +29,7 @@ class StoreController extends Controller
     {
         $existingStore = Store::where('user_id', $request->user()->id)->first();
         if ($existingStore) {
-            return Redirect::route('seller.store.edit')->with('info', 'Toko sudah tersedia, silakan perbarui.');
+            return Redirect::route('seller.settings.edit')->with('info', 'Toko sudah tersedia, silakan perbarui.');
         }
 
         $data = $request->validated();
@@ -49,7 +49,7 @@ class StoreController extends Controller
             $store->addMediaFromRequest('banner')->toMediaCollection('store_banner');
         }
 
-        return Redirect::route('seller.store.edit')->with('success', 'Profil toko berhasil dibuat.');
+        return Redirect::route('seller.settings.edit')->with('success', 'Profil toko berhasil dibuat.');
     }
 
     public function update(SellerStoreRequest $request): RedirectResponse
@@ -80,7 +80,7 @@ class StoreController extends Controller
             $store->addMediaFromRequest('banner')->toMediaCollection('store_banner');
         }
 
-        return Redirect::route('seller.store.edit')->with('success', 'Profil toko berhasil diperbarui.');
+        return Redirect::route('seller.settings.edit')->with('success', 'Profil toko berhasil diperbarui.');
     }
 
     private function formatStore(Store $store): array
@@ -89,6 +89,7 @@ class StoreController extends Controller
             'id' => $store->id,
             'name' => $store->name,
             'slug' => $store->slug,
+            'phone' => $store->phone,
             'tagline' => $store->tagline,
             'description' => $store->description,
             'type' => $store->type,
@@ -102,9 +103,11 @@ class StoreController extends Controller
             'district_id' => $store->district_id,
             'postal_code' => $store->postal_code,
             'address_line' => $store->address_line,
-            'is_verified' => $store->is_verified,
             'is_umkm' => $store->is_umkm,
             'response_time_label' => $store->response_time_label,
+            'bank_name' => $store->bank_name,
+            'bank_account_number' => $store->bank_account_number,
+            'bank_account_name' => $store->bank_account_name,
             'logo_url' => $store->logo_url,
             'banner_url' => $store->banner_url,
         ];
@@ -115,6 +118,7 @@ class StoreController extends Controller
         return [
             'name' => '',
             'slug' => '',
+            'phone' => '',
             'tagline' => '',
             'description' => '',
             'type' => 'umkm',
@@ -125,9 +129,11 @@ class StoreController extends Controller
             'district_id' => null,
             'postal_code' => '',
             'address_line' => '',
-            'is_verified' => false,
             'is_umkm' => true,
             'response_time_label' => '',
+            'bank_name' => '',
+            'bank_account_number' => '',
+            'bank_account_name' => '',
             'logo_url' => null,
             'banner_url' => null,
         ];

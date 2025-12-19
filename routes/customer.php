@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Customer\AddressController;
+use App\Http\Controllers\Customer\ChatController;
+use App\Http\Controllers\Customer\NotificationController;
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Customer\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -26,4 +28,23 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     })->name('payment');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions');
+
+    // Chat dashboard pages (Inertia)
+    Route::get('chat', [ChatController::class, 'dashboardIndex'])->name('chat');
+    Route::get('chat/{conversation}', [ChatController::class, 'dashboardShow'])->name('chat.show');
 });
+
+// Notification routes
+Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+Route::post('notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+Route::delete('notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+Route::delete('notifications', [NotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
+
+// Chat API routes (JSON)
+Route::get('chats', [ChatController::class, 'index'])->name('chats.index');
+Route::get('chats/unread-count', [ChatController::class, 'unreadCount'])->name('chats.unread-count');
+Route::post('chats/start', [ChatController::class, 'startChat'])->name('chats.start');
+Route::get('chats/store/{store}', [ChatController::class, 'getConversation'])->name('chats.store');
+Route::post('chats/{conversation}/messages', [ChatController::class, 'sendMessage'])->name('chats.messages.store');
+Route::get('chats/{conversation}/messages', [ChatController::class, 'getMessages'])->name('chats.messages.index');

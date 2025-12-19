@@ -39,13 +39,14 @@ class TransactionController extends Controller
                     'payment_status' => $order->payment_status,
                     'grand_total' => $order->grand_total,
                     'store' => [
+                        'id' => $order->store?->id,
                         'name' => $order->store?->name,
                         'city' => $order->store?->city,
                         'phone' => $order->store?->phone,
-                        'bank_details' => [ // Placeholder until bank fields are added to store
-                            'bank_name' => 'BCA',
-                            'account_number' => '1234567890',
-                            'account_name' => $order->store?->name,
+                        'bank_details' => [
+                            'bank_name' => $order->store?->bank_name,
+                            'account_number' => $order->store?->bank_account_number,
+                            'account_name' => $order->store?->bank_account_name,
                         ],
                     ],
                     'store_image' => $order->store?->image_url,

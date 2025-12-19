@@ -4,6 +4,8 @@ import { computed, ref } from 'vue';
 import CustomerCareButton from '@/components/CustomerCareButton.vue';
 import LoginHeroSlider from '@/components/Auth/LoginHeroSlider.vue';
 
+const logoUrl = '/images/logo-pkk.png';
+
 const form = useForm({
   email: '',
   password: '',
@@ -68,9 +70,9 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
           </Link>
           <div class="flex items-center justify-between gap-4">
             <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login Pembeli</h3>
-            <div
-              class="flex h-10 w-28 items-center justify-center rounded-md border border-slate-200 text-[11px] font-bold text-sky-600 p-3">
-              TP-PKK Marketplace
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
+                draggable="false" />
             </div>
           </div>
 

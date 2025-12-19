@@ -151,14 +151,15 @@ const collectionList = computed(() => {
     return props.collections.map((item) => ({
       ...item,
       products: item.products ?? [],
+      display_mode: item.display_mode ?? 'slider',
     }));
   }
   return fallbackCollections.map((item) => ({
     ...item,
     products: fallbackProducts,
-    banner:
-      'https://smb-padiumkm-images-public-prod.oss-ap-southeast-5.aliyuncs.com/product-collection/image_section_banner/24112025/superdeal-road-to-padi-business-forum-and-showcase/ed27e7533e0ae63bb045d2520334d1.jpg',
-    url: '/template/collection/superdeal-road-to-pa-di-business-forum-and-showcase',
+    banner: null,
+    url: '/collection/superdeal-road-to-pa-di-business-forum-and-showcase',
+    display_mode: 'slider',
   }));
 });
 
@@ -170,6 +171,121 @@ const formatPrice = (value) => {
     maximumFractionDigits: 0,
   }).format(value);
 };
+
+const productUrl = (product) => {
+  const id = product?.id;
+  const slug = product?.slug;
+  if (!id || !slug) return '#';
+  return `/product/${slug}/${id}`;
+};
+
+const collectionDetailUrl = (collection) => {
+  const slug = collection?.slug;
+  const title = collection?.title ?? '';
+  if (!slug) return '#';
+  const params = new URLSearchParams({
+    utm_source: 'homepage',
+    utm_medium: 'static',
+    utm_campaign: title,
+  });
+  return `/collection/${slug}?${params.toString()}`;
+};
+
+const isImageOnlyCollection = (collection) =>
+  collection?.display_mode === 'image_only';
+
+const hasSliderTheme = (collection) => Boolean(collection?.color);
+
+const sliderWrapperClass = (collection) => {
+  if (hasSliderTheme(collection)) {
+    return `bg-linear-to-r ${collection.color} text-white ring-black/5`;
+  }
+  return 'bg-white text-slate-900 ring-slate-200';
+};
+
+const sliderActionButtonClass = (collection) => {
+  if (hasSliderTheme(collection)) {
+    return 'ml-auto inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow transition hover:-translate-y-0.5 hover:shadow-md';
+  }
+  return 'ml-auto inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-sky-700 hover:shadow-md';
+};
+
+const sliderBannerCardClass = (collection) => {
+  if (hasSliderTheme(collection)) {
+    return 'w-full max-w-sm overflow-hidden rounded-lg ring-1 ring-white/20 backdrop-blur-sm md:h-[var(--collection-card-h)]';
+  }
+  return 'w-full max-w-sm overflow-hidden rounded-lg ring-1 ring-slate-200 bg-white md:h-[var(--collection-card-h)]';
+};
+
+const sliderBannerPlaceholderClass = (collection) => {
+  if (hasSliderTheme(collection)) {
+    return 'flex h-full w-full items-center justify-center bg-white/10 text-white/80';
+  }
+  return 'flex h-full w-full items-center justify-center bg-slate-50 text-slate-500';
+};
+
+const sliderBannerPlaceholderHelpClass = (collection) => (hasSliderTheme(collection) ? 'mt-1 text-xs text-white/60' : 'mt-1 text-xs text-slate-500');
+
+const sliderEmptyProductsCardClass = (collection) => {
+  if (hasSliderTheme(collection)) {
+    return 'flex h-full flex-col items-center justify-center rounded-lg border border-white/30 bg-white/10 p-6 text-center text-sm text-white/85 md:h-[var(--collection-card-h)]';
+  }
+  return 'flex h-full flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600 md:h-[var(--collection-card-h)]';
+};
+
+const sliderEmptyProductsHelpClass = (collection) => (hasSliderTheme(collection) ? 'mt-1 text-xs text-white/70' : 'mt-1 text-xs text-slate-500');
+
+const sliderProductCardClass = (collection) =>
+  hasSliderTheme(collection) ? 'border border-white/40 bg-white' : 'border border-slate-200 bg-white';
+
+const collectionBlocks = computed(() => {
+  const blocks = [];
+  let bufferedImages = [];
+
+  (collectionList.value ?? []).forEach((collection, index) => {
+    if (isImageOnlyCollection(collection)) {
+      bufferedImages.push(collection);
+      if (bufferedImages.length === 3) {
+        const first = bufferedImages[0];
+        blocks.push({
+          type: 'image_row',
+          items: bufferedImages,
+          key: `image_row-${first?.id ?? first?.slug ?? index}`,
+        });
+        bufferedImages = [];
+      }
+      return;
+    }
+
+    if (bufferedImages.length) {
+      const first = bufferedImages[0];
+      blocks.push({
+        type: 'image_row',
+        items: bufferedImages,
+        key: `image_row-${first?.id ?? first?.slug ?? index}`,
+      });
+      bufferedImages = [];
+    }
+
+    blocks.push({
+      type: 'slider',
+      collection,
+      index,
+      key: `slider-${collection?.id ?? collection?.slug ?? index}`,
+    });
+  });
+
+  if (bufferedImages.length) {
+    const first = bufferedImages[0];
+    blocks.push({
+      type: 'image_row',
+      items: bufferedImages,
+      key: `image_row-${first?.id ?? first?.slug ?? 'tail'}`,
+    });
+  }
+
+  return blocks;
+});
 
 const benefits = [
   {
@@ -273,8 +389,10 @@ const scrollCollection = (index, direction) => {
     <!-- Hero Banner -->
     <section>
       <div class="grid gap-4 lg:grid-cols-[3fr_2fr] lg:items-stretch">
-        <article class="min-w-0 overflow-hidden rounded-lg" @mouseenter="stopHero" @mouseleave="startHero">
-          <div class="relative w-full overflow-hidden rounded-lg bg-slate-50" style="aspect-ratio: 16 / 7;">
+        <article class="min-w-0 overflow-hidden rounded-none sm:rounded-lg" @mouseenter="stopHero"
+          @mouseleave="startHero">
+          <div class="relative w-full overflow-hidden rounded-none sm:rounded-lg bg-slate-50"
+            style="aspect-ratio: 16 / 7;">
             <!-- Empty state -->
             <div v-if="!heroBanners.length" class="flex h-full items-center justify-center">
               <div class="text-center text-slate-400">
@@ -328,12 +446,13 @@ const scrollCollection = (index, direction) => {
         <article class="flex h-full flex-col gap-4">
           <template v-if="heroPromos.length">
             <a v-for="promo in heroPromos" :key="promo.alt || promo.url" :href="promo.url"
-              class="group flex-1 overflow-hidden rounded-lg ring-1 ring-slate-100">
+              class="group flex-1 overflow-hidden rounded-none sm:rounded-lg ring-1 ring-slate-100">
               <img :src="promo.image" :alt="promo.alt"
                 class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
             </a>
           </template>
-          <div v-else class="flex flex-1 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+          <div v-else
+            class="flex flex-1 items-center justify-center rounded-none sm:rounded-lg bg-slate-50 text-slate-400">
             <p class="text-sm">Belum ada promo</p>
           </div>
         </article>
@@ -346,6 +465,7 @@ const scrollCollection = (index, direction) => {
       </div>
     </section>
 
+    <!-- Category -->
     <section class="space-y-4">
       <header class="flex items-center justify-between">
         <h3 class="text-2xl font-bold text-slate-900">Kategori</h3>
@@ -367,30 +487,82 @@ const scrollCollection = (index, direction) => {
       </div>
     </section>
 
-    <section v-for="(collection, index) in collectionList" :key="collection.title">
-      <div class="overflow-hidden rounded-lg bg-linear-to-r p-6 text-white shadow-xl ring-1 ring-black/5"
-        :class="collection.color">
+    <!-- Collection -->
+    <section v-for="block in collectionBlocks" :key="block.key">
+      <template v-if="block.type === 'image_row'">
+        <div
+          class="grid grid-flow-col auto-cols-[85%] gap-4 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-3 sm:overflow-visible">
+          <a v-for="collection in block.items" :key="collection?.id ?? collection?.slug ?? collection?.title"
+            :href="collectionDetailUrl(collection)"
+            class="group snap-start block overflow-hidden rounded-none sm:rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div class="relative aspect-[16/7] bg-slate-100">
+              <img v-if="collection.banner" :src="collection.banner" :alt="collection.title"
+                class="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              <div v-else class="absolute inset-0 flex items-center justify-center text-slate-500">
+                <div class="text-center">
+                  <p class="text-sm font-semibold">No Image</p>
+                  <p class="mt-1 text-xs text-slate-500">Gambar Home belum diatur</p>
+                </div>
+              </div>
+              <div class="absolute inset-0 bg-linear-to-t from-black/55 via-black/0 to-black/0"></div>
+              <div class="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-[11px] font-semibold uppercase tracking-wide text-white/80">Koleksi</p>
+                  <p class="mt-1 truncate text-base font-bold text-white">
+                    {{ collection.title }}
+                  </p>
+                </div>
+                <span
+                  class="inline-flex flex-shrink-0 items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-900 shadow transition group-hover:bg-white">
+                  Lihat
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m9 6 6 6-6 6" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </a>
+        </div>
+      </template>
+
+      <template v-else>
+      <div class="overflow-hidden rounded-lg p-6 shadow-xl ring-1" :class="sliderWrapperClass(block.collection)"
+        style="--collection-card-h: 22rem;">
         <header class="flex flex-wrap items-center gap-3">
-          <h3 class="text-2xl font-bold">{{ collection.title }}</h3>
-          <a :href="collection.url || '/search'"
-            class="ml-auto inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow transition hover:-translate-y-0.5 hover:shadow-md">
+          <h3 class="text-2xl font-bold">{{ block.collection.title }}</h3>
+          <a :href="collectionDetailUrl(block.collection)" :class="sliderActionButtonClass(block.collection)">
             Lihat Semua
           </a>
         </header>
 
-        <div class="mt-5 flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div class="max-w-sm overflow-hidden rounded-lg ring-1 ring-white/20 backdrop-blur-sm lg:min-h-full">
-            <img :src="collection.banner" :alt="`Koleksi pilihan ${collection.title}`"
+        <div class="mt-5 flex flex-col gap-4 md:flex-row md:items-stretch">
+          <a :href="collectionDetailUrl(block.collection)"
+            :class="sliderBannerCardClass(block.collection)">
+            <img v-if="block.collection.banner" :src="block.collection.banner" :alt="`Koleksi pilihan ${block.collection.title}`"
               class="h-full w-full object-cover" loading="lazy" />
-          </div>
+            <div v-else :class="sliderBannerPlaceholderClass(block.collection)">
+              <div class="text-center">
+                <p class="text-sm font-semibold">No Image</p>
+                <p :class="sliderBannerPlaceholderHelpClass(block.collection)">Banner koleksi belum diatur</p>
+              </div>
+            </div>
+          </a>
 
           <div class="relative flex-1 overflow-hidden">
             <div
               class="grid min-w-full grid-flow-col auto-cols-[75%] gap-4 overflow-x-auto pb-3 pl-1 pr-6 sm:auto-cols-[60%] md:auto-cols-[50%] lg:auto-cols-[var(--card-width-lg)]"
               style="--card-width-lg: calc((100% - 48px) / 4); scroll-padding-inline: 1.5rem;"
-              :ref="(el) => setCollectionScroller(index, el)">
-              <article v-for="product in collection.products || []" :key="product.id ?? product.title"
-                class="product-card flex h-full flex-col overflow-hidden rounded-lg border border-white/40 bg-white p-4 text-slate-900 shadow transition hover:-translate-y-0.5 hover:shadow-lg">
+              :ref="(el) => setCollectionScroller(block.index, el)">
+              <div v-if="!(block.collection.products || []).length" :class="sliderEmptyProductsCardClass(block.collection)">
+                <p class="font-semibold">Belum ada produk</p>
+                <p :class="sliderEmptyProductsHelpClass(block.collection)">Tambahkan produk di menu Admin Koleksi</p>
+              </div>
+              <a v-for="product in block.collection.products || []" :key="product.id ?? product.title" :href="productUrl(product)"
+                class="product-card flex h-full flex-col overflow-hidden rounded-lg p-4 text-slate-900 shadow transition hover:-translate-y-0.5 hover:shadow-lg md:h-[var(--collection-card-h)]"
+                :class="[
+                  sliderProductCardClass(block.collection),
+                  productUrl(product) === '#' ? 'pointer-events-none opacity-70' : '',
+                ]">
                 <div class="-mx-4 -mt-4">
                   <div class="relative h-40 overflow-hidden bg-slate-100">
                     <div
@@ -452,17 +624,17 @@ const scrollCollection = (index, direction) => {
                     </span>
                   </div>
                 </div>
-              </article>
+              </a>
             </div>
 
             <div class="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-1">
-              <button type="button" @click="scrollCollection(index, -1)"
+              <button type="button" @click="scrollCollection(block.index, -1)"
                 class="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow transition hover:scale-105 hover:shadow-md">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path d="m15 18-6-6 6-6" />
                 </svg>
               </button>
-              <button type="button" @click="scrollCollection(index, 1)"
+              <button type="button" @click="scrollCollection(block.index, 1)"
                 class="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow transition hover:scale-105 hover:shadow-md">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path d="m9 6 6 6-6 6" />
@@ -472,6 +644,7 @@ const scrollCollection = (index, direction) => {
           </div>
         </div>
       </div>
+      </template>
     </section>
 
     <section class="space-y-6 rounded-lg bg-white p-8 shadow-sm">

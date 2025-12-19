@@ -3,7 +3,7 @@
 
 <template>
   <div class="border-b border-slate-200 bg-slate-50">
-    <div class="container mx-auto flex items-center justify-between px-4 py-2 text-xs text-slate-500">
+    <div class="container mx-auto flex items-center justify-end px-4 py-2 text-xs text-slate-500 lg:justify-between">
       <nav class="hidden items-center gap-4 lg:flex">
         <a href="#" class="hover:text-slate-700">Mitra TP-PKK Marketplace</a>
         <a href="#" class="hover:text-slate-700">Menjadi Penjual</a>

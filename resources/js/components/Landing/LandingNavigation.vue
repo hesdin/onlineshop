@@ -1,6 +1,6 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3';
-import { computed, reactive, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import LandingTopBar from '@/components/Landing/LandingTopBar.vue';
 import LandingHeader from '@/components/Landing/LandingHeader.vue';
 import LandingMobileMenu from '@/components/Landing/LandingMobileMenu.vue';
@@ -47,10 +47,41 @@ const toggleMobileMenu = () => {
 const closeMobileMenu = () => {
   state.mobileMenuOpen = false;
 };
+
+const headerRef = ref(null);
+let headerResizeObserver = null;
+
+const setHeaderOffset = () => {
+  if (typeof window === 'undefined') return;
+  const headerEl = headerRef.value;
+  if (!headerEl) return;
+  const height = Math.ceil(headerEl.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--landing-header-offset', `${height}px`);
+};
+
+onMounted(() => {
+  setHeaderOffset();
+  window.addEventListener('resize', setHeaderOffset, { passive: true });
+
+  if (typeof ResizeObserver !== 'undefined') {
+    headerResizeObserver = new ResizeObserver(() => setHeaderOffset());
+    if (headerRef.value) headerResizeObserver.observe(headerRef.value);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', setHeaderOffset);
+  }
+  if (headerResizeObserver) {
+    headerResizeObserver.disconnect();
+    headerResizeObserver = null;
+  }
+});
 </script>
 
 <template>
-  <header class="fixed inset-x-0 top-0 isolate z-50 bg-white/95 shadow-sm backdrop-blur">
+  <header ref="headerRef" class="fixed inset-x-0 top-0 isolate z-50 bg-white/95 shadow-sm backdrop-blur">
     <LandingTopBar />
     <LandingHeader :is-authenticated="isAuthenticated" :auth-user="authUser" :mega-menu-data="megaMenuData"
       :cart-items="cartItems" :notifications="notifications" @toggle-mobile-menu="toggleMobileMenu" />

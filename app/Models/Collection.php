@@ -11,16 +11,21 @@ class Collection extends Model implements HasMedia
 {
     use InteractsWithMedia;
 
+    public const DISPLAY_MODE_SLIDER = 'slider';
+    public const DISPLAY_MODE_IMAGE_ONLY = 'image_only';
+
     protected $fillable = [
         'title',
         'slug',
         'description',
         'color_theme',
         'is_active',
+        'display_mode',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'display_mode' => 'string',
     ];
 
     public function products(): BelongsToMany
@@ -30,6 +35,10 @@ class Collection extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        $this->addMediaCollection('home_image')
+            ->useDisk('public')
+            ->singleFile();
+
         $this->addMediaCollection('cover_image')
             ->useDisk('public')
             ->singleFile();

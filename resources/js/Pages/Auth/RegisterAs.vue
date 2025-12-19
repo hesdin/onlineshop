@@ -3,6 +3,8 @@ import { Head, Link } from '@inertiajs/vue3';
 import CustomerCareButton from '@/components/CustomerCareButton.vue';
 // import heroIllustration from '@/../images/illustrations/online-shopping.svg';
 
+const logoUrl = '/images/logo-pkk.png';
+
 const options = [
   {
     label: 'Pembeli Retail',
@@ -33,9 +35,9 @@ const options = [
         <div>
           <div class="flex items-start justify-between gap-4">
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Daftar Sebagai</h1>
-            <div
-              class="flex h-10 min-w-28 items-center justify-center rounded-xl border border-slate-200 px-3 text-[11px] font-bold text-sky-600">
-              TP-PKK Marketplace
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
+                draggable="false" />
             </div>
           </div>
 

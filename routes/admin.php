@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProductController;
@@ -27,3 +28,10 @@ Route::resource('banners', BannerController::class)->except(['show']);
 Route::get('seller-documents', [SellerDocumentController::class, 'index'])->name('seller-documents.index');
 Route::get('seller-documents/{sellerDocument}', [SellerDocumentController::class, 'show'])->name('seller-documents.show');
 Route::put('seller-documents/{sellerDocument}', [SellerDocumentController::class, 'update'])->name('seller-documents.update');
+
+// Notification routes
+Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+Route::post('notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+Route::delete('notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+Route::delete('notifications', [NotificationController::class, 'destroyAll'])->name('notifications.destroy-all');

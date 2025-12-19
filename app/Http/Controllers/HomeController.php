@@ -44,7 +44,7 @@ class HomeController extends Controller
             }])
             ->where('is_active', true)
             ->orderByDesc('created_at')
-            ->take(3)
+            ->take(6)
             ->get()
             ->map(fn (Collection $collection) => $this->transformCollection($collection))
             ->values();
@@ -97,9 +97,10 @@ class HomeController extends Controller
             'id' => $collection->id,
             'title' => $collection->title,
             'slug' => $collection->slug,
-            'color' => $collection->color_theme ?: 'from-sky-600 to-sky-500',
-            'banner' => $this->formatMediaUrl($collection->getFirstMediaUrl('cover_image')) ?: 'https://smb-padiumkm-images-public-prod.oss-ap-southeast-5.aliyuncs.com/product-collection/image_section_banner/24112025/superdeal-road-to-padi-business-forum-and-showcase/ed27e7533e0ae63bb045d2520334d1.jpg',
-            'url' => "/template/collection/{$collection->slug}",
+            'color' => $collection->color_theme,
+            'display_mode' => $collection->display_mode,
+            'banner' => $this->formatMediaUrl($collection->getFirstMediaUrl('home_image')),
+            'url' => "/collection/{$collection->slug}",
             'products' => $collection->products
                 ->map(fn ($product) => $this->transformProduct($product))
                 ->values(),

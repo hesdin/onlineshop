@@ -21,10 +21,9 @@
               Daftar
             </h1>
 
-            <!-- logo mini (bisa diganti logo asli) -->
-            <div class="flex flex-col items-end leading-none text-right">
-              <span class="text-xs font-semibold tracking-wide text-sky-500">PaDi</span>
-              <span class="text-xs font-bold text-sky-700">UMKM</span>
+            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
+              <img src="{{ asset('images/logo-pkk.png') }}" alt="TP-PKK Marketplace" class="h-full w-full object-contain"
+                decoding="async" draggable="false" />
             </div>
           </div>
 

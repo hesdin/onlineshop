@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Mail\OrderStatusChangedMail;
 use App\Models\Order;
+use App\Notifications\OrderStatusChangedNotification;
+use App\Notifications\ReviewRequestNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -24,15 +26,29 @@ class OrderNotificationService
             return;
         }
 
-        // Skip if customer has no email
-        $customerEmail = $order->user?->email;
-        if (!$customerEmail) {
-            Log::warning("Cannot send order status notification: Order #{$order->order_number} has no customer email");
-            return;
-        }
-
         // Load required relationships
         $order->loadMissing(['store', 'items', 'user']);
+
+        // Send database notification to customer bell icon
+        if ($order->user) {
+            $order->user->notify(new OrderStatusChangedNotification(
+                $order,
+                $newStatus,
+                $newPaymentStatus
+            ));
+
+            // Send review request if order completed
+            if ($newStatus === 'completed' && $previousStatus !== 'completed') {
+                $order->user->notify(new ReviewRequestNotification($order));
+            }
+        }
+
+        // Skip email if customer has no email
+        $customerEmail = $order->user?->email;
+        if (!$customerEmail) {
+            Log::warning("Cannot send order status email: Order #{$order->order_number} has no customer email");
+            return;
+        }
 
         try {
             Mail::to($customerEmail)->send(new OrderStatusChangedMail(
@@ -60,3 +76,4 @@ class OrderNotificationService
         }
     }
 }
+

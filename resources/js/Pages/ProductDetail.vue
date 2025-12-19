@@ -4,6 +4,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, reactive } from 'vue'
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 import AddressFormModal from '@/components/Customer/AddressFormModal.vue';
 import AddressSelectModal from '@/components/Customer/AddressSelectModal.vue';
+import ChatModal from '@/components/Customer/ChatModal.vue';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -1253,6 +1254,12 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </component>
+
+            <!-- Chat Button -->
+            <div v-if="product.store?.id" class="flex justify-center">
+              <ChatModal :store-id="product.store.id" :store-name="product.store.name"
+                :store-logo="product.store.avatar" :product-id="product.id" :product-name="product.name" />
+            </div>
 
             <div class="rounded-md border border-slate-200 bg-white">
               <div
