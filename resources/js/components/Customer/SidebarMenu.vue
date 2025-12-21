@@ -5,17 +5,14 @@ const menuSections = [
     items: [
       { key: 'profil', label: 'Profil', href: '/customer/dashboard/profile', icon: 'user' },
       { key: 'alamat', label: 'Alamat Pengiriman', href: '/customer/dashboard/address', icon: 'address' },
-      { key: 'rekening', label: 'Nomor Rekening', href: '#', icon: 'rekening' },
     ],
   },
   {
     label: 'Transaksi',
     items: [
-      { key: 'pembayaran', label: 'Pembayaran', href: '/customer/dashboard/payment', icon: 'pay' },
       { key: 'transaksi', label: 'Daftar Transaksi', href: '/customer/dashboard/transactions', icon: 'list' },
-      { key: 'esign-meterai', label: 'E-Sign and E-Meterai', href: '#', icon: 'esign' },
-      { key: 'beli-lagi', label: 'Beli Lagi', href: '#', icon: 'history' },
-      { key: 'ulasan', label: 'Ulasan', href: '#', icon: 'review' },
+      { key: 'beli-lagi', label: 'Beli Lagi', href: '/customer/dashboard/reorder', icon: 'history' },
+      { key: 'ulasan', label: 'Ulasan', href: '/customer/dashboard/reviews', icon: 'review' },
     ],
   },
   {

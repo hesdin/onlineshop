@@ -4,6 +4,8 @@ use App\Http\Controllers\Customer\AddressController;
 use App\Http\Controllers\Customer\ChatController;
 use App\Http\Controllers\Customer\NotificationController;
 use App\Http\Controllers\Customer\ProfileController;
+use App\Http\Controllers\Customer\ReorderController;
+use App\Http\Controllers\Customer\ReviewController;
 use App\Http\Controllers\Customer\TransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -28,6 +30,11 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     })->name('payment');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions');
+
+    Route::get('reorder', [ReorderController::class, 'index'])->name('reorder');
+
+    Route::get('reviews', [ReviewController::class, 'index'])->name('reviews');
+    Route::post('reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
     // Chat dashboard pages (Inertia)
     Route::get('chat', [ChatController::class, 'dashboardIndex'])->name('chat');

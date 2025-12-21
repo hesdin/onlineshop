@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Address;
+use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Review;
 use App\Support\CustomerLocationResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +50,8 @@ class ProductPageController extends Controller
         $price = $product->sale_price ?? $product->price ?? 0;
         $originalPrice = $product->sale_price ? $product->price : null;
         $location = $this->formatLocation($product);
+        $reviews = $this->buildReviews($product);
+        $soldCount = $this->calculateSoldCount($product);
 
         return [
             'id' => $product->id,
@@ -59,9 +63,10 @@ class ProductPageController extends Controller
             'categoryUrl' => $product->category ? route('category.show', $product->category) : null,
             'price' => $price,
             'originalPrice' => $originalPrice,
-            'sold' => $product->stock ?? 0,
-            'rating' => (float) ($product->store?->rating ?? 0),
-            'reviewCount' => 0,
+            'sold' => $soldCount,
+            'rating' => $reviews['averageRating'],
+            'reviewCount' => $reviews['totalCount'],
+            'reviews' => $reviews['items'],
             'stock' => $product->stock ?? 0,
             'badges' => $this->buildBadges($product),
             'minOrder' => $product->min_order ? "{$product->min_order} pcs" : null,
@@ -82,6 +87,45 @@ class ProductPageController extends Controller
             'shipping_pickup' => (bool) $product->shipping_pickup,
             'shipping_delivery' => (bool) $product->shipping_delivery,
         ];
+    }
+
+    protected function buildReviews(Product $product): array
+    {
+        $reviews = Review::query()
+            ->where('product_id', $product->id)
+            ->with('user:id,name')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $totalCount = Review::where('product_id', $product->id)->count();
+        $averageRating = Review::where('product_id', $product->id)->avg('rating') ?? 0;
+
+        return [
+            'items' => $reviews->map(function ($review) {
+                return [
+                    'id' => $review->id,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'created_at' => $review->created_at?->toDateTimeString(),
+                    'user' => [
+                        'name' => $review->user?->name ?? 'Pengguna',
+                        'initial' => mb_substr($review->user?->name ?? 'P', 0, 1),
+                    ],
+                ];
+            })->values()->all(),
+            'totalCount' => $totalCount,
+            'averageRating' => round((float) $averageRating, 1),
+        ];
+    }
+
+    protected function calculateSoldCount(Product $product): int
+    {
+        return OrderItem::where('product_id', $product->id)
+            ->whereHas('order', function ($query) {
+                $query->whereIn('status', ['completed', 'delivered']);
+            })
+            ->sum('quantity');
     }
 
     protected function buildBadges(Product $product): array
@@ -152,6 +196,7 @@ class ProductPageController extends Controller
             'id' => $store?->id,
             'slug' => $store?->slug,
             'isUmkm' => (bool) ($store?->is_umkm ?? false),
+            'isBumnPartner' => (bool) ($store?->bumn_partner ?? false),
             'taxStatus' => $store?->tax_status ?? 'Non PKP',
             'location' => $storeLocation,
             'avatar' => "https://picsum.photos/seed/store-{$store?->id}/200/200",

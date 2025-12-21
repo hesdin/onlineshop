@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Order;
+use App\Observers\OrderObserver;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -29,5 +31,8 @@ class AppServiceProvider extends ServiceProvider
         Inertia::share('recaptcha', [
             'siteKey' => config('recaptchav3.sitekey'),
         ]);
+
+        // Register observers
+        Order::observe(OrderObserver::class);
     }
 }

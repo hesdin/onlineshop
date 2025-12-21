@@ -783,6 +783,21 @@ const formatPrice = (value) =>
     maximumFractionDigits: 0,
   }).format(value ?? 0);
 
+const formatReviewDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatLocationTitleCase = (location) => {
+  if (!location) return '';
+  return location
+    .toLowerCase()
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const shareUrl = computed(
   () => currentUrl.value || (typeof window !== 'undefined' ? window.location.href : '')
 );
@@ -1196,29 +1211,35 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Store -->
-            <component :is="product.store.url ? Link : 'div'" :href="product.store.url || undefined"
-              class="block space-y-4 rounded-md border border-slate-200 bg-white px-4 py-4 transition hover:border-sky-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 sm:px-5 sm:py-5">
+            <div class="rounded-md border border-slate-200 bg-white px-4 py-4 sm:px-5 sm:py-5">
               <div class="flex flex-wrap items-center gap-3 sm:gap-4">
-                <div class="relative">
-                  <img class="h-12 w-12 rounded-full border border-slate-200 object-cover" :src="product.store.avatar"
-                    :alt="product.store.name" />
-                </div>
-                <div class="flex-1 min-w-[200px]">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-base font-semibold text-slate-900 sm:text-lg">{{ product.store.name }}</p>
+                <component :is="product.store.url ? Link : 'div'" :href="product.store.url || undefined"
+                  class="flex items-center gap-3 flex-1 min-w-0 transition hover:opacity-80">
+                  <div class="relative flex-shrink-0">
+                    <img class="h-12 w-12 rounded-full border border-slate-200 object-cover" :src="product.store.avatar"
+                      :alt="product.store.name" />
                   </div>
-                  <div class="flex items-center text-xs text-slate-600">
-                    <svg class="h-4 w-4 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        d="M10 2.5a5.25 5.25 0 0 0-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 0 0 .72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0 0 10 2.5zm0 7.25a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
-                    </svg>
-                    <span>{{ product.store.location || 'Lokasi tidak tersedia' }}</span>
+                  <div class="min-w-0">
+                    <p class="text-base font-semibold text-slate-900 sm:text-lg truncate">{{ product.store.name }}</p>
+                    <div class="flex items-center gap-1 text-xs text-slate-600">
+                      <svg class="h-4 w-4 flex-shrink-0 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          d="M10 2.5a5.25 5.25 0 0 0-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 0 0 .72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0 0 10 2.5zm0 7.25a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+                      </svg>
+                      <span class="truncate">{{ formatLocationTitleCase(product.store.location) || 'Lokasi tidak tersedia' }}</span>
+                    </div>
                   </div>
+                </component>
+
+                <!-- Chat Button - Positioned inline with store name -->
+                <div v-if="product.store?.id" class="flex-shrink-0">
+                  <ChatModal :store-id="product.store.id" :store-name="product.store.name"
+                    :store-logo="product.store.avatar" :product-id="product.id" :product-name="product.name" />
                 </div>
               </div>
 
               <div
-                class="grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-slate-200">
+                class="grid grid-cols-2 gap-3 border-t border-slate-200 pt-4 mt-4 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-slate-200">
                 <div class="flex items-center justify-center gap-3 px-1 text-slate-700">
                   <svg class="h-5 w-5 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="1.8">
@@ -1226,7 +1247,7 @@ onBeforeUnmount(() => {
                     <path d="M4 17h16" stroke-linecap="round" />
                   </svg>
                   <div class="text-left">
-                    <p class="text-base font-semibold text-slate-900">{{ product.store.transactionsCount }}</p>
+                    <p class="text-base font-semibold text-slate-900">{{ product.store.transactionsCount || 0 }}</p>
                     <p class="text-xs text-slate-500">Transaksi Selesai</p>
                   </div>
                 </div>
@@ -1236,29 +1257,32 @@ onBeforeUnmount(() => {
                   </svg>
                   <div class="text-left">
                     <p class="text-base font-semibold text-slate-900">
-                      {{ product.store.rating ?? product.rating }}
+                      {{ reviewStats.average || product.store.rating || 0 }}
                     </p>
                     <p class="text-xs text-slate-500">Rating &amp; Ulasan</p>
                   </div>
                 </div>
                 <div class="hidden items-center justify-center gap-3 px-1 text-slate-700 sm:flex sm:px-4">
-                  <svg class="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  <svg v-if="product.store.isBumnPartner" class="h-5 w-5 text-emerald-500" viewBox="0 0 20 20"
+                    fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.882l-3.236 4.53L7.53 10.72a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.137-.089l3.5-5z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  <svg v-else class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="1.7">
                     <circle cx="12" cy="12" r="9" />
                     <path d="M8.5 12h7M12 8.5v7" stroke-linecap="round" />
                   </svg>
                   <div class="text-left">
-                    <p class="text-base font-semibold text-slate-900">{{ product.store.highlights[0] || 'Aktif' }}</p>
+                    <p class="text-base font-semibold"
+                      :class="product.store.isBumnPartner ? 'text-emerald-600' : 'text-slate-900'">
+                      {{ product.store.isBumnPartner ? 'BUMN Pengampu' : 'Toko Biasa' }}
+                    </p>
                     <p class="text-xs text-slate-500">Status Toko</p>
                   </div>
                 </div>
               </div>
-            </component>
-
-            <!-- Chat Button -->
-            <div v-if="product.store?.id" class="flex justify-center">
-              <ChatModal :store-id="product.store.id" :store-name="product.store.name"
-                :store-logo="product.store.avatar" :product-id="product.id" :product-name="product.name" />
             </div>
 
             <div class="rounded-md border border-slate-200 bg-white">
@@ -1278,9 +1302,8 @@ onBeforeUnmount(() => {
 
               <div v-if="activeTab === 'description'"
                 class="space-y-2 px-4 pb-5 pt-4 text-sm text-slate-600 sm:px-5 sm:pb-6">
-                <p v-if="product.description">
-                  {{ product.description }}
-                </p>
+                <div v-if="product.description" class="prose prose-sm prose-slate max-w-none"
+                  v-html="product.description"></div>
                 <p v-else class="text-slate-400">Deskripsi produk belum tersedia.</p>
               </div>
 
@@ -1313,34 +1336,31 @@ onBeforeUnmount(() => {
                 </p>
 
                 <div class="space-y-3">
-                  <article v-for="review in reviews" :key="review.id ?? review.user"
+                  <article v-for="review in reviews" :key="review.id"
                     class="rounded-md border border-slate-100 bg-white p-4">
                     <div class="flex items-center gap-3">
                       <div
                         class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
-                        {{ reviewerInitials(review.user) }}
+                        {{ review.user?.initial || reviewerInitials(review.user?.name || 'U') }}
                       </div>
                       <div class="flex-1">
-                        <p class="text-sm font-semibold text-slate-900">{{ review.user }}</p>
+                        <p class="text-sm font-semibold text-slate-900">{{ review.user?.name || 'Pengguna' }}</p>
                         <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                          <div class="flex items-center gap-0.5 text-amber-400">
-                            <svg v-for="(star, index) in ratingStars(review.rating)"
-                              :key="`review-star-${review.id}-${index}`" class="h-3.5 w-3.5" viewBox="0 0 20 20"
-                              fill="currentColor">
-                              <path d="M10 2.5 12.4 7l5 .7-3.7 3.6.9 5-4.6-2.4L5.4 16l.9-5L2.6 7.7l5-.7z" />
-                            </svg>
+                          <div class="flex items-center gap-0.5">
+                            <template v-for="i in 5" :key="`review-star-${review.id}-${i}`">
+                              <svg class="h-3.5 w-3.5" :class="i <= review.rating ? 'text-amber-400' : 'text-slate-200'"
+                                viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 2.5 12.4 7l5 .7-3.7 3.6.9 5-4.6-2.4L5.4 16l.9-5L2.6 7.7l5-.7z" />
+                              </svg>
+                            </template>
                           </div>
                           <span class="text-slate-400">•</span>
-                          <span>{{ review.date }}</span>
-                          <template v-if="review.variant">
-                            <span class="text-slate-400">•</span>
-                            <span>{{ review.variant }}</span>
-                          </template>
+                          <span>{{ formatReviewDate(review.created_at) }}</span>
                         </div>
                       </div>
                     </div>
 
-                    <p class="mt-3 text-sm text-slate-700">{{ review.comment }}</p>
+                    <p v-if="review.comment" class="mt-3 text-sm text-slate-700">{{ review.comment }}</p>
 
                     <div v-if="review.images?.length" class="mt-3 flex flex-wrap gap-2">
                       <img v-for="(image, idx) in review.images" :key="image + idx" :src="image"
