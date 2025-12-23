@@ -4,9 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class OrderStatusChangedNotification extends Notification
+class OrderStatusChangedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -18,7 +20,7 @@ class OrderStatusChangedNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail'];
     }
 
     public function toDatabase(object $notifiable): array
@@ -82,4 +84,115 @@ class OrderStatusChangedNotification extends Notification
             'payment_status' => $this->newPaymentStatus,
         ];
     }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $this->order->loadMissing(['items', 'store']);
+
+        $orderNumber = $this->order->order_number;
+        $storeName = $this->order->store?->name ?? 'Toko';
+        $grandTotal = number_format($this->order->grand_total, 0, ',', '.');
+        $trackingNumber = $this->order->shipping_awb ?? null;
+
+        // Build items list
+        $itemsList = $this->order->items->map(function ($item) {
+            return "• {$item->name} (x{$item->quantity})";
+        })->join("\n");
+
+        $mail = new MailMessage;
+
+        // Dynamic content based on status
+        if ($this->newPaymentStatus === 'paid') {
+            $mail->subject("✅ Pembayaran Dikonfirmasi - Pesanan #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Kabar baik! Pembayaran untuk pesanan Anda telah dikonfirmasi.")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("🏪 **Toko:** {$storeName}")
+                ->line("💰 **Total:** Rp {$grandTotal}")
+                ->line("---")
+                ->line("Pesanan Anda akan segera diproses oleh seller. Kami akan mengirimkan notifikasi saat pesanan dikirim.")
+                ->action('Lihat Status Pesanan', url('/customer/dashboard/transactions'));
+
+        } elseif ($this->newStatus === 'processing') {
+            $mail->subject("📦 Pesanan Sedang Diproses - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Pesanan Anda sedang diproses oleh **{$storeName}**.")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("**Produk:**")
+                ->line($itemsList)
+                ->line("---")
+                ->line("Seller sedang menyiapkan pesanan Anda. Kami akan mengirimkan notifikasi saat pesanan sudah dikirim.")
+                ->action('Lihat Status Pesanan', url('/customer/dashboard/transactions'));
+
+        } elseif ($this->newStatus === 'shipped') {
+            $mail->subject("🚚 Pesanan Dalam Pengiriman - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Pesanan Anda dari **{$storeName}** sudah dikirim!")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}");
+
+            if ($trackingNumber) {
+                $mail->line("📋 **No. Resi:** {$trackingNumber}");
+            }
+
+            $mail->line("**Produk:**")
+                ->line($itemsList)
+                ->line("---")
+                ->line("Pesanan Anda sedang dalam perjalanan. Pastikan alamat dan nomor telepon Anda dapat dihubungi.")
+                ->action('Lacak Pesanan', url('/customer/dashboard/transactions'));
+
+        } elseif ($this->newStatus === 'delivered') {
+            $mail->subject("📬 Pesanan Sudah Sampai - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Pesanan Anda dari **{$storeName}** sudah sampai di tujuan!")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("**Produk:**")
+                ->line($itemsList)
+                ->line("---")
+                ->line("Mohon konfirmasi penerimaan pesanan di aplikasi kami.")
+                ->action('Konfirmasi Pesanan', url('/customer/dashboard/transactions'));
+
+        } elseif ($this->newStatus === 'completed') {
+            $mail->subject("🎉 Pesanan Selesai - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Terima kasih! Pesanan Anda dari **{$storeName}** telah selesai.")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("**Produk:**")
+                ->line($itemsList)
+                ->line("---")
+                ->line("Bagaimana pengalaman belanja Anda? Berikan ulasan untuk membantu pembeli lainnya!")
+                ->action('Beri Ulasan', url('/customer/dashboard/transactions'))
+                ->line('Terima kasih telah berbelanja. Sampai jumpa di pesanan berikutnya!');
+
+        } elseif ($this->newStatus === 'cancelled') {
+            $mail->subject("❌ Pesanan Dibatalkan - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Mohon maaf, pesanan Anda dari **{$storeName}** telah dibatalkan.")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("💰 **Total:** Rp {$grandTotal}")
+                ->line("**Produk:**")
+                ->line($itemsList)
+                ->line("---")
+                ->line("Jika Anda memiliki pertanyaan, silakan hubungi customer service kami.")
+                ->action('Hubungi Kami', url('/customer/dashboard/transactions'));
+
+        } else {
+            $mail->subject("📋 Status Pesanan Diperbarui - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Status pesanan Anda telah diperbarui.")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("🏪 **Toko:** {$storeName}")
+                ->line("---")
+                ->action('Lihat Detail', url('/customer/dashboard/transactions'));
+        }
+
+        return $mail;
+    }
 }
+

@@ -7,7 +7,7 @@ use App\Http\Controllers\Seller\NotificationController;
 use App\Http\Controllers\Seller\OrderController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\ProfileController;
-use App\Http\Controllers\Seller\SellerDocumentController;
+
 use App\Http\Controllers\Seller\StoreController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,11 +15,15 @@ Route::get('/', fn () => redirect()->route('seller.dashboard.index'))->name('das
 
 Route::get('dashboard', DashboardController::class)->name('dashboard.index');
 
-// Document upload for seller verification
-Route::get('documents', [SellerDocumentController::class, 'show'])->name('documents.show');
-Route::post('documents', [SellerDocumentController::class, 'update'])->name('documents.update');
-Route::post('documents/submit', [SellerDocumentController::class, 'submit'])->name('documents.submit');
-Route::delete('documents/supporting/{mediaId}', [SellerDocumentController::class, 'deleteSupportingDocument'])->name('documents.supporting.destroy');
+// Redirect old documents route to settings
+Route::get('documents', fn () => redirect()->route('seller.settings.edit'))->name('documents.show');
+
+// Settings with document management
+Route::get('settings', [StoreController::class, 'edit'])->name('settings.edit');
+Route::post('settings', [StoreController::class, 'store'])->name('settings.store');
+Route::put('settings', [StoreController::class, 'update'])->name('settings.update');
+Route::post('settings/submit', [StoreController::class, 'submit'])->name('settings.submit');
+Route::delete('settings/documents/supporting/{mediaId}', [StoreController::class, 'deleteSupportingDocument'])->name('settings.documents.supporting.destroy');
 
 Route::resource('products', ProductController::class)->except(['show']);
 
@@ -35,9 +39,7 @@ Route::get('chats/{conversation}', [ChatController::class, 'show'])->name('chats
 Route::post('chats/{conversation}/messages', [ChatController::class, 'storeMessage'])->name('chats.messages.store');
 Route::get('chats/{conversation}/messages', [ChatController::class, 'getMessages'])->name('chats.messages.index');
 
-Route::get('settings', [StoreController::class, 'edit'])->name('settings.edit');
-Route::post('settings', [StoreController::class, 'store'])->name('settings.store');
-Route::put('settings', [StoreController::class, 'update'])->name('settings.update');
+
 
 // Profile routes
 Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');

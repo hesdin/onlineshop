@@ -41,10 +41,48 @@ class DashboardController extends Controller
             ->whereIn('status', ['delivered', 'completed'])
             ->count();
 
+        // Current month revenue
         $monthlyRevenue = Order::where('store_id', $store->id)
             ->where('payment_status', 'paid')
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->sum('grand_total');
+
+        // Last month revenue for growth calculation
+        $lastMonthRevenue = Order::where('store_id', $store->id)
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])
+            ->sum('grand_total');
+
+        // Calculate growth percentages
+        $revenueGrowth = $lastMonthRevenue > 0
+            ? round((($monthlyRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 1)
+            : ($monthlyRevenue > 0 ? 100 : 0);
+
+        // This week vs last week orders
+        $thisWeekOrders = Order::where('store_id', $store->id)
+            ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->count();
+
+        $lastWeekOrders = Order::where('store_id', $store->id)
+            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
+            ->count();
+
+        $ordersGrowth = $lastWeekOrders > 0
+            ? round((($thisWeekOrders - $lastWeekOrders) / $lastWeekOrders) * 100, 1)
+            : ($thisWeekOrders > 0 ? 100 : 0);
+
+        // Products added this month vs last month
+        $thisMonthProducts = Product::where('store_id', $store->id)
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->count();
+
+        $lastMonthProducts = Product::where('store_id', $store->id)
+            ->whereBetween('created_at', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])
+            ->count();
+
+        $productsGrowth = $lastMonthProducts > 0
+            ? round((($thisMonthProducts - $lastMonthProducts) / $lastMonthProducts) * 100, 1)
+            : ($thisMonthProducts > 0 ? 100 : 0);
 
         $recentOrders = Order::with('user:id,name,email')
             ->where('store_id', $store->id)
@@ -116,6 +154,67 @@ class DashboardController extends Controller
             $chartValues[] = $revenueData[$dateString] ?? 0;
         }
 
+        // Additional Dashboard Data
+        // Low stock products (stock <= 10)
+        $lowStockProducts = Product::where('store_id', $store->id)
+            ->where('stock', '<=', 10)
+            ->where('stock', '>', 0)
+            ->orderBy('stock', 'asc')
+            ->limit(5)
+            ->get()
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'stock' => $product->stock,
+                'image_url' => $product->image_url ?? null,
+            ]);
+
+        // Out of stock products count
+        $outOfStockCount = Product::where('store_id', $store->id)
+            ->where('stock', 0)
+            ->count();
+
+        // Orders needing action (pending_payment or processing)
+        $ordersNeedingAction = Order::with('user:id,name,email')
+            ->where('store_id', $store->id)
+            ->whereIn('status', ['pending_payment', 'processing'])
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (Order $order) => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'grand_total' => $order->grand_total,
+                'customer_name' => $order->user?->name,
+                'created_at' => $order->created_at?->diffForHumans(),
+            ]);
+
+        // Today's stats
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
+
+        $todayOrders = Order::where('store_id', $store->id)
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->count();
+
+        $todayRevenue = Order::where('store_id', $store->id)
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->sum('grand_total');
+
+        // Total unique customers
+        $totalCustomers = Order::where('store_id', $store->id)
+            ->whereNotNull('user_id')
+            ->distinct('user_id')
+            ->count('user_id');
+
+        // Average order value (this month)
+        $avgOrderValue = Order::where('store_id', $store->id)
+            ->where('payment_status', 'paid')
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->avg('grand_total') ?? 0;
+
         return Inertia::render('Seller/Dashboard/Index', [
             'store' => [
                 'id' => $store->id,
@@ -135,21 +234,25 @@ class DashboardController extends Controller
                     'label' => 'Produk aktif',
                     'value' => $productCount,
                     'helper' => 'Katalog toko',
+                    'growth' => $productsGrowth,
                 ],
                 [
                     'label' => 'Pesanan berjalan',
                     'value' => $pendingOrdersCount,
                     'helper' => 'Menunggu diproses',
+                    'growth' => $ordersGrowth,
                 ],
                 [
                     'label' => 'Pesanan selesai',
                     'value' => $completedOrdersCount,
                     'helper' => 'Sudah terkirim',
+                    'growth' => $ordersGrowth,
                 ],
                 [
                     'label' => 'Pendapatan bulan ini',
                     'value' => $monthlyRevenue,
                     'helper' => 'Transaksi dibayar',
+                    'growth' => $revenueGrowth,
                 ],
             ],
             'recentOrders' => $recentOrders,
@@ -157,6 +260,21 @@ class DashboardController extends Controller
             'revenueChart' => [
                 'labels' => $chartLabels,
                 'data' => $chartValues,
+            ],
+            // New data
+            'lowStockProducts' => $lowStockProducts,
+            'outOfStockCount' => $outOfStockCount,
+            'ordersNeedingAction' => $ordersNeedingAction,
+            'todayStats' => [
+                'orders' => $todayOrders,
+                'revenue' => $todayRevenue,
+            ],
+            'totalCustomers' => $totalCustomers,
+            'avgOrderValue' => round($avgOrderValue),
+            'growthData' => [
+                'revenue' => $revenueGrowth,
+                'orders' => $ordersGrowth,
+                'products' => $productsGrowth,
             ],
         ]);
     }

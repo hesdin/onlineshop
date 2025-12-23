@@ -49,6 +49,7 @@ import {
   Check,
   Filter,
   X,
+  AlertTriangle,
 } from 'lucide-vue-next';
 
 import type { ColumnDef } from '@tanstack/vue-table';
@@ -86,6 +87,7 @@ type ProductRow = {
   is_tkdn: boolean;
   store: Option | null;
   category: Option | null;
+  image_url: string | null;
 };
 
 const props = defineProps<{
@@ -207,7 +209,7 @@ const buildQuery = (override: Record<string, unknown> = {}) => ({
 
 // debounced search
 const debouncedSearch = useDebounceFn((value: string) => {
-    router.get('/admin/products', buildQuery({ search: value || undefined }), {
+  router.get('/admin/products', buildQuery({ search: value || undefined }), {
     preserveState: true,
     replace: true,
     preserveScroll: true,
@@ -220,7 +222,7 @@ watch(search, (value) => {
 
 // watch filter lainnya
 watch([storeFilter, categoryFilter, statusFilter], () => {
-    router.get('/admin/products', buildQuery(), {
+  router.get('/admin/products', buildQuery(), {
     preserveState: true,
     replace: true,
     preserveScroll: true,
@@ -235,7 +237,7 @@ const requestDelete = (product: ProductRow) => {
 const deleteProduct = () => {
   if (!deletingProduct.value) return;
 
-    router.delete(`/admin/products/${deletingProduct.value.id}`, {
+  router.delete(`/admin/products/${deletingProduct.value.id}`, {
     preserveScroll: true,
     onFinish: () => {
       deleteDialogOpen.value = false;
@@ -275,14 +277,48 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
     accessorKey: 'name',
     header: () => 'Produk',
     cell: ({ row }) =>
-      h('div', { class: 'space-y-0.5' }, [
-        h('p', { class: 'font-semibold text-slate-900' }, row.original.name),
-        row.original.brand
-          ? h('p', { class: 'text-xs text-slate-500' }, row.original.brand)
-          : null,
-        row.original.slug
-          ? h('p', { class: 'text-[11px] text-slate-400' }, row.original.slug)
-          : null,
+      h('div', { class: 'flex items-center gap-3' }, [
+        // Product Image
+        h(
+          'div',
+          {
+            class: 'h-12 w-12 flex-shrink-0 overflow-hidden rounded-md border border-border bg-muted',
+          },
+          row.original.image_url
+            ? h('img', {
+              src: row.original.image_url,
+              alt: row.original.name,
+              class: 'h-full w-full object-cover object-center',
+            })
+            : h('div', { class: 'flex h-full w-full items-center justify-center text-muted-foreground' }, [
+              // Placeholder icon
+              h(
+                'svg',
+                {
+                  xmlns: 'http://www.w3.org/2000/svg',
+                  viewBox: '0 0 24 24',
+                  fill: 'none',
+                  stroke: 'currentColor',
+                  'stroke-width': '2',
+                  'stroke-linecap': 'round',
+                  'stroke-linejoin': 'round',
+                  class: 'h-6 w-6',
+                },
+                [
+                  h('rect', { width: '18', height: '18', x: '3', y: '3', rx: '2', ry: '2' }),
+                  h('circle', { cx: '9', cy: '9', r: '2' }),
+                  h('path', { d: 'm21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21' }),
+                ],
+              ),
+            ]),
+        ),
+        // Product Name
+        h('div', { class: 'space-y-0.5' }, [
+          h('p', { class: 'font-semibold text-foreground leading-snug line-clamp-2' }, row.original.name),
+          row.original.brand
+            ? h('p', { class: 'text-xs text-muted-foreground' }, row.original.brand)
+            : null,
+        ]),
       ]),
     meta: { class: 'min-w-[220px]' },
   },
@@ -292,7 +328,7 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
     cell: ({ row }) =>
       h(
         'span',
-        { class: 'text-sm font-medium text-slate-800' },
+        { class: 'text-sm font-medium text-foreground' },
         row.original.store?.name ?? '-',
       ),
   },
@@ -300,7 +336,7 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
     id: 'category',
     header: () => 'Kategori',
     cell: ({ row }) =>
-      h('span', { class: 'text-sm text-slate-600' }, row.original.category?.name ?? '-'),
+      h('span', { class: 'text-sm text-muted-foreground' }, row.original.category?.name ?? '-'),
   },
   {
     id: 'price',
@@ -309,13 +345,13 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
       h('div', { class: 'space-y-0.5 text-sm' }, [
         h(
           'p',
-          { class: 'font-semibold text-slate-900' },
+          { class: 'font-semibold text-foreground' },
           formatCurrency(row.original.sale_price ?? row.original.price),
         ),
         row.original.sale_price
           ? h(
             'p',
-            { class: 'text-xs text-slate-500 line-through' },
+            { class: 'text-xs text-muted-foreground line-through' },
             formatCurrency(row.original.price),
           )
           : null,
@@ -326,9 +362,9 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
     id: 'stock',
     header: () => 'Kuantitas',
     cell: ({ row }) =>
-      h('div', { class: 'text-sm text-slate-700' }, [
+      h('div', { class: 'text-sm text-foreground' }, [
         h('p', { class: 'font-semibold' }, `${row.original.stock} stok`),
-        h('p', { class: 'text-xs text-slate-500' }, `Min order ${row.original.min_order}`),
+        h('p', { class: 'text-xs text-muted-foreground' }, `Min order ${row.original.min_order}`),
       ]),
     meta: { class: 'w-40' },
   },
@@ -340,12 +376,12 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
         'span',
         {
           class:
-            'inline-flex items-center rounded-sm px-3 py-1 text-xs font-semibold ' +
+            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ' +
             (row.original.status === 'ready'
-              ? 'bg-emerald-100 text-emerald-700'
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
               : row.original.status === 'pre_order'
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-slate-100 text-slate-600'),
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                : 'bg-muted text-muted-foreground'),
         },
         getStatusLabel(row.original.status),
       ),
@@ -355,7 +391,7 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
     id: 'item_type',
     header: () => 'Jenis',
     cell: ({ row }) =>
-      h('span', { class: 'text-xs text-slate-500' }, getItemTypeLabel(row.original.item_type)),
+      h('span', { class: 'text-xs text-muted-foreground' }, getItemTypeLabel(row.original.item_type)),
   },
   {
     id: 'compliance',
@@ -384,7 +420,7 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
           {
             class:
               'inline-flex h-8 w-8 items-center justify-center rounded-full ' +
-              'cursor-pointer text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+              'cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground',
             onClick: () => router.visit(`/admin/products/${row.original.id}/edit`),
           },
           [h(Edit2, { class: 'h-[15px] w-[15px]' })],
@@ -395,7 +431,7 @@ const baseColumns = computed<ColumnDef<ProductRow>[]>(() => [
           {
             class:
               'inline-flex h-8 w-8 items-center justify-center rounded-full ' +
-              'cursor-pointer text-slate-500 hover:bg-red-50 hover:text-red-600',
+              'cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
             onClick: () => requestDelete(row.original),
           },
           [h(Trash2, { class: 'h-[15px] w-[15px]' })],
@@ -476,8 +512,8 @@ const hasActiveFilters = computed(() => {
       </div>
       <Button as-child>
         <Link href="/admin/products/create">
-        <Plus class="h-4 w-4" />
-        Produk
+          <Plus class="h-4 w-4" />
+          Produk
         </Link>
       </Button>
     </div>
@@ -678,19 +714,22 @@ const hasActiveFilters = computed(() => {
 
     <!-- Dialog hapus -->
     <AlertDialog :open="deleteDialogOpen" @update:open="(value) => (deleteDialogOpen = value)">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Hapus produk?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Produk <strong>{{ deletingProduct?.name }}</strong> akan
-            dihapus permanen dari katalog.
+      <AlertDialogContent class="text-center">
+        <AlertDialogHeader class="space-y-4 text-center">
+          <div
+            class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/50 text-red-600">
+            <AlertTriangle class="h-8 w-8" />
+          </div>
+          <AlertDialogTitle class="text-lg font-semibold text-foreground text-center">Hapus Produk?</AlertDialogTitle>
+          <AlertDialogDescription class="text-sm text-muted-foreground text-center">
+            Produk <strong>{{ deletingProduct?.name }}</strong> akan dihapus secara permanen dari katalog.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel @click="deleteDialogOpen = false">
+        <AlertDialogFooter class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+          <AlertDialogCancel class="sm:min-w-[120px]" @click="deleteDialogOpen = false">
             Batal
           </AlertDialogCancel>
-          <AlertDialogAction class="bg-red-600 hover:bg-red-700" @click="deleteProduct">
+          <AlertDialogAction class="bg-destructive hover:bg-destructive/90 sm:min-w-[120px]" @click="deleteProduct">
             Hapus
           </AlertDialogAction>
         </AlertDialogFooter>

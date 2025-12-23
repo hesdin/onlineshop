@@ -17,15 +17,16 @@ const needsAttention = computed(() => {
 
 <template>
   <SidebarProvider>
-    <div class="flex min-h-screen w-full bg-slate-50">
+    <!-- Banner at top level, outside sidebar structure -->
+    <DocumentStatusBanner v-if="needsAttention"
+      :status="($page.props.auth as any).seller_document?.submission_status || 'draft'"
+      :admin-notes="($page.props.auth as any).seller_document?.admin_notes" class="fixed top-0 left-0 right-0" />
+
+    <div class="flex min-h-screen w-full bg-slate-50" :class="{ 'pt-[42px]': needsAttention }">
       <SellerDashboardSidebar />
 
       <SidebarInset class="flex-1 w-full !m-0">
         <SellerDashboardHeader />
-
-        <DocumentStatusBanner v-if="needsAttention"
-          :status="($page.props.auth as any).seller_document?.submission_status"
-          :admin-notes="($page.props.auth as any).seller_document?.admin_notes" />
 
         <main class="flex-1 w-full max-w-full bg-slate-50 px-6 py-6">
           <slot />

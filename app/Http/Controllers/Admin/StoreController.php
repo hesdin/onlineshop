@@ -60,6 +60,7 @@ class StoreController extends Controller
                 'rating' => $store->rating,
                 'transactions_count' => $store->transactions_count,
                 'products_count' => $store->products_count,
+                'logo_url' => $store->logo_url,
             ]);
 
         return Inertia::render('Admin/Stores/Index', [

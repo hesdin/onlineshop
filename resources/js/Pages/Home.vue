@@ -74,78 +74,6 @@ const categoryTiles = computed(() => {
   ];
 });
 
-const fallbackCollections = [
-  { title: 'SUPERDEAL Road to PKK Sulsel Mart', color: 'from-sky-600 to-sky-500' },
-  { title: 'Koleksi PKK Sulsel Mart Jasa Percetakan', color: 'from-amber-500 to-orange-400' },
-  { title: 'Koleksi Andalan Perjalanan Bisnis', color: 'from-emerald-500 to-teal-400' },
-  { title: 'Koleksi Perawatan Teknologi', color: 'from-indigo-500 to-blue-500' },
-  { title: 'Koleksi Produktif di Kantor', color: 'from-purple-500 to-fuchsia-500' },
-  { title: 'Koleksi Hampers Premium', color: 'from-pink-500 to-rose-400' },
-];
-
-const fallbackProducts = [
-  {
-    title: 'Stop Kontak Industri 4 Lubang',
-    vendor: 'CENTRIN AFATEC SUPPLIES',
-    price: 'Rp680.000',
-    badge: 'UMKM',
-    location: 'Jakarta Pusat',
-    sold: 'Terjual 8',
-    tags: ['PKP'],
-    image: 'https://images.unsplash.com/photo-1519677100203-a0e668c92439?auto=format&fit=crop&w=640&q=80',
-  },
-  {
-    title: 'Produksi Kalender 2025 PT Jasamarga',
-    vendor: 'TIARA IMPRESA GRAFIKA',
-    price: 'Rp190.612.250',
-    badge: 'UMKM',
-    location: 'Kota Depok',
-    sold: 'Terjual 3',
-    tags: ['PDN', 'PKP'],
-    image: 'https://images.unsplash.com/photo-1473186578172-c141e6798cf4?auto=format&fit=crop&w=640&q=80',
-  },
-  {
-    title: 'Dokumentasi Temu Pelanggan',
-    vendor: 'TIARA IMPRESA GRAFIKA',
-    price: 'Rp52.087.860',
-    badge: 'UMKM',
-    location: 'Kota Depok',
-    sold: 'Terjual 1',
-    tags: ['PDN', 'PKP'],
-    image: 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=640&q=80',
-  },
-  {
-    title: 'BROTHER Printer MFC T920DW',
-    vendor: 'CENTRIN AFATEC SUPPLIES',
-    price: 'Rp4.900.000',
-    badge: 'UMKM',
-    location: 'Jakarta Pusat',
-    sold: 'Terjual 12',
-    tags: ['PKP'],
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=640&q=80',
-  },
-  {
-    title: 'UPS Kantor 1200VA',
-    vendor: 'POWERSAFE INDONESIA',
-    price: 'Rp1.850.000',
-    badge: 'UMKM',
-    location: 'Kota Bandung',
-    sold: 'Terjual 6',
-    tags: ['PKP'],
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=640&q=80',
-  },
-  {
-    title: 'Headset Wireless Meeting',
-    vendor: 'AUDIOPRO PARTNER',
-    price: 'Rp1.250.000',
-    badge: 'UMKM',
-    location: 'Jakarta Selatan',
-    sold: 'Terjual 9',
-    tags: ['PDN', 'PKP'],
-    image: 'https://images.unsplash.com/photo-1519677100203-a0e668c92439?auto=format&fit=crop&w=640&q=80',
-  },
-];
-
 const collectionList = computed(() => {
   if (props.collections?.length) {
     return props.collections.map((item) => ({
@@ -154,13 +82,7 @@ const collectionList = computed(() => {
       display_mode: item.display_mode ?? 'slider',
     }));
   }
-  return fallbackCollections.map((item) => ({
-    ...item,
-    products: fallbackProducts,
-    banner: null,
-    url: '/collection/superdeal-road-to-pa-di-business-forum-and-showcase',
-    display_mode: 'slider',
-  }));
+  return [];
 });
 
 const formatPrice = (value) => {
@@ -177,6 +99,35 @@ const productUrl = (product) => {
   const slug = product?.slug;
   if (!id || !slug) return '#';
   return `/product/${slug}/${id}`;
+};
+
+const isValidImage = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  const placeholderPatterns = [
+    'picsum.photos',
+    'placeholder',
+    'via.placeholder',
+    'placehold',
+    'dummy',
+    'no-image',
+    'noimage',
+  ];
+  return !placeholderPatterns.some((pattern) => trimmed.toLowerCase().includes(pattern));
+};
+
+const productImageUrl = (product) => {
+  const candidates = [
+    product?.image,
+    product?.image_url,
+    product?.thumbnail,
+    product?.cover_image_url,
+  ];
+  const validSource = candidates.find(
+    (src) => typeof src === 'string' && src.trim().length > 0 && isValidImage(src)
+  );
+  return validSource ?? null;
 };
 
 const collectionDetailUrl = (collection) => {
@@ -569,7 +520,19 @@ const scrollCollection = (index, direction) => {
                       class="absolute left-2 top-2 rounded-md bg-sky-500 px-2 py-1 text-[11px] font-semibold uppercase text-white shadow">
                       {{ product.badge }}
                     </div>
-                    <img :src="product.image" :alt="product.title" loading="lazy" class="h-full w-full object-cover" />
+                    <img
+                      v-if="productImageUrl(product)"
+                      :src="productImageUrl(product)"
+                      :alt="product.title"
+                      loading="lazy"
+                      class="h-full w-full object-cover"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center text-slate-500">
+                      <div class="text-center">
+                        <p class="text-sm font-semibold">No Image</p>
+                        <p class="mt-1 text-xs text-slate-500">Gambar produk belum diatur</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="mt-3 flex flex-1 flex-col gap-1.5">

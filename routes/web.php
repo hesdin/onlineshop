@@ -141,6 +141,11 @@ Route::middleware(['auth', 'role:superadmin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        // Redirect /admin to /admin/dashboard
+        Route::get('/', function () {
+            return redirect()->route('admin.dashboard');
+        });
+
         require base_path('routes/admin.php');
     });
 

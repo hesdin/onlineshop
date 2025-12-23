@@ -39,8 +39,8 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
       class="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 py-12 lg:flex-row lg:items-stretch lg:gap-16 lg:py-16">
       <div class="flex flex-1 flex-col items-center justify-center text-center lg:items-start lg:text-left">
         <div class="max-w-md space-y-6">
-          <img :src="heroIllustration" alt="Lupa kata sandi"
-            class="mx-auto w-[240px] sm:w-[300px] lg:w-[340px] object-contain" />
+          <!-- <img :src="heroIllustration" alt="Lupa kata sandi"
+            class="mx-auto w-[240px] sm:w-[300px] lg:w-[340px] object-contain" /> -->
           <div class="space-y-2">
             <h2 class="text-2xl sm:text-3xl font-bold">Lupa Kata Sandi</h2>
             <p class="text-sm sm:text-base text-slate-600">

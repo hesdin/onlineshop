@@ -145,6 +145,6 @@ class HomeController extends Controller
             return $product->image_url;
         }
 
-        return "https://picsum.photos/seed/{$product->slug}/800/400";
+        return null;
     }
 }

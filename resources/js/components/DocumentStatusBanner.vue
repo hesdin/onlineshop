@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { AlertCircle, Clock, XCircle, FileCheck } from 'lucide-vue-next';
+import { AlertCircle, Clock, XCircle, ChevronRight } from 'lucide-vue-next';
 
 interface Props {
   status: 'draft' | 'submitted' | 'approved' | 'rejected';
   adminNotes?: string | null;
-  compact?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   adminNotes: null,
-  compact: false,
 });
 
 const config = computed(() => {
@@ -19,38 +17,29 @@ const config = computed(() => {
     case 'rejected':
       return {
         icon: XCircle,
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-200',
-        iconColor: 'text-red-600',
-        textColor: 'text-red-800',
+        bg: 'bg-red-600',
         title: 'Dokumen Ditolak',
-        message: 'Dokumen Anda ditolak. Silakan perbaiki dan submit ulang untuk mulai berjualan.',
-        ctaText: 'Perbaiki Dokumen',
+        message: props.adminNotes ? `Catatan: ${props.adminNotes}` : 'Silakan perbaiki dan submit ulang.',
+        ctaText: 'Perbaiki',
         showCta: true,
       };
     case 'submitted':
       return {
         icon: Clock,
-        bgColor: 'bg-amber-50',
-        borderColor: 'border-amber-200',
-        iconColor: 'text-amber-600',
-        textColor: 'text-amber-800',
-        title: 'Dokumen sedang dalam proses verifikasi',
-        message: 'Dokumen sedang dalam proses verifikasi. Anda dapat membuat draft produk tapi belum bisa publish atau terima pesanan.',
-        ctaText: 'Lihat Status',
+        bg: 'bg-amber-500',
+        title: 'Menunggu Verifikasi',
+        message: 'Dokumen sedang ditinjau (1-3 hari kerja)',
+        ctaText: '',
         showCta: false,
       };
     case 'draft':
     default:
       return {
         icon: AlertCircle,
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-200',
-        iconColor: 'text-red-600',
-        textColor: 'text-red-800',
-        title: 'Lengkapi Dokumen Toko',
-        message: 'Lengkapi dan verifikasi dokumen toko Anda untuk mulai berjualan dan menggunakan semua fitur.',
-        ctaText: 'Lengkapi Sekarang',
+        bg: 'bg-indigo-600',
+        title: 'Lengkapi Data Toko',
+        message: 'Verifikasi toko untuk mulai berjualan',
+        ctaText: 'Lengkapi',
         showCta: true,
       };
   }
@@ -58,34 +47,22 @@ const config = computed(() => {
 </script>
 
 <template>
-  <div :class="[
-    'border-b',
-    config.bgColor,
-    config.borderColor,
-  ]">
-    <div :class="compact ? 'px-4 py-3' : 'px-6 py-4'">
-      <div class="flex items-start gap-3">
-        <component :is="config.icon" :class="['h-5 w-5 flex-shrink-0 mt-0.5', config.iconColor]" />
-
-        <div class="flex-1 min-w-0">
-          <p :class="['font-semibold', compact ? 'text-sm' : 'text-base', config.textColor]">
-            {{ config.title }}
-          </p>
-          <p :class="['mt-1', compact ? 'text-xs' : 'text-sm', config.textColor, 'opacity-90']">
-            {{ config.message }}
-          </p>
-          <p v-if="adminNotes" :class="['mt-2 text-sm', config.textColor, 'font-medium']">
-            Catatan Admin: {{ adminNotes }}
-          </p>
+  <div :class="['z-[9999]', config.bg]">
+    <div class="px-4 py-2.5">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <component :is="config.icon" class="h-4 w-4 flex-shrink-0 text-white/90" />
+          <div class="flex items-center gap-2 min-w-0 text-sm">
+            <span class="font-semibold text-white truncate">{{ config.title }}</span>
+            <span class="hidden sm:inline text-white/80">·</span>
+            <span class="hidden sm:inline text-white/80 truncate">{{ config.message }}</span>
+          </div>
         </div>
 
-        <Link v-if="config.showCta" href="/seller/documents" :class="[
-          'inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition flex-shrink-0',
-          status === 'rejected'
-            ? 'bg-red-600 text-white hover:bg-red-700'
-            : 'bg-red-600 text-white hover:bg-red-700'
-        ]">
+        <Link v-if="config.showCta" href="/seller/settings"
+          class="flex items-center gap-1 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-white/90 flex-shrink-0">
           {{ config.ctaText }}
+          <ChevronRight class="h-3 w-3" />
         </Link>
       </div>
     </div>

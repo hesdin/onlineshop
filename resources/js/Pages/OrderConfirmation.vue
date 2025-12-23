@@ -52,12 +52,22 @@ const totalAmount = computed(() =>
 
 const getPaymentStatusClass = (status) => {
   const statusMap = {
-    pending: 'bg-amber-100 text-amber-700',
-    paid: 'bg-emerald-100 text-emerald-700',
-    expired: 'bg-red-100 text-red-700',
-    failed: 'bg-red-100 text-red-700',
+    pending: 'bg-amber-100 text-amber-700 border border-amber-300',
+    paid: 'bg-emerald-100 text-emerald-700 border border-emerald-300',
+    expired: 'bg-red-100 text-red-700 border border-red-300',
+    failed: 'bg-red-100 text-red-700 border border-red-300',
   };
-  return statusMap[status] || 'bg-slate-100 text-slate-700';
+  return statusMap[status] || 'bg-slate-100 text-slate-700 border border-slate-300';
+};
+
+const getPaymentStatusLabel = (status) => {
+  const labels = {
+    pending: 'Belum Lunas',
+    paid: 'Lunas',
+    expired: 'Kedaluwarsa',
+    failed: 'Gagal',
+  };
+  return labels[status] || status;
 };
 
 const getPaymentInstructions = (order) => {
@@ -242,9 +252,26 @@ const isCOD = computed(() => props.orders.some(order => order.payment_method_cod
                   <p class="text-lg font-bold text-slate-900">{{ order.order_number }}</p>
                 </div>
               </div>
-              <span class="rounded-md px-4 py-1.5 text-xs font-semibold"
+              <span class="rounded-md px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
                 :class="getPaymentStatusClass(order.payment_status)">
-                {{ order.payment_status === 'pending' ? 'Menunggu Pembayaran' : order.payment_status }}
+                <!-- Status Icon -->
+                <svg v-if="order.payment_status === 'paid'" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd" />
+                </svg>
+                <svg v-else-if="order.payment_status === 'pending'" class="h-3.5 w-3.5" viewBox="0 0 20 20"
+                  fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                    clip-rule="evenodd" />
+                </svg>
+                <svg v-else class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clip-rule="evenodd" />
+                </svg>
+                {{ getPaymentStatusLabel(order.payment_status) }}
               </span>
             </div>
           </div>
@@ -286,7 +313,7 @@ const isCOD = computed(() => props.orders.some(order => order.payment_method_cod
                   <span class="text-slate-700 break-words max-w-[65%]">{{ item.name }} <span class="text-slate-500">x{{
                     item.quantity }}</span></span>
                   <span class="font-semibold text-slate-900 shrink-0 text-right">{{ formatCurrency(item.subtotal)
-                  }}</span>
+                    }}</span>
                 </div>
                 <!-- Show expand/collapse button if more than 2 items -->
                 <button v-if="order.items.length > 2" type="button"
@@ -302,11 +329,31 @@ const isCOD = computed(() => props.orders.some(order => order.payment_method_cod
                 </button>
               </div>
 
-              <!-- Total -->
-              <div
-                class="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900">
-                <span>Total Pesanan</span>
-                <span class="text-base font-bold text-sky-600">{{ formatCurrency(order.grand_total) }}</span>
+              <!-- Total & Payment Status -->
+              <div class="border-t border-slate-200 pt-3 space-y-2">
+                <div class="flex items-center justify-between text-sm font-semibold text-slate-900">
+                  <span>Total Pesanan</span>
+                  <span class="text-base font-bold text-sky-600">{{ formatCurrency(order.grand_total) }}</span>
+                </div>
+                <!-- Payment Status Badge -->
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-slate-600">Status Pembayaran</span>
+                  <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" :class="order.payment_status === 'paid'
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                    : 'bg-amber-100 text-amber-700 border border-amber-300'">
+                    <svg v-if="order.payment_status === 'paid'" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd" />
+                    </svg>
+                    <svg v-else class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                        clip-rule="evenodd" />
+                    </svg>
+                    {{ order.payment_status === 'paid' ? 'LUNAS' : 'BELUM LUNAS' }}
+                  </span>
+                </div>
               </div>
             </div>
 

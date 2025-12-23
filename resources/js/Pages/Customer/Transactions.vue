@@ -420,7 +420,7 @@ const buyAgain = async (order) => {
                     <AlertDialogTitle class="text-center text-xl font-bold">Informasi Belum Lengkap</AlertDialogTitle>
                     <AlertDialogDescription class="text-center text-slate-600 pt-2">
                       Toko <span class="font-semibold text-slate-900">{{ (selectedOrder || pendingOrder)?.store.name
-                      }}</span> {{ fallbackReason }}. Apakah Anda ingin menghubungi mereka melalui chat
+                        }}</span> {{ fallbackReason }}. Apakah Anda ingin menghubungi mereka melalui chat
                       internal?
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -528,7 +528,7 @@ const buyAgain = async (order) => {
                       <div class="flex-1">
                         <div class="font-bold text-slate-900 line-clamp-2">{{ item.name }}</div>
                         <div class="mt-1 text-sm text-slate-500">{{ item.quantity }} x {{ formatPrice(item.unit_price)
-                          }}</div>
+                        }}</div>
                         <div v-if="item.note" class="mt-1 text-xs text-slate-500 italic">"{{ item.note }}"</div>
                       </div>
                     </div>
@@ -581,6 +581,25 @@ const buyAgain = async (order) => {
                 <div class="space-y-3">
                   <h4 class="font-bold text-slate-900">Rincian Pembayaran</h4>
                   <div class="rounded-md bg-slate-50 p-4 space-y-2 text-sm">
+                    <div class="flex justify-between items-center">
+                      <span class="text-slate-600">Status Pembayaran</span>
+                      <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" :class="selectedOrder.payment_status === 'paid'
+                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                        : 'bg-amber-100 text-amber-700 border border-amber-300'">
+                        <svg v-if="selectedOrder.payment_status === 'paid'" class="h-3 w-3" viewBox="0 0 20 20"
+                          fill="currentColor">
+                          <path fill-rule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clip-rule="evenodd" />
+                        </svg>
+                        <svg v-else class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                            clip-rule="evenodd" />
+                        </svg>
+                        {{ selectedOrder.payment_status === 'paid' ? 'LUNAS' : 'BELUM LUNAS' }}
+                      </span>
+                    </div>
                     <div class="flex justify-between">
                       <span class="text-slate-600">Metode Pembayaran</span>
                       <span class="font-medium text-slate-900">{{ selectedOrder.payment_info?.method ?? '-' }}</span>
@@ -589,7 +608,7 @@ const buyAgain = async (order) => {
                       <span class="text-slate-600">Total Harga ({{ selectedOrder.items_count }} barang)</span>
                       <span class="text-slate-900">{{ formatPrice(selectedOrder.grand_total -
                         (selectedOrder.shipping_info?.cost || 0))
-                      }}</span>
+                        }}</span>
                     </div>
                     <!-- Shipping Cost removed as requested -->
 
@@ -716,7 +735,7 @@ const buyAgain = async (order) => {
                 <div class="flex items-center justify-between">
                   <span class="font-bold text-sky-600 text-2xl tracking-tight">{{
                     formatPrice(selectedOrder?.grand_total)
-                  }}</span>
+                    }}</span>
                   <button @click="copyToClipboard(selectedOrder?.grand_total, 'amount')"
                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sky-600 text-xs font-bold transition-all hover:border-sky-300 hover:bg-sky-50 active:scale-95 shadow-sm">
                     <component :is="copiedField === 'amount' ? Check : Copy" class="h-3.5 w-3.5" />

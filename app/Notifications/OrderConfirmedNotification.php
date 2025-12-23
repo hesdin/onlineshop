@@ -4,9 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class OrderConfirmedNotification extends Notification
+class OrderConfirmedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -16,7 +18,7 @@ class OrderConfirmedNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail'];
     }
 
     public function toDatabase(object $notifiable): array
@@ -29,4 +31,51 @@ class OrderConfirmedNotification extends Notification
             'order_id' => $this->order->id,
         ];
     }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $this->order->loadMissing(['items', 'store', 'paymentMethod']);
+
+        $orderNumber = $this->order->order_number;
+        $storeName = $this->order->store?->name ?? 'Toko';
+        $grandTotal = number_format($this->order->grand_total, 0, ',', '.');
+        $paymentMethod = $this->order->paymentMethod?->name ?? 'N/A';
+        $orderedAt = $this->order->ordered_at?->format('d M Y H:i') ?? now()->format('d M Y H:i');
+
+        // Build items list
+        $itemsList = $this->order->items->map(function ($item) {
+            $subtotal = number_format($item->subtotal, 0, ',', '.');
+            return "• {$item->name} (x{$item->quantity}) - Rp {$subtotal}";
+        })->join("\n");
+
+        // Payment instructions based on method
+        $paymentCode = $this->order->paymentMethod?->code ?? '';
+        if ($paymentCode === 'cod') {
+            $instructions = 'Pembayaran dilakukan langsung saat menerima pesanan (Cash on Delivery).';
+        } else {
+            $instructions = 'Silakan transfer ke rekening toko. Hubungi toko via WhatsApp untuk detail rekening bank.';
+        }
+
+        return (new MailMessage)
+            ->subject("🛒 Pesanan #{$orderNumber} Berhasil Dibuat")
+            ->greeting("Halo, {$notifiable->name}!")
+            ->line("Terima kasih! Pesanan Anda di **{$storeName}** telah berhasil dibuat.")
+            ->line("---")
+            ->line("**Detail Pesanan:**")
+            ->line("📦 **No. Pesanan:** {$orderNumber}")
+            ->line("🏪 **Toko:** {$storeName}")
+            ->line("📅 **Waktu Pesan:** {$orderedAt}")
+            ->line("💳 **Metode Pembayaran:** {$paymentMethod}")
+            ->line("---")
+            ->line("**Produk yang Dipesan:**")
+            ->line($itemsList)
+            ->line("---")
+            ->line("💰 **Total Pembayaran:** Rp {$grandTotal}")
+            ->line("---")
+            ->line("**Instruksi Pembayaran:**")
+            ->line($instructions)
+            ->action('Lihat Pesanan Saya', url('/customer/dashboard/transactions'))
+            ->line('Terima kasih telah berbelanja!');
+    }
 }
+

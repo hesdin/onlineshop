@@ -5,9 +5,14 @@ import { computed, h, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DataTable } from '@/components/ui/data-table';
-import { CheckCircle2, Eye, Search, ShieldAlert } from 'lucide-vue-next';
+import {
+  CheckCircle2, Eye, Search, ShieldAlert, Clock, CheckCheck, XCircle, FileText,
+  Store as StoreIcon, User, Mail, FileCheck, FileWarning
+} from 'lucide-vue-next';
 import type { ColumnDef } from '@tanstack/vue-table';
 
 type DocumentRow = {
@@ -113,12 +118,12 @@ const statusLabel = (value: string) => {
 
 const statusBadge = (value: string) => {
   const map: Record<string, string> = {
-    draft: 'bg-slate-100 text-slate-700',
-    submitted: 'bg-amber-100 text-amber-800',
-    approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
+    draft: 'bg-muted text-muted-foreground',
+    submitted: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400',
+    approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400',
+    rejected: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
   };
-  return map[value] ?? 'bg-slate-100 text-slate-700';
+  return map[value] ?? 'bg-muted text-muted-foreground';
 };
 
 const columns = computed<ColumnDef<DocumentRow>[]>(() => [
@@ -126,18 +131,29 @@ const columns = computed<ColumnDef<DocumentRow>[]>(() => [
     accessorKey: 'store_name',
     header: () => 'Toko',
     cell: ({ row }) =>
-      h('div', { class: 'space-y-0.5' }, [
-        h('div', { class: 'font-semibold text-slate-900' }, row.original.store_name ?? '-'),
-        h('div', { class: 'text-xs text-slate-500' }, typeLabel(row.original.store_type)),
+      h('div', { class: 'flex items-center gap-3' }, [
+        h('div', { class: 'h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center' }, [
+          h(StoreIcon, { class: 'h-5 w-5 text-primary' })
+        ]),
+        h('div', { class: 'space-y-0.5' }, [
+          h('div', { class: 'font-semibold text-foreground' }, row.original.store_name ?? '-'),
+          h('div', { class: 'text-xs text-muted-foreground' }, typeLabel(row.original.store_type)),
+        ]),
       ]),
   },
   {
     accessorKey: 'owner_name',
     header: () => 'Pemilik',
     cell: ({ row }) =>
-      h('div', { class: 'space-y-0.5' }, [
-        h('div', { class: 'text-sm font-medium text-slate-800' }, row.original.owner_name ?? '-'),
-        h('div', { class: 'text-xs text-slate-500' }, row.original.owner_email ?? '-'),
+      h('div', { class: 'space-y-1' }, [
+        h('div', { class: 'flex items-center gap-1.5 text-sm font-medium text-foreground' }, [
+          h(User, { class: 'h-3.5 w-3.5 text-muted-foreground' }),
+          row.original.owner_name ?? '-'
+        ]),
+        h('div', { class: 'flex items-center gap-1.5 text-xs text-muted-foreground' }, [
+          h(Mail, { class: 'h-3 w-3' }),
+          row.original.owner_email ?? '-'
+        ]),
       ]),
   },
   {
@@ -146,20 +162,33 @@ const columns = computed<ColumnDef<DocumentRow>[]>(() => [
     cell: ({ row }) =>
       h(
         'span',
-        { class: `rounded-sm px-2 py-1 text-xs font-semibold ${statusBadge(row.original.submission_status)}` },
-        statusLabel(row.original.submission_status),
+        { class: `inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(row.original.submission_status)}` },
+        [
+          row.original.submission_status === 'approved' ? h(CheckCheck, { class: 'h-3.5 w-3.5' }) :
+            row.original.submission_status === 'rejected' ? h(XCircle, { class: 'h-3.5 w-3.5' }) :
+              row.original.submission_status === 'submitted' ? h(Clock, { class: 'h-3.5 w-3.5' }) :
+                h(FileText, { class: 'h-3.5 w-3.5' }),
+          statusLabel(row.original.submission_status),
+        ]
       ),
   },
   {
     id: 'required',
-    header: () => 'Dokumen Wajib',
+    header: () => 'Dokumen',
     cell: ({ row }) => {
       const ok = !row.original.missing_required;
-      return h(
-        'span',
-        { class: ok ? 'text-xs font-semibold text-green-700' : 'text-xs font-semibold text-red-700' },
-        ok ? 'Lengkap' : 'Belum lengkap',
-      );
+      return h('div', { class: 'flex items-center gap-1.5' }, [
+        ok
+          ? h('div', { class: 'h-6 w-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center' }, [
+            h(FileCheck, { class: 'h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400' })
+          ])
+          : h('div', { class: 'h-6 w-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center' }, [
+            h(FileWarning, { class: 'h-3.5 w-3.5 text-red-600 dark:text-red-400' })
+          ]),
+        h('span', { class: ok ? 'text-xs font-medium text-emerald-700 dark:text-emerald-400' : 'text-xs font-medium text-red-700 dark:text-red-400' },
+          ok ? 'Lengkap' : 'Belum Lengkap'
+        ),
+      ]);
     },
   },
   {
@@ -169,100 +198,174 @@ const columns = computed<ColumnDef<DocumentRow>[]>(() => [
     cell: ({ row }) =>
       h('div', { class: 'flex justify-end' }, [
         h(
-          'span',
+          Button,
           {
-            class:
-              'inline-flex h-8 w-8 items-center justify-center rounded-full ' +
-              'cursor-pointer text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+            variant: 'ghost',
+            size: 'sm',
+            class: 'h-8 px-3 text-primary hover:text-primary hover:bg-primary/10',
             onClick: () => router.visit(`/admin/seller-documents/${row.original.id}`),
           },
-          [h(Eye, { class: 'h-[15px] w-[15px]' })],
+          () => [h(Eye, { class: 'h-4 w-4 mr-1.5' }), 'Lihat']
         ),
       ]),
   },
 ]);
+
+const totalDocs = computed(() => props.metrics.draft + props.metrics.submitted + props.metrics.approved + props.metrics.rejected);
 </script>
 
 <template>
   <div class="space-y-6">
+
     <Head title="Verifikasi Dokumen Penjual" />
 
-    <Alert v-if="flashSuccess" variant="default" class="flex items-start gap-3 border-green-200 bg-green-50">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
+    <!-- Success Alert -->
+    <Alert v-if="flashSuccess" variant="default"
+      class="flex items-start gap-3 border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50">
+      <CheckCircle2 class="h-5 w-5 text-emerald-600" />
       <div class="space-y-1">
-        <AlertTitle class="text-green-800">Berhasil</AlertTitle>
-        <AlertDescription class="text-green-700">{{ flashSuccess }}</AlertDescription>
+        <AlertTitle class="text-emerald-800 dark:text-emerald-200">Berhasil</AlertTitle>
+        <AlertDescription class="text-emerald-700 dark:text-emerald-300">{{ flashSuccess }}</AlertDescription>
       </div>
     </Alert>
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor & Verifikasi</p>
-        <h1 class="text-2xl font-bold text-slate-900">Verifikasi Dokumen Penjual</h1>
-        <p class="text-sm text-slate-500">Tinjau dokumen KTP, NPWP, dan NIB untuk memverifikasi toko.</p>
+        <!-- <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vendor & Verifikasi</p> -->
+        <h1 class="text-2xl font-bold text-foreground">Verifikasi Dokumen Penjual</h1>
+        <p class="text-sm text-muted-foreground mt-1">Tinjau dokumen KTP, NPWP, dan NIB untuk memverifikasi toko.</p>
       </div>
     </div>
 
+    <!-- Stats Cards -->
     <div class="grid gap-4 md:grid-cols-4">
-      <div class="rounded-sm border border-slate-200 bg-white p-4">
-        <p class="text-xs text-slate-500">Menunggu</p>
-        <p class="mt-1 text-2xl font-semibold text-amber-700">{{ metrics.submitted }}</p>
-      </div>
-      <div class="rounded-sm border border-slate-200 bg-white p-4">
-        <p class="text-xs text-slate-500">Disetujui</p>
-        <p class="mt-1 text-2xl font-semibold text-green-700">{{ metrics.approved }}</p>
-      </div>
-      <div class="rounded-sm border border-slate-200 bg-white p-4">
-        <p class="text-xs text-slate-500">Ditolak</p>
-        <p class="mt-1 text-2xl font-semibold text-red-700">{{ metrics.rejected }}</p>
-      </div>
-      <div class="rounded-sm border border-slate-200 bg-white p-4">
-        <p class="text-xs text-slate-500">Draft</p>
-        <p class="mt-1 text-2xl font-semibold text-slate-700">{{ metrics.draft }}</p>
-      </div>
+      <!-- Menunggu -->
+      <Card class="border-0 shadow-sm bg-gradient-to-br from-amber-500 to-orange-600 text-white overflow-hidden">
+        <CardContent class="pt-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-amber-100 text-sm font-medium">Menunggu</p>
+              <p class="text-3xl font-bold mt-1">{{ metrics.submitted }}</p>
+              <p class="text-amber-100 text-xs mt-2">Perlu ditinjau</p>
+            </div>
+            <div class="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Clock class="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- Disetujui -->
+      <Card class="border-0 shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white overflow-hidden">
+        <CardContent class="pt-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-emerald-100 text-sm font-medium">Disetujui</p>
+              <p class="text-3xl font-bold mt-1">{{ metrics.approved }}</p>
+              <p class="text-emerald-100 text-xs mt-2">Toko terverifikasi</p>
+            </div>
+            <div class="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <CheckCheck class="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- Ditolak -->
+      <Card class="border-0 shadow-sm bg-gradient-to-br from-red-500 to-rose-600 text-white overflow-hidden">
+        <CardContent class="pt-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-red-100 text-sm font-medium">Ditolak</p>
+              <p class="text-3xl font-bold mt-1">{{ metrics.rejected }}</p>
+              <p class="text-red-100 text-xs mt-2">Perlu revisi</p>
+            </div>
+            <div class="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <XCircle class="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- Draft -->
+      <Card class="border-0 shadow-sm bg-gradient-to-br from-slate-500 to-slate-600 text-white overflow-hidden">
+        <CardContent class="pt-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-slate-200 text-sm font-medium">Draft</p>
+              <p class="text-3xl font-bold mt-1">{{ metrics.draft }}</p>
+              <p class="text-slate-200 text-xs mt-2">Belum diajukan</p>
+            </div>
+            <div class="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <FileText class="h-6 w-6 text-white" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <section class="space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="relative w-full md:w-72">
-          <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-            <Search class="h-4 w-4" />
-          </span>
-          <Input v-model="search" placeholder="Cari toko / nama / email" class="w-full pl-9" />
+    <!-- Table Section -->
+    <Card class="border-0 shadow-sm bg-card">
+      <CardHeader class="pb-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <CardTitle class="text-lg">Daftar Pengajuan</CardTitle>
+            <CardDescription>{{ documents.total }} pengajuan dokumen dari penjual</CardDescription>
+          </div>
+
+          <!-- Filters -->
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="relative w-full md:w-80">
+              <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                <Search class="h-4 w-4" />
+              </span>
+              <Input v-model="search" placeholder="Cari toko / nama / email"
+                class="w-full pl-9 bg-muted/30 border border-border focus-visible:ring-primary" />
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card">
+                <ShieldAlert class="h-4 w-4 text-muted-foreground" />
+                <select v-model="status"
+                  class="bg-transparent text-sm text-foreground focus:outline-none cursor-pointer">
+                  <option value="">Semua Status</option>
+                  <option value="submitted">Menunggu</option>
+                  <option value="approved">Disetujui</option>
+                  <option value="rejected">Ditolak</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
+      </CardHeader>
 
-        <div class="flex items-center gap-2">
-          <ShieldAlert class="h-4 w-4 text-slate-500" />
-          <select v-model="status" class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-            <option value="">Semua</option>
-            <option value="submitted">Menunggu</option>
-            <option value="approved">Disetujui</option>
-            <option value="rejected">Ditolak</option>
-            <option value="draft">Draft</option>
-          </select>
+      <CardContent class="p-0">
+        <div class="overflow-hidden">
+          <DataTable :columns="columns" :data="documents.data" />
         </div>
-      </div>
+      </CardContent>
 
-      <div class="overflow-hidden rounded-sm border border-slate-200 bg-white">
-        <DataTable :columns="columns" :data="documents.data" />
-      </div>
-
-      <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-        <p>Menampilkan {{ documents.data.length }} dari {{ documents.total }} pengajuan.</p>
+      <CardFooter class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+        <p class="text-sm text-muted-foreground">
+          Menampilkan {{ documents.data.length }} dari {{ documents.total }} pengajuan.
+        </p>
         <div class="flex flex-wrap items-center gap-1">
-          <Button variant="outline" size="sm" :disabled="!documents.prev_page_url" @click="paginateTo(documents.prev_page_url)">
+          <Button variant="outline" size="sm" :disabled="!documents.prev_page_url"
+            @click="paginateTo(documents.prev_page_url)">
             Sebelumnya
           </Button>
           <Button v-for="link in numberedPaginationLinks" :key="link.label" size="sm"
             :variant="link.active ? 'default' : 'outline'" :disabled="!link.url" @click="paginateTo(link.url)">
             {{ link.label }}
           </Button>
-          <Button variant="outline" size="sm" :disabled="!documents.next_page_url" @click="paginateTo(documents.next_page_url)">
+          <Button variant="outline" size="sm" :disabled="!documents.next_page_url"
+            @click="paginateTo(documents.next_page_url)">
             Selanjutnya
           </Button>
         </div>
-      </div>
-    </section>
+      </CardFooter>
+    </Card>
   </div>
 </template>
-

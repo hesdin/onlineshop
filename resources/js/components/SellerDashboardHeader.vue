@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, LogOut, User, Settings, Search, ShoppingBag, CheckCircle, AlertTriangle, Package, Check, Trash2 } from 'lucide-vue-next';
+import { Bell, LogOut, User, Settings, Search, ShoppingBag, CheckCircle, AlertTriangle, Package, Check, Trash2, MessageCircle } from 'lucide-vue-next';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
@@ -200,6 +200,18 @@ const cancelLogout = () => {
 
       <!-- Right Section -->
       <div class="flex items-center gap-2">
+        <!-- Chat -->
+        <Button variant="ghost" size="icon" class="relative hover:bg-slate-100 transition-colors" as-child>
+          <Link href="/seller/chats">
+            <MessageCircle class="h-5 w-5 text-slate-600" />
+            <Badge v-if="(page.props as any).unread_chat_count > 0"
+              class="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-emerald-500 text-[10px] font-semibold text-white border-2 border-white">
+              {{ (page.props as any).unread_chat_count > 9 ? '9+' : (page.props as any).unread_chat_count }}
+            </Badge>
+            <span class="sr-only">Chat</span>
+          </Link>
+        </Button>
+
         <!-- Notifications -->
         <DropdownMenu>
           <DropdownMenuTrigger as-child>

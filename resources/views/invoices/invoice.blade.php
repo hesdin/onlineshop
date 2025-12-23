@@ -192,6 +192,44 @@
       letter-spacing: 10px;
     }
 
+    .watermark-unpaid {
+      position: absolute;
+      top: 300px;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-15deg);
+      border: 3px solid #fef3c7;
+      color: #fcd34d;
+      font-size: 60px;
+      font-weight: bold;
+      padding: 10px 40px;
+      opacity: 0.8;
+      z-index: -1;
+      letter-spacing: 5px;
+    }
+
+    /* Payment Status Badge */
+    .payment-status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .payment-status-paid {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    .payment-status-unpaid {
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
     /* Footer */
     .footer {
       margin-top: 50px;
@@ -236,6 +274,8 @@
 <body>
   @if ($order->payment_status == 'paid')
     <div class="watermark">LUNAS</div>
+  @else
+    <div class="watermark-unpaid">BELUM LUNAS</div>
   @endif
 
   <div class="container">
@@ -249,6 +289,13 @@
         <td class="invoice-title-block">
           <div class="invoice-label">INVOICE</div>
           <div class="invoice-number">{{ $order->order_number }}</div>
+          <div style="margin-top: 8px;">
+            @if ($order->payment_status == 'paid')
+              <span class="payment-status-badge payment-status-paid">✓ LUNAS</span>
+            @else
+              <span class="payment-status-badge payment-status-unpaid">! BELUM LUNAS</span>
+            @endif
+          </div>
         </td>
       </tr>
     </table>
@@ -354,6 +401,17 @@
     <div style="margin-top: 30px;">
       <div class="payment-method-label">Metode Pembayaran</div>
       <div class="payment-method-value">{{ $order->paymentMethod ? $order->paymentMethod->name : '-' }}</div>
+
+      <div style="margin-top: 10px;">
+        <div class="payment-method-label">Status Pembayaran</div>
+        <div style="margin-top: 5px;">
+          @if ($order->payment_status == 'paid')
+            <span class="payment-status-badge payment-status-paid">✓ LUNAS</span>
+          @else
+            <span class="payment-status-badge payment-status-unpaid">! BELUM LUNAS</span>
+          @endif
+        </div>
+      </div>
 
       <div class="insurance-info">
         <span class="insurance-logo">HITS</span>

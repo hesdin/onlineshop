@@ -19,7 +19,6 @@ import {
   LayoutDashboard,
   Layers,
   Package,
-  ShieldCheck,
   ShieldAlert,
   Users,
   FolderKanban,
@@ -27,57 +26,109 @@ import {
   CreditCard,
   TicketPercent,
   Image,
+  Store,
+  ChevronRight,
 } from 'lucide-vue-next';
 
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user ?? null);
 const currentUrl = computed(() => page.url);
 
-const navMain = [
-  { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { title: 'Users', href: '/admin/users', icon: Users },
-  { title: 'Toko', href: '/admin/stores', icon: ShieldCheck },
-  { title: 'Verifikasi Dokumen', href: '/admin/seller-documents', icon: ShieldAlert },
-  { title: 'Kategori', href: '/admin/categories', icon: Layers },
-  { title: 'Produk', href: '/admin/products', icon: Package },
-  { title: 'Koleksi', href: '/admin/collections', icon: FolderKanban },
-  { title: 'Banner', href: '/admin/banners', icon: Image },
-  { title: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
-  { title: 'Metode Bayar', href: '/admin/payment-methods', icon: CreditCard },
-  { title: 'Kode Promo', href: '/admin/promo-codes', icon: TicketPercent },
+// Grouped navigation - simplified with single primary color
+const navGroups = [
+  {
+    label: 'Menu Utama',
+    items: [
+      { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Kelola Pengguna',
+    items: [
+      { title: 'Users', href: '/admin/users', icon: Users },
+      { title: 'Toko', href: '/admin/stores', icon: Store },
+      { title: 'Verifikasi', href: '/admin/seller-documents', icon: ShieldAlert },
+    ],
+  },
+  {
+    label: 'Kelola Produk',
+    items: [
+      { title: 'Kategori', href: '/admin/categories', icon: Layers },
+      { title: 'Produk', href: '/admin/products', icon: Package },
+      { title: 'Koleksi', href: '/admin/collections', icon: FolderKanban },
+    ],
+  },
+  {
+    label: 'Transaksi',
+    items: [
+      { title: 'Pesanan', href: '/admin/orders', icon: ShoppingCart },
+      { title: 'Metode Bayar', href: '/admin/payment-methods', icon: CreditCard },
+      { title: 'Kode Promo', href: '/admin/promo-codes', icon: TicketPercent },
+    ],
+  },
+  {
+    label: 'Tampilan',
+    items: [
+      { title: 'Banner', href: '/admin/banners', icon: Image },
+    ],
+  },
 ];
 
 const isActive = (href) => {
   if (!href || href === '#') {
     return false;
   }
-
   return currentUrl.value === href || currentUrl.value.startsWith(href);
+};
+
+const getUserInitials = () => {
+  if (!authUser.value?.name) return 'SA';
+  const names = authUser.value.name.split(' ');
+  if (names.length >= 2) {
+    return (names[0][0] + names[1][0]).toUpperCase();
+  }
+  return authUser.value.name.substring(0, 2).toUpperCase();
 };
 </script>
 
 <template>
-  <Sidebar collapsible="icon" variant="inset" class="border-r border-slate-200 bg-white">
-    <SidebarHeader class="gap-3 border-b border-slate-100 px-4 py-4">
-      <div class="flex items-center gap-2 text-slate-900">
-        <!-- <ShieldCheck class="h-5 w-5 text-sky-600" /> -->
+  <Sidebar collapsible="icon" variant="inset" class="border-r border-border/50 bg-card/50 backdrop-blur-sm">
+    <!-- Header with Logo -->
+    <SidebarHeader class="border-b border-border/50 px-4 py-5">
+      <div class="flex items-center gap-3">
+        <div
+          class="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+          <span class="text-primary-foreground font-bold text-sm">TP</span>
+        </div>
         <div class="flex flex-col">
-          <span class="text-sm font-semibold tracking-tight">TP-PKK <br> Marketplace</span>
-          <!-- <span class="text-xs text-slate-500">Panel Super Admin</span> -->
+          <span class="text-sm font-bold text-foreground tracking-tight">TP-PKK</span>
+          <span class="text-[10px] text-muted-foreground font-medium">Marketplace Admin</span>
         </div>
       </div>
     </SidebarHeader>
 
-    <SidebarContent class="px-3">
-      <SidebarGroup>
-        <SidebarGroupLabel>Menu Utama</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem v-for="item in navMain" :key="item.title">
-              <SidebarMenuButton :is-active="isActive(item.href)" :tooltip="item.title" as-child class="text-slate-600">
-                <Link :href="item.href">
-                  <component :is="item.icon" class="h-4 w-4" />
-                  <span>{{ item.title }}</span>
+    <!-- Navigation Content -->
+    <SidebarContent class="px-3 py-2 overflow-visible">
+      <SidebarGroup v-for="group in navGroups" :key="group.label" class="mb-2">
+        <SidebarGroupLabel class="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest px-3 mb-1">
+          {{ group.label }}
+        </SidebarGroupLabel>
+        <SidebarGroupContent class="overflow-visible">
+          <SidebarMenu class="space-y-0.5 overflow-visible">
+            <SidebarMenuItem v-for="item in group.items" :key="item.title" class="overflow-visible">
+              <SidebarMenuButton :is-active="isActive(item.href)" :tooltip="item.title" as-child>
+                <Link :href="item.href" :class="[
+                  'group flex items-center gap-3 rounded-lg px-3 transition-all duration-200',
+                  isActive(item.href)
+                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 py-2.5'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/80 py-2'
+                ]">
+                  <component :is="item.icon" :class="[
+                    'h-5 w-5 transition-all duration-200',
+                    isActive(item.href) ? 'text-primary-foreground' : 'text-primary'
+                  ]" />
+                  <span class="text-sm font-medium flex-1">{{ item.title }}</span>
+                  <ChevronRight v-if="isActive(item.href)" class="h-4 w-4 opacity-60" />
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -86,14 +137,17 @@ const isActive = (href) => {
       </SidebarGroup>
     </SidebarContent>
 
-    <SidebarFooter class="border-t border-slate-100 px-3 py-4">
-      <div class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-        <div class="grid h-10 w-10 place-items-center rounded-full bg-white text-slate-500">
-          <CircleUser class="h-5 w-5" />
+    <!-- Footer with User Info -->
+    <SidebarFooter class="border-t border-border/50 px-3 py-4">
+      <div
+        class="flex items-center gap-3 rounded-xl bg-gradient-to-r from-muted/80 to-muted/40 p-3 border border-border/50">
+        <div
+          class="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25">
+          {{ getUserInitials() }}
         </div>
-        <div class="min-w-0">
-          <p class="truncate text-sm font-semibold text-slate-900">{{ authUser?.name ?? 'Super Admin' }}</p>
-          <p class="truncate text-xs text-slate-500">{{ authUser?.email }}</p>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold text-foreground">{{ authUser?.name ?? 'Super Admin' }}</p>
+          <p class="truncate text-xs text-muted-foreground">{{ authUser?.email }}</p>
         </div>
       </div>
     </SidebarFooter>

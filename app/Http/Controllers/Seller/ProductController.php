@@ -206,7 +206,7 @@ class ProductController extends Controller
         $store = Store::where('user_id', $request->user()->id)->first();
 
         if (! $store) {
-            return Redirect::route('seller.store.edit')->with('error', 'Lengkapi profil toko terlebih dahulu.');
+            return Redirect::route('seller.settings.edit')->with('error', 'Lengkapi profil toko terlebih dahulu.');
         }
 
         return $store;

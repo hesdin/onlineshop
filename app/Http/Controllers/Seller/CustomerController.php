@@ -63,7 +63,7 @@ class CustomerController extends Controller
         $store = $request->user()?->store;
 
         if (! $store) {
-            return redirect()->route('seller.store.edit')
+            return redirect()->route('seller.settings.edit')
                 ->with('error', 'Anda harus mengatur toko terlebih dahulu.');
         }
 
