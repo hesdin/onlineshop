@@ -61,14 +61,6 @@ COPY --from=composer /app/vendor ./vendor
 # CSS references ../../storage/framework/views from resources/css/
 RUN mkdir -p storage/framework/views
 
-# Verify directory structure before build
-RUN echo "=== Directory structure ===" && \
-  ls -la && \
-  echo "=== Vendor Laravel check ===" && \
-  ls -la vendor/laravel/framework/src/Illuminate/Pagination/resources/views/ || echo "Laravel views not found" && \
-  echo "=== Resources check ===" && \
-  ls -la resources/
-
 RUN npm run build
 
 # Stage 3: Production Image
