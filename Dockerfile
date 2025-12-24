@@ -10,6 +10,7 @@ RUN apk add --no-cache libexif-dev \
 
 WORKDIR /app
 
+# Copy only composer files first (for better caching)
 COPY composer.json composer.lock ./
 
 RUN composer install \
@@ -18,7 +19,15 @@ RUN composer install \
   --no-autoloader \
   --prefer-dist
 
-COPY . .
+# Copy only necessary application files (not storage, tests, etc.)
+COPY app ./app
+COPY bootstrap ./bootstrap
+COPY config ./config
+COPY database ./database
+COPY public ./public
+COPY resources ./resources
+COPY routes ./routes
+COPY artisan ./
 
 RUN composer dump-autoload --optimize --no-dev
 
@@ -27,11 +36,21 @@ FROM node:20-alpine AS node
 
 WORKDIR /app
 
+# Copy package files first (for better caching)
 COPY package.json package-lock.json ./
 
-RUN npm ci
+# Use npm cache mount for faster builds
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci --prefer-offline
 
-COPY . .
+# Copy only files needed for frontend build
+COPY vite.config.js ./
+COPY postcss.config.js ./
+COPY tailwind.config.js ./
+COPY resources ./resources
+COPY public ./public
+
+# Copy vendor for potential Laravel Mix/Vite dependencies
 COPY --from=composer /app/vendor ./vendor
 
 RUN npm run build
@@ -88,10 +107,21 @@ COPY docker/php/opcache.ini $PHP_INI_DIR/conf.d/opcache.ini
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
+# Copy vendor from composer stage
 COPY --from=composer /app/vendor ./vendor
+
+# Copy built assets from node stage
 COPY --from=node /app/public ./public
-COPY . .
+
+# Copy only necessary application files
+COPY app ./app
+COPY bootstrap ./bootstrap
+COPY config ./config
+COPY database ./database
+COPY resources ./resources
+COPY routes ./routes
+COPY storage ./storage
+COPY artisan ./
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
