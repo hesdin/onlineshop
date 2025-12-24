@@ -108,14 +108,14 @@ const getUserInitials = () => {
     </SidebarHeader>
 
     <!-- Navigation Content -->
-    <SidebarContent class="px-3 py-2 overflow-visible">
-      <SidebarGroup v-for="group in navGroups" :key="group.label" class="mb-2">
+    <SidebarContent class="px-3 py-2 overflow-y-auto flex-1">
+      <SidebarGroup v-for="group in navGroups" :key="group.label">
         <SidebarGroupLabel class="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest px-3 mb-1">
           {{ group.label }}
         </SidebarGroupLabel>
-        <SidebarGroupContent class="overflow-visible">
-          <SidebarMenu class="space-y-0.5 overflow-visible">
-            <SidebarMenuItem v-for="item in group.items" :key="item.title" class="overflow-visible">
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem v-for="item in group.items" :key="item.title">
               <SidebarMenuButton :is-active="isActive(item.href)" :tooltip="item.title" as-child>
                 <Link :href="item.href" :class="[
                   'group flex items-center gap-3 rounded-lg px-3 transition-all duration-200',

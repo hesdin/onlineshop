@@ -74,14 +74,38 @@ class DashboardController extends Controller
         $todayOrders = Order::whereDate('created_at', $today)->count();
         $yesterdayOrders = Order::whereDate('created_at', $yesterday)->count();
 
+        // Get real visitor data from sessions table
+        $todayStart = Carbon::today()->timestamp;
+        $todayEnd = Carbon::now()->timestamp;
+        $yesterdayStart = Carbon::yesterday()->timestamp;
+        $yesterdayEnd = Carbon::yesterday()->endOfDay()->timestamp;
+
+        // Count unique visitors by IP address for today
+        $todayVisitors = DB::table('sessions')
+            ->whereBetween('last_activity', [$todayStart, $todayEnd])
+            ->distinct('ip_address')
+            ->count('ip_address');
+
+        // Count unique visitors by IP address for yesterday
+        $yesterdayVisitors = DB::table('sessions')
+            ->whereBetween('last_activity', [$yesterdayStart, $yesterdayEnd])
+            ->distinct('ip_address')
+            ->count('ip_address');
+
+        // Calculate conversion rate (orders / visitors * 100)
+        $conversionRate = $todayVisitors > 0
+            ? number_format(($todayOrders / $todayVisitors) * 100, 1)
+            : '0.0';
+
         $revenueSummary = [
             'todayRevenue' => $todayRevenue,
             'todayRevenueFormatted' => 'Rp ' . $this->formatCurrency($todayRevenue),
             'revenueTrend' => $this->calculateTrend($todayRevenue, $yesterdayRevenue),
             'todayOrders' => $todayOrders,
             'ordersTrend' => $this->calculateTrend($todayOrders, $yesterdayOrders),
-            'todayVisitors' => rand(5000, 15000), // Placeholder - would need analytics integration
-            'conversionRate' => number_format(($todayOrders / max(1, rand(5000, 15000))) * 100, 1),
+            'todayVisitors' => $todayVisitors,
+            'visitorsTrend' => $this->calculateTrend($todayVisitors, $yesterdayVisitors),
+            'conversionRate' => $conversionRate,
         ];
 
         // Recent Orders

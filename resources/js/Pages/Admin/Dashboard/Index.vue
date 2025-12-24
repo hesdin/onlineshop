@@ -53,6 +53,7 @@ interface RevenueSummary {
   todayOrders: number;
   ordersTrend: string;
   todayVisitors: number;
+  visitorsTrend: string;
   conversionRate: string;
 }
 
@@ -229,7 +230,8 @@ const formatNumber = (num: number) => {
               <p class="text-2xl font-bold mt-1">{{ formatNumber(props.revenueSummary?.todayVisitors || 0)
                 }}</p>
               <p class="text-violet-100 text-xs mt-2 flex items-center gap-1">
-                <TrendingUp class="h-3 w-3" /> +15.3% dari kemarin
+                <TrendingUp class="h-3 w-3" /> {{ props.revenueSummary?.visitorsTrend || '0%' }} dari
+                kemarin
               </p>
             </div>
             <Eye class="h-10 w-10 text-violet-200" />
