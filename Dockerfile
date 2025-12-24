@@ -130,6 +130,7 @@ COPY resources ./resources
 COPY routes ./routes
 COPY storage ./storage
 COPY artisan ./
+COPY composer.json composer.lock ./
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
