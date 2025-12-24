@@ -45,8 +45,6 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Copy only files needed for frontend build
 COPY vite.config.js ./
-COPY postcss.config.js ./
-COPY tailwind.config.js ./
 COPY resources ./resources
 COPY public ./public
 
