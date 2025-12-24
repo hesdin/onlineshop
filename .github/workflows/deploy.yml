@@ -71,50 +71,23 @@ jobs:
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
-        env:
-          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
-          GHCR_USER: hesdin
-          APP_KEY: ${{ secrets.APP_KEY }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            set -e
-            cd ${DEPLOY_PATH}
-
-            echo '📥 Pulling latest code...'
-            git pull origin main
-
-            echo '🔐 Logging in to GitHub Container Registry...'
-            echo '${GHCR_TOKEN}' | docker login ghcr.io -u ${GHCR_USER} --password-stdin
-
-            echo '🔑 Ensuring APP_KEY is set...'
-            if ! grep -q '^APP_KEY=' .env 2>/dev/null; then
-              echo 'APP_KEY=${APP_KEY}' >> .env
-            elif grep -q '^APP_KEY=$' .env; then
-              sed -i 's/^APP_KEY=$/APP_KEY=${APP_KEY}/' .env
-            fi
-
-            echo '📦 Pulling Docker image from registry...'
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-
-            echo '🚀 Restarting containers...'
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-            echo '📦 Syncing build assets...'
-            sleep 5
-            docker cp onlineshop-app:/var/www/html/public/build ./public/
-            docker restart onlineshop-nginx
-
-            echo '🧹 Clearing Laravel cache...'
-            docker exec onlineshop-app php artisan config:clear
-            docker exec onlineshop-app php artisan cache:clear
-            docker exec onlineshop-app php artisan view:clear
-
-            echo '📊 Running migrations...'
-            docker exec onlineshop-app php artisan migrate --force
-
-            echo '✅ Deployment complete!'
-          "
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.DEPLOY_PATH }} && \
+            git pull origin main && \
+            echo '${{ secrets.GHCR_PAT }}' | docker login ghcr.io -u hesdin --password-stdin && \
+            grep -q '^APP_KEY=' .env || echo 'APP_KEY=${{ secrets.APP_KEY }}' >> .env && \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull && \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d && \
+            sleep 5 && \
+            docker cp onlineshop-app:/var/www/html/public/build ./public/ && \
+            docker restart onlineshop-nginx && \
+            docker exec onlineshop-app php artisan config:clear && \
+            docker exec onlineshop-app php artisan cache:clear && \
+            docker exec onlineshop-app php artisan view:clear && \
+            docker exec onlineshop-app php artisan migrate --force && \
+            echo 'Deployment complete!'"
 
       - name: Verify deployment
         run: |
