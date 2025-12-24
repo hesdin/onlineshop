@@ -53,11 +53,21 @@ COPY vite.config.js ./
 COPY resources ./resources
 COPY public ./public
 
-# Copy vendor for Tailwind @source directives (references Laravel pagination views)
+# Copy vendor for Tailwind @source directives
+# CSS references ../../vendor from resources/css/app.css
 COPY --from=composer /app/vendor ./vendor
 
 # Create storage directory structure for Tailwind @source directives
+# CSS references ../../storage/framework/views from resources/css/
 RUN mkdir -p storage/framework/views
+
+# Verify directory structure before build
+RUN echo "=== Directory structure ===" && \
+  ls -la && \
+  echo "=== Vendor Laravel check ===" && \
+  ls -la vendor/laravel/framework/src/Illuminate/Pagination/resources/views/ || echo "Laravel views not found" && \
+  echo "=== Resources check ===" && \
+  ls -la resources/
 
 RUN npm run build
 
