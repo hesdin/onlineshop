@@ -39,17 +39,25 @@ WORKDIR /app
 # Copy package files first (for better caching)
 COPY package.json package-lock.json ./
 
-# Use npm cache mount for faster builds
+# Configure npm for better reliability in CI/CD
+RUN npm config set fetch-retries 5 && \
+  npm config set fetch-retry-mintimeout 20000 && \
+  npm config set fetch-retry-maxtimeout 120000
+
+# Install npm dependencies with cache mount
 RUN --mount=type=cache,target=/root/.npm \
-  npm ci --prefer-offline
+  npm ci || npm ci || npm ci
 
 # Copy only files needed for frontend build
 COPY vite.config.js ./
 COPY resources ./resources
 COPY public ./public
 
-# Copy vendor for potential Laravel Mix/Vite dependencies
+# Copy vendor for Tailwind @source directives (references Laravel pagination views)
 COPY --from=composer /app/vendor ./vendor
+
+# Create storage directory structure for Tailwind @source directives
+RUN mkdir -p storage/framework/views
 
 RUN npm run build
 
