@@ -2,18 +2,18 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { ShieldCheck, Lock, Eye, EyeOff, KeyRound } from 'lucide-vue-next';
-import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
-import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/Components/ui/card';
-import CustomerCareButton from '@/Components/CustomerCareButton.vue';
+} from '@/components/ui/card';
+import CustomerCareButton from '@/components/CustomerCareButton.vue';
 
 const props = defineProps<{
   mode: 'verify' | 'reset' | 'force';
