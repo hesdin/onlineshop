@@ -27,14 +27,17 @@ jobs:
 
       - name: Deploy to server
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o StrictHostKeyChecking=no -tt ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+            set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
             echo "📥 Pulling latest code..."
             git pull origin main
 
-            echo "🔨 Building Docker image..."
-            docker compose build app
+            echo "🔨 Building Docker image (this may take a while)..."
+            docker compose build app --progress=plain 2>&1 | while read line; do
+              echo "$line"
+            done
 
             echo "🚀 Restarting containers..."
             docker compose up -d
