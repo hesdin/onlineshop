@@ -27,7 +27,7 @@ jobs:
 
       - name: Deploy to server
         run: |
-          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o StrictHostKeyChecking=no -tt ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} /bin/bash << 'ENDSSH'
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
@@ -35,9 +35,7 @@ jobs:
             git pull origin main
 
             echo "🔨 Building Docker image (this may take a while)..."
-            docker compose build app --progress=plain 2>&1 | while read line; do
-              echo "$line"
-            done
+            docker compose build app --progress=plain
 
             echo "🚀 Restarting containers..."
             docker compose up -d
@@ -56,6 +54,7 @@ jobs:
             docker exec onlineshop-app php artisan migrate --force
 
             echo "✅ Deployment complete!"
+            exit 0
           ENDSSH
 
       - name: Verify deployment
