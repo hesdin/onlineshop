@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/root/.npm \
   npm ci || npm ci || npm ci
 
 # Copy only files needed for frontend build
-COPY vite.config.js ./
+COPY vite.config.js tsconfig.json ./
 COPY resources ./resources
 COPY public ./public
 

@@ -14,7 +14,8 @@
         "laravel-vite-plugin": "^2.0.0",
         "tailwindcss": "^4.1.17",
         "typescript": "^5.9.3",
-        "vite": "^7.0.7"
+        "vite": "^7.0.7",
+        "vite-tsconfig-paths": "^6.0.3"
     },
     "dependencies": {
         "@inertiajs/progress": "^0.2.7",
