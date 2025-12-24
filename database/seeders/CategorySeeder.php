@@ -13,27 +13,23 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
+        // 15 Kategori utama (tanpa sub-kategori untuk menyederhanakan)
         $categories = [
             ['name' => 'Elektronik', 'parent' => null],
             ['name' => 'Laptop & Aksesoris', 'parent' => 'elektronik'],
             ['name' => 'Smartphone & Tablet', 'parent' => 'elektronik'],
             ['name' => 'Peralatan Rumah Tangga', 'parent' => null],
-            ['name' => 'Dapur & Masak', 'parent' => 'peralatan-rumah-tangga'],
-            ['name' => 'Kebersihan Rumah', 'parent' => 'peralatan-rumah-tangga'],
             ['name' => 'Fashion Pria', 'parent' => null],
             ['name' => 'Fashion Wanita', 'parent' => null],
-            ['name' => 'Aksesoris Fashion', 'parent' => 'fashion-wanita'],
             ['name' => 'Olahraga & Outdoor', 'parent' => null],
             ['name' => 'Kesehatan & Kecantikan', 'parent' => null],
-            ['name' => 'Perawatan Kulit', 'parent' => 'kesehatan-kecantikan'],
-            ['name' => 'Perawatan Rambut', 'parent' => 'kesehatan-kecantikan'],
             ['name' => 'Ibu & Bayi', 'parent' => null],
-            ['name' => 'Mainan Anak', 'parent' => 'ibu-bayi'],
             ['name' => 'Buku & Alat Tulis', 'parent' => null],
             ['name' => 'Hobi & Koleksi', 'parent' => null],
             ['name' => 'Otomotif', 'parent' => null],
             ['name' => 'Perkakas & Pertukangan', 'parent' => null],
             ['name' => 'Makanan & Minuman', 'parent' => null],
+            ['name' => 'Komputer & Aksesoris', 'parent' => null],
         ];
 
         foreach ($categories as $category) {

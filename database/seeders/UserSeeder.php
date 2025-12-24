@@ -16,38 +16,37 @@ class UserSeeder extends Seeder
         $sellerRole = Role::firstOrCreate(['name' => 'seller']);
         $customerRole = Role::firstOrCreate(['name' => 'customer']);
 
-        // Create superadmin user
+        // Create 1 superadmin user
         $superadmin = User::firstOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email' => 'admin@mail.com'],
             [
                 'name' => 'Super Admin',
                 'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ]
         );
         $superadmin->syncRoles([$superadminRole]);
 
-        // Create seller users
-        for ($i = 1; $i <= 5; $i++) {
-            $seller = User::firstOrCreate(
-                ['email' => "seller{$i}@example.com"],
-                [
-                    'name' => "Seller {$i}",
-                    'password' => Hash::make('password'),
-                ]
-            );
-            $seller->syncRoles([$sellerRole]);
-        }
+        // Create 1 seller user
+        $seller = User::firstOrCreate(
+            ['email' => 'seller@mail.com'],
+            [
+                'name' => 'Seller Demo',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $seller->syncRoles([$sellerRole]);
 
-        // Create customer users
-        for ($i = 1; $i <= 10; $i++) {
-            $customer = User::firstOrCreate(
-                ['email' => "customer{$i}@example.com"],
-                [
-                    'name' => "Customer {$i}",
-                    'password' => Hash::make('password'),
-                ]
-            );
-            $customer->syncRoles([$customerRole]);
-        }
+        // Create 1 customer user
+        $customer = User::firstOrCreate(
+            ['email' => 'customer@mail.com'],
+            [
+                'name' => 'Customer Demo',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $customer->syncRoles([$customerRole]);
     }
 }

@@ -9,94 +9,65 @@ use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class OrderSeeder extends Seeder
 {
     public function run(): void
     {
-        // Get customer users
-        $customerRole = Role::where('name', 'customer')->first();
-        if (!$customerRole) {
-            $this->command->warn('Customer role not found. Please run UserSeeder first.');
+        // Get customer user
+        $customer = User::role('customer')->first();
+        $store = Store::where('slug', 'toko-elektronik-jaya')->first();
+        $products = Product::where('store_id', $store?->id)->get();
+
+        if (! $customer || ! $store || $products->isEmpty()) {
+            $this->command?->warn('Customer, Store, or Products are empty. Please run necessary seeders first.');
+
             return;
         }
 
-        $customers = User::role('customer')->get();
-        $stores = Store::where('is_verified', true)->get();
-        $products = Product::all();
-
-        if ($customers->isEmpty() || $stores->isEmpty() || $products->isEmpty()) {
-            $this->command->warn('Customers, Stores, or Products are empty. Please run necessary seeders first.');
-            return;
-        }
-
-        // Order statuses with weights for realistic distribution
-        $statuses = [
-            'pending_payment' => 10,
-            'processing' => 20,
-            'shipped' => 25,
-            'delivered' => 15,
-            'completed' => 25,
-            'cancelled' => 5,
+        // Create 3 sample orders with different statuses
+        $orderData = [
+            [
+                'status' => 'pending_payment',
+                'payment_status' => 'pending',
+                'days_ago' => 0,
+            ],
+            [
+                'status' => 'processing',
+                'payment_status' => 'paid',
+                'days_ago' => 2,
+            ],
+            [
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'days_ago' => 7,
+            ],
         ];
 
-        $paymentStatuses = [
-            'pending' => 20,
-            'paid' => 80,
-        ];
-
-        // Create sample orders - more data for realistic dashboard
-        $orderCount = 50;
-        $existingCount = Order::count();
-
-        for ($i = 1; $i <= $orderCount; $i++) {
-            $customer = $customers->random();
-            $store = $stores->random();
-
-            // Random date within last 30 days
-            $orderDate = Carbon::now()->subDays(rand(0, 30))->subHours(rand(0, 23))->subMinutes(rand(0, 59));
-
-            $status = $this->weightedRandom($statuses);
-            $paymentStatus = $this->weightedRandom($paymentStatuses);
-
-            // Cancelled orders should have pending payment
-            if ($status === 'cancelled') {
-                $paymentStatus = 'pending';
-            }
-
-            // Completed orders must be paid
-            if (in_array($status, ['completed', 'delivered', 'shipped'])) {
-                $paymentStatus = 'paid';
-            }
-
-            // Generate unique order number
-            $orderNumber = 'ORD-' . $orderDate->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+        foreach ($orderData as $index => $data) {
+            $orderDate = Carbon::now()->subDays($data['days_ago']);
+            $orderNumber = 'ORD-'.$orderDate->format('Ymd').'-'.strtoupper(substr(uniqid(), -6));
 
             $order = Order::create([
                 'user_id' => $customer->id,
                 'store_id' => $store->id,
                 'order_number' => $orderNumber,
-                'status' => $status,
-                'payment_status' => $paymentStatus,
+                'status' => $data['status'],
+                'payment_status' => $data['payment_status'],
                 'subtotal' => 0,
-                'shipping_cost' => rand(10000, 50000),
+                'shipping_cost' => 15000,
                 'grand_total' => 0,
                 'created_at' => $orderDate,
                 'updated_at' => $orderDate,
             ]);
 
-            // Add order items (1-4 items per order)
-            $itemCount = rand(1, 4);
+            // Add 1-2 random products to each order
+            $itemCount = rand(1, 2);
             $subtotal = 0;
 
-            // Get products from the same store if possible, otherwise random
-            $storeProducts = $products->where('store_id', $store->id);
-            $availableProducts = $storeProducts->isNotEmpty() ? $storeProducts : $products;
-
             for ($j = 0; $j < $itemCount; $j++) {
-                $product = $availableProducts->random();
-                $quantity = rand(1, 5);
+                $product = $products->random();
+                $quantity = rand(1, 2);
                 $unitPrice = $product->sale_price ?? $product->price;
                 $itemSubtotal = $unitPrice * $quantity;
 
@@ -121,25 +92,6 @@ class OrderSeeder extends Seeder
             ]);
         }
 
-        $this->command->info("Created {$orderCount} orders with varied statuses and dates.");
-    }
-
-    /**
-     * Select a random item based on weights
-     */
-    private function weightedRandom(array $weightedItems): string
-    {
-        $totalWeight = array_sum($weightedItems);
-        $random = rand(1, $totalWeight);
-        $currentWeight = 0;
-
-        foreach ($weightedItems as $item => $weight) {
-            $currentWeight += $weight;
-            if ($random <= $currentWeight) {
-                return $item;
-            }
-        }
-
-        return array_key_first($weightedItems);
+        $this->command?->info('OrderSeeder: 3 sample orders berhasil dibuat.');
     }
 }

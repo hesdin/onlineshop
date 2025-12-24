@@ -19,8 +19,11 @@ class CollectionProductSeeder extends Seeder
         }
 
         $collections->each(function (Collection $collection) use ($products) {
-            $pick = $products->random(min($products->count(), 8))->pluck('id')->all();
+            // Assign all 5 products to each collection
+            $pick = $products->pluck('id')->all();
             $collection->products()->syncWithoutDetaching($pick);
         });
+
+        $this->command?->info('CollectionProductSeeder: produk berhasil ditambahkan ke semua collection.');
     }
 }
