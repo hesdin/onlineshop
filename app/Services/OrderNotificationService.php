@@ -51,7 +51,7 @@ class OrderNotificationService
         }
 
         try {
-            Mail::to($customerEmail)->send(new OrderStatusChangedMail(
+            Mail::to($customerEmail)->queue(new OrderStatusChangedMail(
                 order: $order,
                 previousStatus: $previousStatus,
                 newStatus: $newStatus,

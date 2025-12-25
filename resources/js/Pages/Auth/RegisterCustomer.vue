@@ -290,12 +290,6 @@ const handleRecaptcha = async (event: Event) => {
               {{ form.processing ? 'Memproses...' : 'Daftar' }}
             </button>
 
-            <p v-if="localSuccess" class="text-center text-sm text-green-600">
-              {{ localSuccess }}
-            </p>
-            <p v-else-if="flashSuccess" class="text-center text-sm text-green-600">
-              {{ flashSuccess }}
-            </p>
           </form>
         </div>
 
@@ -321,6 +315,36 @@ const handleRecaptcha = async (event: Event) => {
           <img :src="heroIllustration" alt="Belanja di TP-PKK Marketplace" class="w-56 sm:w-64 lg:w-72" />
         </div> -->
       </div>
+
+      <!-- Success Modal -->
+      <Teleport to="body">
+        <div v-if="localSuccess || flashSuccess"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div class="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-xl">
+            <!-- Checkmark Icon -->
+            <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-teal-50">
+              <svg class="h-10 w-10 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+
+            <!-- Title -->
+            <h3 class="mb-3 text-xl font-bold text-slate-800">Konfirmasi Email Anda</h3>
+
+            <!-- Message -->
+            <p class="mb-6 text-sm leading-relaxed text-slate-600">
+              Terima kasih telah melakukan registrasi, cek email Anda untuk melakukan aktivasi akun TP-PKK Marketplace.
+            </p>
+
+            <!-- Button -->
+            <Link href="/"
+              class="inline-block rounded-md bg-teal-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-600">
+              Kembali ke beranda
+            </Link>
+          </div>
+        </div>
+      </Teleport>
     </div>
 
     <CustomerCareButton />

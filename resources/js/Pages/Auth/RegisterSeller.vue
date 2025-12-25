@@ -269,41 +269,28 @@ const handleRecaptcha = async (event: Event) => {
           <form class="space-y-4 text-sm" @submit.prevent="submit">
             <div class="space-y-1">
               <label class="block text-sm font-semibold text-slate-700">Nama Lengkap Pemilik Perusahaan</label>
-              <input
-                type="text"
-                name="owner_name"
-                v-model="form.owner_name"
-                required
-                :class="[
-                  'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
-                  form.errors.owner_name ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
-                ]"
-                placeholder="John" />
+              <input type="text" name="owner_name" v-model="form.owner_name" required :class="[
+                'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
+                form.errors.owner_name ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
+              ]" placeholder="John" />
               <p v-if="form.errors.owner_name" class="text-xs text-red-500">{{ form.errors.owner_name }}</p>
             </div>
 
             <div class="space-y-1">
               <label class="block text-sm font-semibold text-slate-700">Alamat Email</label>
-              <input
-                type="email"
-                name="email"
-                v-model="form.email"
-                required
-                :class="[
-                  'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
-                  form.errors.email ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
-                ]"
-                placeholder="John@email.com" />
+              <input type="email" name="email" v-model="form.email" required :class="[
+                'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
+                form.errors.email ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
+              ]" placeholder="John@email.com" />
               <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
             </div>
 
             <div class="space-y-1">
               <label class="block text-sm font-semibold text-slate-700">No Handphone</label>
-              <div
-                :class="[
-                  'flex items-center rounded-md border bg-white text-sm text-slate-800',
-                  form.errors.phone ? 'border-red-400' : 'border-slate-200 focus-within:border-sky-400',
-                ]">
+              <div :class="[
+                'flex items-center rounded-md border bg-white text-sm text-slate-800',
+                form.errors.phone ? 'border-red-400' : 'border-slate-200 focus-within:border-sky-400',
+              ]">
                 <span class="flex h-11 items-center border-r border-slate-200 px-3 text-slate-600">+62</span>
                 <input type="tel" name="phone" v-model="form.phone" required
                   class="w-full bg-transparent px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
@@ -316,15 +303,10 @@ const handleRecaptcha = async (event: Event) => {
               <label class="block text-sm font-semibold text-slate-700">
                 Kode Referal <span class="normal-case font-normal text-slate-400">Opsional</span>
               </label>
-              <input
-                type="text"
-                name="referral"
-                v-model="form.referral"
-                :class="[
-                  'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
-                  form.errors.referral ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
-                ]"
-                placeholder="Kosongkan jika tidak ada" />
+              <input type="text" name="referral" v-model="form.referral" :class="[
+                'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
+                form.errors.referral ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
+              ]" placeholder="Kosongkan jika tidak ada" />
               <p v-if="form.errors.referral" class="text-xs text-red-500">{{ form.errors.referral }}</p>
             </div>
 
@@ -408,8 +390,8 @@ const handleRecaptcha = async (event: Event) => {
             <button type="submit"
               class="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-sky-600 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
               :disabled="form.processing || loadingRecaptcha || !form.agree">
-              <svg v-if="form.processing || loadingRecaptcha" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
-                viewBox="0 0 24 24">
+              <svg v-if="form.processing || loadingRecaptcha" class="h-5 w-5 animate-spin"
+                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
@@ -418,35 +400,6 @@ const handleRecaptcha = async (event: Event) => {
               {{ form.processing ? 'Memproses...' : loadingRecaptcha ? 'Memverifikasi...' : 'Daftar' }}
             </button>
 
-            <p v-if="localSuccess" class="text-center text-sm text-green-600">
-              {{ localSuccess }}
-            </p>
-            <p v-else-if="flashSuccess" class="text-center text-sm text-green-600">
-              {{ flashSuccess }}
-            </p>
-
-            <div class="flex items-center gap-3 text-xs text-slate-400">
-              <span class="h-px flex-1 bg-slate-200"></span>
-              <span>atau</span>
-              <span class="h-px flex-1 bg-slate-200"></span>
-            </div>
-
-            <button type="button"
-              class="flex w-full items-center justify-center gap-3 rounded-md border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-200 hover:text-sky-600">
-              <span class="flex h-5 w-5 items-center justify-center rounded-full bg-white">
-                <svg class="h-5 w-5" viewBox="0 0 533.5 544.3" aria-hidden="true">
-                  <path fill="#4285F4"
-                    d="M533.5 278.4c0-17.4-1.6-34.1-4.6-50.2H272.1v95.1h147c-6.3 34-25 62.9-53.3 82v68h86.1c50.4-46.4 81.6-114.8 81.6-194.9z" />
-                  <path fill="#34A853"
-                    d="M272.1 544.3c72.1 0 132.7-23.9 176.9-64.9l-86.1-68c-24 16.1-54.7 25.7-90.8 25.7-69.8 0-128.9-47-150.1-110.2h-89.1v69.4c44 87.4 134.1 148 239.2 148z" />
-                  <path fill="#FBBC05"
-                    d="M122 326.9c-5.6-16.9-8.8-34.9-8.8-53.3s3.2-36.4 8.8-53.3v-69.4H32.9C11.9 194.9 0 234.3 0 276.9s11.9 82 32.9 121.4L122 326.9z" />
-                  <path fill="#EA4335"
-                    d="M272.1 107.7c39.2 0 74.3 13.5 102.1 40l76.6-76.6C404.7 24.1 344.1 0 272.1 0 167 0 76.9 60.6 32.9 155.5l89.1 69.4C143.2 154.7 202.3 107.7 272.1 107.7z" />
-                </svg>
-              </span>
-              Daftar dengan Google
-            </button>
           </form>
         </div>
 
@@ -456,5 +409,35 @@ const handleRecaptcha = async (event: Event) => {
         </div>
       </div>
     </div>
+
+    <!-- Success Modal -->
+    <Teleport to="body">
+      <div v-if="localSuccess || flashSuccess"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        <div class="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-xl">
+          <!-- Checkmark Icon -->
+          <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-teal-50">
+            <svg class="h-10 w-10 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+
+          <!-- Title -->
+          <h3 class="mb-3 text-xl font-bold text-slate-800">Konfirmasi Email Anda</h3>
+
+          <!-- Message -->
+          <p class="mb-6 text-sm leading-relaxed text-slate-600">
+            Terima kasih telah melakukan registrasi, cek email Anda untuk melakukan aktivasi akun TP-PKK Marketplace.
+          </p>
+
+          <!-- Button -->
+          <Link href="/"
+            class="inline-block rounded-md bg-teal-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-600">
+            Kembali ke beranda
+          </Link>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
