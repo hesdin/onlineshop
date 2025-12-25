@@ -75,7 +75,7 @@ class UserController extends Controller
 
         $user->syncRoles($request->roles);
 
-        Mail::to($user)->send(new VerifyAndSetPasswordMail($user, 'admin_created'));
+        Mail::to($user)->queue(new VerifyAndSetPasswordMail($user, 'admin_created'));
 
         return Redirect::route('admin.users.index')->with('success', 'User berhasil dibuat.');
     }

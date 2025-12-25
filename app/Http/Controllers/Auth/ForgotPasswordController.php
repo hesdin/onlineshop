@@ -31,7 +31,7 @@ class ForgotPasswordController extends Controller
                 ->withInput();
         }
 
-        Mail::to($user)->send(new ResetPasswordLinkMail($user));
+        Mail::to($user)->queue(new ResetPasswordLinkMail($user));
 
         return back()->with('success', 'Jika email terdaftar dan terverifikasi, tautan reset telah dikirim.');
     }

@@ -45,8 +45,9 @@ class OrderNotificationService
 
         // Skip email if customer has no email
         $customerEmail = $order->user?->email;
-        if (!$customerEmail) {
+        if (! $customerEmail) {
             Log::warning("Cannot send order status email: Order #{$order->order_number} has no customer email");
+
             return;
         }
 
@@ -59,7 +60,7 @@ class OrderNotificationService
                 newPaymentStatus: $newPaymentStatus,
             ));
 
-            Log::info("Order status notification sent", [
+            Log::info('Order status notification sent', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
                 'customer_email' => $customerEmail,
@@ -69,11 +70,10 @@ class OrderNotificationService
                     : null,
             ]);
         } catch (\Exception $e) {
-            Log::error("Failed to send order status notification", [
+            Log::error('Failed to send order status notification', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
             ]);
         }
     }
 }
-

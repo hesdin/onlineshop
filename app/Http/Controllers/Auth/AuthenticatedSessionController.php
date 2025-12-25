@@ -35,7 +35,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         if (! $request->user()->hasVerifiedEmail()) {
-            Mail::to($request->user())->send(new VerifyAndSetPasswordMail($request->user()));
+            Mail::to($request->user())->queue(new VerifyAndSetPasswordMail($request->user()));
             Auth::logout();
 
             throw ValidationException::withMessages([

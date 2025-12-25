@@ -52,7 +52,7 @@ class RegisterController extends Controller
             ]);
 
             // Send email inside transaction - will rollback if email fails
-            Mail::to($user)->send(new VerifyAndSetPasswordMail($user, 'customer_self'));
+            Mail::to($user)->queue(new VerifyAndSetPasswordMail($user, 'customer_self'));
         });
 
         return back()->with('success', 'Registrasi berhasil. Cek email Anda.');
@@ -113,7 +113,7 @@ class RegisterController extends Controller
             ]);
 
             // Send email inside transaction - will rollback if email fails
-            Mail::to($user)->send(new VerifyAndSetPasswordMail($user, 'seller_self'));
+            Mail::to($user)->queue(new VerifyAndSetPasswordMail($user, 'seller_self'));
         });
 
         return back()->with('success', 'Registrasi berhasil. Silakan cek email Anda untuk verifikasi dan melengkapi data usaha.');
