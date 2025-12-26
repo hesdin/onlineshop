@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
-import heroIllustration from '@/../images/illustrations/delivering.svg';
-
-const logoUrl = '/images/logo-pkk.png';
+import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
+import { computed, ref, watch, onUnmounted } from 'vue';
 
 const form = useForm({
   owner_name: '',
@@ -15,16 +12,59 @@ const form = useForm({
   'g-recaptcha-response': '',
 });
 
-const localSuccess = ref('');
+const registrationSuccess = ref(false);
+const sentEmail = ref('');
 const page = usePage();
-const siteKey = computed(() => page.props.recaptcha?.siteKey ?? '');
-const flashSuccess = computed(() => page.props.flash?.success ?? '');
+const siteKey = computed(() => (page.props.recaptcha as any)?.siteKey ?? '');
 const loadingRecaptcha = ref(false);
+const cooldownSeconds = ref(0);
+const resending = ref(false);
+let cooldownInterval: ReturnType<typeof setInterval> | null = null;
+
+const canResend = computed(() => cooldownSeconds.value === 0 && !resending.value);
+
+const startCooldown = () => {
+  if (cooldownInterval) clearInterval(cooldownInterval);
+  cooldownSeconds.value = 150; // 2.5 minutes
+  cooldownInterval = setInterval(() => {
+    if (cooldownSeconds.value > 0) {
+      cooldownSeconds.value--;
+    }
+    if (cooldownSeconds.value <= 0) {
+      clearInterval(cooldownInterval!);
+      cooldownInterval = null;
+    }
+  }, 1000);
+};
+
+const formatCooldown = computed(() => {
+  const minutes = Math.floor(cooldownSeconds.value / 60);
+  const seconds = cooldownSeconds.value % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+});
+
+const resendActivation = () => {
+  if (!canResend.value) return;
+  resending.value = true;
+  router.post('/register/seller/resend', { email: sentEmail.value }, {
+    preserveScroll: true,
+    onSuccess: () => {
+      startCooldown();
+    },
+    onFinish: () => {
+      resending.value = false;
+    },
+  });
+};
+
+onUnmounted(() => {
+  if (cooldownInterval) clearInterval(cooldownInterval);
+});
 
 let recaptchaScriptPromise: Promise<void> | null = null;
 const loadRecaptchaScript = () => {
   if (typeof window === 'undefined') return Promise.reject();
-  if (window.grecaptcha) return Promise.resolve();
+  if ((window as any).grecaptcha) return Promise.resolve();
   if (recaptchaScriptPromise) return recaptchaScriptPromise;
 
   recaptchaScriptPromise = new Promise((resolve, reject) => {
@@ -47,13 +87,14 @@ const requestRecaptchaToken = async (action: string) => {
   await loadRecaptchaScript();
 
   return new Promise<string>((resolve, reject) => {
-    if (!window.grecaptcha) {
+    const grecaptcha = (window as any).grecaptcha;
+    if (!grecaptcha) {
       reject(new Error('reCAPTCHA belum tersedia'));
       return;
     }
 
-    window.grecaptcha.ready(() => {
-      window.grecaptcha
+    grecaptcha.ready(() => {
+      grecaptcha
         .execute(siteKey.value, { action })
         .then(resolve)
         .catch((err: unknown) => reject(err));
@@ -61,90 +102,21 @@ const requestRecaptchaToken = async (action: string) => {
   });
 };
 
-const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string) => {
-  return new Promise<T>((resolve, reject) => {
-    const timeoutId = window.setTimeout(() => reject(new Error(message)), ms);
-    promise
-      .then((value) => {
-        window.clearTimeout(timeoutId);
-        resolve(value);
-      })
-      .catch((error: unknown) => {
-        window.clearTimeout(timeoutId);
-        reject(error);
-      });
-  });
-};
+watch(
+  () => form.agree,
+  (val) => {
+    if (val) form.clearErrors('agree');
+  }
+);
 
 watch(
   () => form.notRobot,
   (val) => {
-    if (val) {
-      form.clearErrors('notRobot');
-    }
+    if (val) form.clearErrors('notRobot');
   }
 );
 
-watch(
-  () => form.agree,
-  (val) => {
-    if (val) {
-      form.clearErrors('agree');
-    }
-  }
-);
-
-const submit = async () => {
-  form.clearErrors();
-  localSuccess.value = '';
-
-  if (!form.agree) {
-    form.setError('agree', 'Anda harus menyetujui syarat dan ketentuan.');
-  }
-
-  if (form.hasErrors) {
-    return;
-  }
-
-  loadingRecaptcha.value = true;
-  form.notRobot = false;
-  form['g-recaptcha-response'] = '';
-  form.clearErrors('notRobot');
-
-  try {
-    const token = await withTimeout(
-      requestRecaptchaToken('register_seller'),
-      15000,
-      'Verifikasi reCAPTCHA melebihi batas waktu.'
-    );
-    form['g-recaptcha-response'] = token;
-    form.notRobot = true;
-  } catch (error) {
-    form.notRobot = false;
-    form.setError('notRobot', error instanceof Error ? error.message : 'Gagal memverifikasi reCAPTCHA.');
-    console.error(error);
-    return;
-  } finally {
-    loadingRecaptcha.value = false;
-  }
-
-  await form.post('/register/seller', {
-    preserveScroll: true,
-    onSuccess: () => {
-      localSuccess.value = flashSuccess.value || 'Registrasi berhasil. Silakan cek email Anda untuk verifikasi.';
-    },
-    onError: (errors) => {
-      const recaptchaError = errors['g-recaptcha-response'];
-      if (recaptchaError) {
-        form.notRobot = false;
-        form['g-recaptcha-response'] = '';
-        form.setError('notRobot', recaptchaError);
-      }
-    },
-  });
-};
-
-const handleRecaptcha = async (event: Event) => {
+const handleRecaptcha = async () => {
   if (loadingRecaptcha.value) return;
 
   loadingRecaptcha.value = true;
@@ -153,291 +125,302 @@ const handleRecaptcha = async (event: Event) => {
   form.clearErrors('notRobot');
 
   try {
-    const token = await withTimeout(
-      requestRecaptchaToken('register_seller'),
-      15000,
-      'Verifikasi reCAPTCHA melebihi batas waktu.'
-    );
+    const token = await requestRecaptchaToken('register_seller');
     form['g-recaptcha-response'] = token;
     form.notRobot = true;
   } catch (error) {
     form.notRobot = false;
-    form.setError('notRobot', error instanceof Error ? error.message : 'Gagal memverifikasi reCAPTCHA.');
+    form.setError('notRobot', 'Gagal memverifikasi reCAPTCHA.');
     console.error(error);
   } finally {
     loadingRecaptcha.value = false;
   }
 };
+
+const submit = async () => {
+  form.clearErrors();
+
+  if (!form.agree) {
+    form.setError('agree', 'Anda harus menyetujui syarat dan ketentuan.');
+    return;
+  }
+
+  if (!form.notRobot) {
+    form.setError('notRobot', 'Silakan verifikasi bahwa Anda bukan robot.');
+    return;
+  }
+
+  await form.post('/register/seller', {
+    preserveScroll: true,
+    onSuccess: () => {
+      sentEmail.value = form.email;
+      registrationSuccess.value = true;
+      startCooldown();
+    },
+  });
+};
 </script>
 
 <template>
 
-  <Head title="Daftar Penjual - PKK UMKM" />
+  <Head title="Daftar Penjual" />
 
-  <section
-    class="flex min-h-screen items-center justify-center bg-linear-to-br from-sky-400 via-sky-500 to-sky-600 px-4 py-6">
-    <div class="flex w-full max-w-6xl flex-col gap-6 lg:flex-row">
-      <div class="flex flex-1 flex-col justify-between p-6 text-white lg:p-8">
-        <div class="space-y-6">
-          <h1 class="text-2xl font-bold leading-tight sm:text-3xl">4 Langkah Mudah Berjualan di TP-PKK</h1>
+  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4 lg:p-8">
+    <div :class="registrationSuccess ? 'max-w-md' : 'max-w-5xl'" class="w-full">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden"
+        :class="{ 'lg:flex min-h-[600px]': !registrationSuccess, 'p-8 sm:p-10': registrationSuccess }">
 
-          <ol class="space-y-5 text-sm leading-relaxed sm:text-base">
-            <li class="flex gap-4">
-              <span
-                class="mt-0.5 flex h-12 w-12 flex-none items-center justify-center rounded-full bg-white/90 text-sky-600 shadow-md">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" />
-                  <path d="M5.8 19.1a7 7 0 0 1 12.4 0" />
-                </svg>
-              </span>
-              <div>
-                <p class="font-semibold">1. Daftarkan Akun</p>
-                <p>Isi data diri di halaman ini atau daftar dengan akun Google.</p>
-              </div>
-            </li>
-
-            <li class="flex gap-4">
-              <span
-                class="mt-0.5 flex h-12 w-12 flex-none items-center justify-center rounded-full bg-white/90 text-sky-600 shadow-md">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 6h16v12H4Z" />
-                  <path d="m22 7-10 6L2 7" />
-                </svg>
-              </span>
-              <div>
-                <p class="font-semibold">2. Konfirmasi Email</p>
-                <p>Buka email Anda, lakukan konfirmasi, dan buat password baru.</p>
-              </div>
-            </li>
-
-            <li class="flex gap-4">
-              <span
-                class="mt-0.5 flex h-12 w-12 flex-none items-center justify-center rounded-full bg-white/90 text-sky-600 shadow-md">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M7 4h10v4H7z" />
-                  <path d="M5 8h14v12H5z" />
-                  <path d="M9 12h6M9 16h6" />
-                </svg>
-              </span>
-              <div>
-                <p class="font-semibold">3. Lengkapi Data Usaha</p>
-                <p>Siapkan KTP, NPWP, nama & jenis perusahaan, beserta alamat toko.</p>
-              </div>
-            </li>
-
-            <li class="flex gap-4">
-              <span
-                class="mt-0.5 flex h-12 w-12 flex-none items-center justify-center rounded-full bg-white/90 text-sky-600 shadow-md">
-                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 17v4" />
-                  <path d="M8 21h8" />
-                  <path d="m9 11 3-3 3 3" />
-                  <path d="M12 4v10" />
-                </svg>
-              </span>
-              <div>
-                <p class="font-semibold">4. Unggah Produk</p>
-                <p>Foto produk dan isi deskripsi, lalu mulai berjualan.</p>
-              </div>
-            </li>
-          </ol>
-        </div>
-
-        <p class="pt-6 text-sm text-white/80">
-          Butuh bantuan?
-          <a href="#" class="font-semibold underline">Hubungi Kami</a>
-        </p>
-      </div>
-
-      <div class="flex flex-1 flex-col gap-4">
-        <div class="rounded-md bg-white p-8 shadow-2xl ring-1 ring-slate-100">
-          <div class="mb-6 flex items-start justify-between gap-4">
-            <div>
-              <h2 class="text-2xl font-bold text-slate-900">Daftar Sebagai Penjual</h2>
-              <p class="mt-1 text-sm text-slate-600">Masukkan data pemilik usaha untuk memulai.</p>
-            </div>
-            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
-              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
-                draggable="false" />
-            </div>
+        <!-- Left Side - Hero (hidden on success) -->
+        <div v-if="!registrationSuccess"
+          class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">
+          <div class="space-y-4">
+            <h2 class="text-2xl font-bold text-white">4 Langkah Mudah Berjualan</h2>
+            <p class="text-sky-100 leading-relaxed">
+              Mulai jual produkmu di TP-PKK Marketplace dengan proses registrasi yang cepat dan mudah.
+            </p>
           </div>
 
-          <form class="space-y-4 text-sm" @submit.prevent="submit">
-            <div class="space-y-1">
-              <label class="block text-sm font-semibold text-slate-700">Nama Lengkap Pemilik Perusahaan</label>
-              <input type="text" name="owner_name" v-model="form.owner_name" required :class="[
-                'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
-                form.errors.owner_name ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
-              ]" placeholder="John" />
-              <p v-if="form.errors.owner_name" class="text-xs text-red-500">{{ form.errors.owner_name }}</p>
-            </div>
-
-            <div class="space-y-1">
-              <label class="block text-sm font-semibold text-slate-700">Alamat Email</label>
-              <input type="email" name="email" v-model="form.email" required :class="[
-                'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
-                form.errors.email ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
-              ]" placeholder="John@email.com" />
-              <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
-            </div>
-
-            <div class="space-y-1">
-              <label class="block text-sm font-semibold text-slate-700">No Handphone</label>
-              <div :class="[
-                'flex items-center rounded-md border bg-white text-sm text-slate-800',
-                form.errors.phone ? 'border-red-400' : 'border-slate-200 focus-within:border-sky-400',
-              ]">
-                <span class="flex h-11 items-center border-r border-slate-200 px-3 text-slate-600">+62</span>
-                <input type="tel" name="phone" v-model="form.phone" required
-                  class="w-full bg-transparent px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                  placeholder="81200000000" />
-              </div>
-              <p v-if="form.errors.phone" class="text-xs text-red-500">{{ form.errors.phone }}</p>
-            </div>
-
-            <div class="space-y-1">
-              <label class="block text-sm font-semibold text-slate-700">
-                Kode Referal <span class="normal-case font-normal text-slate-400">Opsional</span>
-              </label>
-              <input type="text" name="referral" v-model="form.referral" :class="[
-                'w-full rounded-md border bg-white px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none',
-                form.errors.referral ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-sky-400',
-              ]" placeholder="Kosongkan jika tidak ada" />
-              <p v-if="form.errors.referral" class="text-xs text-red-500">{{ form.errors.referral }}</p>
-            </div>
-
-            <div class="mt-4">
-              <!-- Checkbox Widget -->
+          <div class="mt-8 space-y-4">
+            <div class="flex items-start gap-3">
               <div
-                class="flex h-[74px] w-full items-center justify-between rounded-[3px] border border-[#d3d3d3] bg-[#f9f9f9] px-3 shadow-[0_0_4px_1px_rgba(0,0,0,0.08)]">
-                <div class="flex items-center gap-3">
-                  <div
-                    class="flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[2px] border-[2px] bg-white transition-all"
-                    :class="form.notRobot ? 'border-transparent' : 'border-[#c1c1c1] hover:border-[#b2b2b2]'"
-                    @click="handleRecaptcha">
-                    <svg v-if="loadingRecaptcha" class="h-5 w-5 animate-spin text-sky-600"
-                      xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                      </path>
-                    </svg>
-                    <svg v-else-if="form.notRobot" class="h-7 w-7" viewBox="0 0 48 48"
-                      xmlns="http://www.w3.org/2000/svg">
-                      <path d="M20 34L10 24L12.8 21.2L20 28.4L35.2 13.2L38 16L20 34Z" fill="#009E55" stroke="#009E55"
-                        stroke-width="2" />
-                    </svg>
-                  </div>
-                  <span class="text-[14px] font-normal text-[#282828]">I'm not a robot</span>
-                </div>
-
-                <div class="flex flex-col items-center gap-0.5">
-                  <svg class="h-8 w-8" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M24 2C11.8 2 2 11.8 2 24C2 36.2 11.8 46 24 46C36.2 46 46 36.2 46 24C46 11.8 36.2 2 24 2ZM36.6 22H32.4C31.8 17.6 28.4 14.2 24 14.2V10C30.8 10 36.4 15.2 36.6 22ZM24 38V33.8C19.6 33.2 16.2 29.8 15.6 25.4H11.4C12 32.8 17.2 38 24 38ZM11.4 22.6H15.6C16.2 18.2 19.6 14.8 24 14.2V10C17.2 10 12 15.2 11.4 22.6ZM24 33.8V38C30.8 38 36.4 32.8 36.6 25.4H32.4C31.8 29.8 28.4 33.2 24 33.8Z"
-                      fill="#bbdefb" />
-                    <path
-                      d="M44 24C44 13 35 4 24 4V8C32.8 8 40 15.2 40 24H44ZM24 44C35 44 44 35 44 24H40C40 32.8 32.8 40 24 40V44ZM4 24C4 35 13 44 24 44V40C15.2 40 8 32.8 8 24H4ZM24 4V8C15.2 8 8 15.2 8 24H4C4 13 13 4 24 4Z"
-                      fill="#e3f2fd" opacity="0.8" />
-                    <path d="M24 10V14.2C28.4 14.8 31.8 18.2 32.4 22.6H36.6C36 15.2 30.8 10 24 10Z" fill="#90caf9" />
-                    <path d="M36.6 25.4H32.4C31.8 29.8 28.4 33.2 24 33.8V38C30.8 38 36 32.8 36.6 25.4Z"
-                      fill="#64b5f6" />
-                    <path d="M11.4 25.4H15.6C16.2 29.8 19.6 33.2 24 33.8V38C17.2 38 12 32.8 11.4 25.4Z"
-                      fill="#42a5f5" />
-                  </svg>
-                  <span class="text-[10px] text-[#555555]">reCAPTCHA</span>
-                  <div class="text-[8px] text-[#555555]">
-                    <a href="https://www.google.com/intl/en/policies/privacy/" target="_blank"
-                      class="hover:underline">Privacy</a>
-                    -
-                    <a href="https://www.google.com/intl/en/policies/terms/" target="_blank"
-                      class="hover:underline">Terms</a>
-                  </div>
-                </div>
+                class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white font-semibold text-sm">
+                1</div>
+              <div>
+                <p class="font-semibold text-white">Daftarkan Akun</p>
+                <p class="text-sm text-sky-100">Isi data diri di halaman ini</p>
               </div>
-
-              <!-- Branding Footer (Mimicking the badge) -->
-              <div class="mt-2 flex items-center justify-center text-[10px] text-slate-400">
-                protected by
-                <span class="mx-1 font-semibold text-slate-500">reCAPTCHA</span>
-                <a href="https://www.google.com/intl/en/policies/privacy/" target="_blank"
-                  class="ml-1 hover:underline">Privacy</a>
-                <span class="mx-1">-</span>
-                <a href="https://www.google.com/intl/en/policies/terms/" target="_blank"
-                  class="hover:underline">Terms</a>
-              </div>
-
-              <p v-if="form.errors.notRobot" class="mt-2 text-xs text-red-500">{{ form.errors.notRobot }}</p>
             </div>
-
-            <label class="flex items-start gap-2 text-xs text-slate-600">
-              <input type="checkbox" v-model="form.agree" required
-                class="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
-              <span>
-                Saya sudah membaca dan menyetujui
-                <a href="#" class="font-semibold text-sky-600 hover:underline">Syarat dan Ketentuan</a>
-                serta
-                <a href="#" class="font-semibold text-sky-600 hover:underline">Kebijakan Privasi</a>
-                yang berlaku
-              </span>
-            </label>
-            <p v-if="form.errors.agree" class="text-xs text-red-500">{{ form.errors.agree }}</p>
-
-            <button type="submit"
-              class="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-sky-600 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
-              :disabled="form.processing || loadingRecaptcha || !form.agree">
-              <svg v-if="form.processing || loadingRecaptcha" class="h-5 w-5 animate-spin"
-                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-              </svg>
-              {{ form.processing ? 'Memproses...' : loadingRecaptcha ? 'Memverifikasi...' : 'Daftar' }}
-            </button>
-
-          </form>
+            <div class="flex items-start gap-3">
+              <div
+                class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white font-semibold text-sm">
+                2</div>
+              <div>
+                <p class="font-semibold text-white">Konfirmasi Email</p>
+                <p class="text-sm text-sky-100">Buka email dan buat password</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div
+                class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white font-semibold text-sm">
+                3</div>
+              <div>
+                <p class="font-semibold text-white">Lengkapi Data Usaha</p>
+                <p class="text-sm text-sky-100">Siapkan KTP, NPWP, dan alamat toko</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div
+                class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white font-semibold text-sm">
+                4</div>
+              <div>
+                <p class="font-semibold text-white">Unggah Produk</p>
+                <p class="text-sm text-sky-100">Foto dan deskripsi, lalu mulai berjualan</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="rounded-md bg-white/90 py-4 text-center text-sm text-slate-700 shadow-md">
-          Sudah punya akun?
-          <Link href="/login" class="font-semibold text-sky-600 hover:underline">Login</Link>
+        <!-- Right Side - Form -->
+        <div :class="registrationSuccess ? 'w-full' : 'lg:w-1/2 p-8 sm:p-10'" class="flex flex-col justify-center">
+
+          <!-- Success View -->
+          <template v-if="registrationSuccess">
+            <div class="flex justify-center mb-6">
+              <div class="flex h-16 w-16 items-center justify-center rounded-full bg-sky-50">
+                <svg class="h-8 w-8 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.5">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </div>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900 text-center">Cek Email Anda</h1>
+            <p class="mt-2 text-sm text-slate-500 text-center">
+              Kami telah mengirimkan tautan aktivasi ke
+              <span class="font-medium text-slate-700">{{ sentEmail }}</span>
+            </p>
+            <a href="https://mail.google.com" target="_blank"
+              class="mt-8 w-full flex items-center justify-center gap-2 rounded-lg bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-600">
+              Buka Gmail
+            </a>
+
+            <!-- Resend Link -->
+            <div class="mt-5 text-center">
+              <p class="text-sm text-slate-500">
+                Tidak menerima email?
+              </p>
+              <button v-if="canResend" type="button" @click="resendActivation"
+                class="mt-1 font-medium text-sm text-sky-600 hover:text-sky-700 hover:underline">
+                Kirim ulang tautan
+              </button>
+              <p v-else class="mt-1 text-sm text-slate-400">
+                <span v-if="resending" class="inline-flex items-center gap-1.5">
+                  <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                  </svg>
+                  Mengirim ulang...
+                </span>
+                <span v-else>Kirim ulang dalam <span class="font-medium text-slate-500">{{ formatCooldown
+                    }}</span></span>
+              </p>
+            </div>
+
+            <div class="mt-6 text-center">
+              <Link href="/seller/login"
+                class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-sky-600">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Kembali ke halaman login
+              </Link>
+            </div>
+          </template>
+
+          <!-- Registration Form -->
+          <template v-else>
+            <!-- Back Arrow -->
+            <Link href="/register-as"
+              class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600 mb-4 w-fit">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Kembali
+            </Link>
+
+            <h1 class="text-2xl font-bold text-slate-900">Daftar Penjual</h1>
+            <p class="mt-2 text-sm text-slate-500">Masukkan data pemilik usaha untuk memulai</p>
+
+            <form @submit.prevent="submit" class="mt-6 space-y-4">
+              <!-- Owner Name -->
+              <div class="space-y-1.5">
+                <label for="owner_name" class="text-sm font-medium text-slate-700">Nama Pemilik</label>
+                <input id="owner_name" v-model="form.owner_name" type="text" required
+                  placeholder="Nama lengkap pemilik usaha"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                  :class="{ 'border-red-400': form.errors.owner_name }" />
+                <p v-if="form.errors.owner_name" class="text-xs text-red-500">{{ form.errors.owner_name }}</p>
+              </div>
+
+              <!-- Email -->
+              <div class="space-y-1.5">
+                <label for="email" class="text-sm font-medium text-slate-700">Email</label>
+                <input id="email" v-model="form.email" type="email" required placeholder="nama@email.com"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                  :class="{ 'border-red-400': form.errors.email }" />
+                <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
+              </div>
+
+              <!-- Phone -->
+              <div class="space-y-1.5">
+                <label for="phone" class="text-sm font-medium text-slate-700">No. Telepon</label>
+                <div
+                  class="flex rounded-lg border border-slate-200 focus-within:border-sky-400 focus-within:ring-1 focus-within:ring-sky-400"
+                  :class="{ 'border-red-400': form.errors.phone }">
+                  <span
+                    class="flex items-center border-r border-slate-200 px-3 text-sm text-slate-500 bg-slate-50 rounded-l-lg">+62</span>
+                  <input id="phone" v-model="form.phone" type="tel" required placeholder="812xxxxxxxx"
+                    class="w-full bg-white px-3 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none rounded-r-lg" />
+                </div>
+                <p v-if="form.errors.phone" class="text-xs text-red-500">{{ form.errors.phone }}</p>
+              </div>
+
+              <!-- Referral -->
+              <div class="space-y-1.5">
+                <label for="referral" class="text-sm font-medium text-slate-700">
+                  Kode Referral <span class="font-normal text-slate-400">(Opsional)</span>
+                </label>
+                <input id="referral" v-model="form.referral" type="text" placeholder="Masukkan kode referral"
+                  class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400" />
+              </div>
+
+              <!-- Terms Checkbox -->
+              <div class="pt-2">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" v-model="form.agree"
+                    class="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-500" />
+                  <span class="text-xs text-slate-600 leading-relaxed">
+                    Saya menyetujui
+                    <a href="#" class="font-medium text-sky-600 hover:underline">Syarat dan Ketentuan</a>
+                    serta
+                    <a href="#" class="font-medium text-sky-600 hover:underline">Kebijakan Privasi</a>
+                  </span>
+                </label>
+                <p v-if="form.errors.agree" class="mt-1 text-xs text-red-500">{{ form.errors.agree }}</p>
+              </div>
+
+              <!-- reCAPTCHA Widget -->
+              <div class="pt-2">
+                <div
+                  class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
+                  <div class="flex items-center gap-2.5">
+                    <div
+                      class="flex h-6 w-6 cursor-pointer items-center justify-center rounded border-2 bg-white transition-all"
+                      :class="form.notRobot ? 'border-green-500' : 'border-slate-300 hover:border-slate-400'"
+                      @click="handleRecaptcha">
+                      <svg v-if="loadingRecaptcha" class="h-3.5 w-3.5 animate-spin text-sky-500"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                      </svg>
+                      <svg v-else-if="form.notRobot" class="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                    <span class="text-sm text-slate-600">Saya bukan robot</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <svg class="h-6 w-6" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M24 2C11.8 2 2 11.8 2 24C2 36.2 11.8 46 24 46C36.2 46 46 36.2 46 24C46 11.8 36.2 2 24 2ZM36.6 22H32.4C31.8 17.6 28.4 14.2 24 14.2V10C30.8 10 36.4 15.2 36.6 22ZM24 38V33.8C19.6 33.2 16.2 29.8 15.6 25.4H11.4C12 32.8 17.2 38 24 38ZM11.4 22.6H15.6C16.2 18.2 19.6 14.8 24 14.2V10C17.2 10 12 15.2 11.4 22.6ZM24 33.8V38C30.8 38 36.4 32.8 36.6 25.4H32.4C31.8 29.8 28.4 33.2 24 33.8Z"
+                        fill="#bbdefb" />
+                      <path
+                        d="M44 24C44 13 35 4 24 4V8C32.8 8 40 15.2 40 24H44ZM24 44C35 44 44 35 44 24H40C40 32.8 32.8 40 24 40V44ZM4 24C4 35 13 44 24 44V40C15.2 40 8 32.8 8 24H4ZM24 4V8C15.2 8 8 15.2 8 24H4C4 13 13 4 24 4Z"
+                        fill="#e3f2fd" opacity="0.8" />
+                    </svg>
+                    <span class="text-[9px] text-slate-400">reCAPTCHA</span>
+                  </div>
+                </div>
+                <p v-if="form.errors.notRobot" class="mt-1 text-xs text-red-500">{{ form.errors.notRobot }}</p>
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" :disabled="form.processing || loadingRecaptcha || !form.agree || !form.notRobot"
+                class="w-full flex items-center justify-center gap-2 rounded-lg bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-600 disabled:bg-slate-200 disabled:text-slate-400">
+                <svg v-if="form.processing" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                  viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                {{ form.processing ? 'Mendaftarkan' : 'Daftar' }}
+              </button>
+            </form>
+
+            <!-- Login Link -->
+            <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+              <p class="text-sm text-slate-500">
+                Sudah punya akun?
+                <Link href="/seller/login" class="font-medium text-sky-600 hover:underline">Masuk</Link>
+              </p>
+            </div>
+          </template>
+
         </div>
       </div>
     </div>
-
-    <!-- Success Modal -->
-    <Teleport to="body">
-      <div v-if="localSuccess || flashSuccess"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-        <div class="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-xl">
-          <!-- Checkmark Icon -->
-          <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-teal-50">
-            <svg class="h-10 w-10 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-
-          <!-- Title -->
-          <h3 class="mb-3 text-xl font-bold text-slate-800">Konfirmasi Email Anda</h3>
-
-          <!-- Message -->
-          <p class="mb-6 text-sm leading-relaxed text-slate-600">
-            Terima kasih telah melakukan registrasi, cek email Anda untuk melakukan aktivasi akun TP-PKK Marketplace.
-          </p>
-
-          <!-- Button -->
-          <Link href="/"
-            class="inline-block rounded-md bg-teal-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-600">
-            Kembali ke beranda
-          </Link>
-        </div>
-      </div>
-    </Teleport>
   </section>
 </template>
+
+<style>
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+</style>

@@ -1,104 +1,135 @@
 <script setup>
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
-import CustomerCareButton from '@/components/CustomerCareButton.vue';
-import LoginHeroSlider from '@/components/Auth/LoginHeroSlider.vue';
-
-const roleLabel = 'Penjual';
-const postUrl = '/seller/login';
-const logoUrl = '/images/logo-pkk.png';
+import { computed, ref, watch } from 'vue';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 const form = useForm({
   email: '',
   password: '',
 });
 
-const slides = [
-  {
-    title: 'Bersama TP-PKK Marketplace',
-    description: 'Mari tingkatkan pertumbuhan ekonomi UMKM untuk Indonesia yang lebih maju.',
-    image: '/images/illustrations/storefront.svg',
-  },
-  {
-    title: 'UMKM Berkembang Pesat',
-    description: 'Akses pengadaan barang dan jasa dengan lebih mudah, aman, dan transparan.',
-    image: '/images/illustrations/shopping-bags.svg',
-  },
-  {
-    title: 'Digitalisasi Pengadaan',
-    description: 'Satu platform untuk menghubungkan UMKM dengan BUMN dan pembeli korporat.',
-    image: '/images/illustrations/delivering.svg',
-  },
-];
+const showPassword = ref(false);
+const localSuccess = ref('');
 
 const submit = () => {
-  form.post(postUrl, {
+  form.post('/seller/login', {
     onFinish: () => form.reset('password'),
   });
 };
 
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success ?? '');
-const showPassword = ref(false);
+
+watch(
+  flashSuccess,
+  (newVal) => {
+    if (newVal) {
+      localSuccess.value = newVal;
+      setTimeout(() => {
+        localSuccess.value = '';
+      }, 8000);
+    }
+  },
+  { immediate: true }
+);
+
+const closeAlert = () => {
+  localSuccess.value = '';
+};
 </script>
 
 <template>
 
-  <Head :title="`Login ${roleLabel}`" />
+  <Head title="Login Penjual" />
 
-  <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-sky-600 text-white">
-    <div class="pointer-events-none absolute inset-0">
-      <div class="absolute inset-0 bg-linear-to-b from-sky-500/40 via-sky-500/10 to-sky-700/50"></div>
-      <span class="absolute -left-24 bottom-10 h-40 w-40 rotate-6 rounded-4xl border border-white/10"></span>
-      <span class="absolute -right-10 top-10 h-32 w-32 rounded-4xl border border-white/10"></span>
-      <span class="absolute -bottom-24 right-1/3 h-56 w-56 rounded-full bg-sky-500/30 blur-3xl"></span>
-    </div>
+  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4 lg:p-8">
+    <div class="w-full max-w-5xl">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden lg:flex min-h-[600px]">
 
-    <div
-      class="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 py-12 lg:flex-row lg:items-stretch lg:gap-16 lg:py-16">
-      <LoginHeroSlider :slides="slides" />
-
-      <div class="relative flex-1">
-        <div class="relative z-10 ml-auto w-full max-w-lg rounded-lg bg-white p-8 sm:p-10 text-slate-900 shadow-sm">
-          <Link href="/login"
-            class="inline-flex items-center text-2xl font-bold text-slate-500 hover:text-slate-700 mb-4">
-            <span>&larr;</span>
-          </Link>
-          <div class="flex items-center justify-between gap-4">
-            <h3 class="text-2xl sm:text-3xl font-bold text-slate-900">Login {{ roleLabel }}</h3>
-            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
-              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
-                draggable="false" />
-            </div>
+        <!-- Left Side - Hero -->
+        <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">
+          <div class="space-y-4">
+            <h2 class="text-2xl font-bold text-white">Selamat Datang Kembali</h2>
+            <p class="text-sky-100 leading-relaxed">
+              Masuk ke dashboard penjual untuk mengelola toko dan produk Anda.
+            </p>
           </div>
 
-          <form class="mt-8 space-y-5" @submit.prevent="submit">
+          <div class="mt-10 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <span class="text-sm text-white">Kelola produk dengan mudah</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <span class="text-sm text-white">Pantau pesanan real-time</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <span class="text-sm text-white">Analitik penjualan lengkap</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side - Form -->
+        <div class="lg:w-1/2 p-8 sm:p-10 flex flex-col justify-center">
+          <!-- Back Arrow -->
+          <Link href="/login"
+            class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600 mb-4 w-fit">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Kembali
+          </Link>
+
+          <h1 class="text-2xl font-bold text-slate-900">Login Penjual</h1>
+          <p class="mt-2 text-sm text-slate-500">Masuk ke akun penjual Anda</p>
+
+          <!-- Success Alert -->
+          <AlertBanner type="success" :message="localSuccess" :show="!!localSuccess" :dismissible="true" class="mt-6"
+            @close="closeAlert" />
+
+          <form class="mt-6 space-y-4" @submit.prevent="submit">
+            <!-- Email -->
             <div class="space-y-1.5">
-              <label class="text-sm font-semibold text-slate-600" for="email">Email</label>
-              <input id="email" v-model="form.email" type="email" autocomplete="email"
-                class="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm sm:text-base text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:outline-none"
-                placeholder="penjual@email.com" :disabled="form.processing" />
-              <p v-if="form.errors.email" class="text-sm text-red-500">{{ form.errors.email }}</p>
+              <label for="email" class="text-sm font-medium text-slate-700">Email</label>
+              <input id="email" v-model="form.email" type="email" autocomplete="email" required
+                placeholder="nama@email.com"
+                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                :class="{ 'border-red-400': form.errors.email }" :disabled="form.processing" />
+              <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
             </div>
 
+            <!-- Password -->
             <div class="space-y-1.5">
-              <label class="text-sm font-semibold text-slate-600" for="password">Kata Sandi</label>
+              <label for="password" class="text-sm font-medium text-slate-700">Kata Sandi</label>
               <div
-                class="flex items-center rounded-md border border-slate-200 bg-slate-50 px-3 focus-within:border-sky-400 focus-within:bg-white">
+                class="flex items-center rounded-lg border border-slate-200 focus-within:border-sky-400 focus-within:ring-1 focus-within:ring-sky-400"
+                :class="{ 'border-red-400': form.errors.password }">
                 <input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'"
-                  autocomplete="current-password"
-                  class="w-full bg-transparent py-3 text-sm sm:text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                  placeholder="Masukan Kata Sandi" :disabled="form.processing" />
+                  autocomplete="current-password" required placeholder="Masukkan kata sandi"
+                  class="w-full bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none rounded-lg"
+                  :disabled="form.processing" />
                 <button type="button" @click="showPassword = !showPassword"
-                  class="p-1 text-slate-400 hover:text-slate-600">
-                  <!-- Eye Icon (Show) -->
+                  class="px-3 text-slate-400 hover:text-slate-600">
                   <svg v-if="!showPassword" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="1.8">
+                    stroke-width="1.5">
                     <path d="M1 12s3.5-7 11-7 11 7 11 7-3.5 7-11 7S1 12 1 12Z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                  <!-- Eye Off Icon (Hide) -->
-                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
                     <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7.5 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68" />
                     <path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s3.5 7 11 7a9.74 9.74 0 0 0 5.39-1.61" />
@@ -106,12 +137,19 @@ const showPassword = ref(false);
                   </svg>
                 </button>
               </div>
-              <p v-if="form.errors.password" class="text-sm text-red-500">{{ form.errors.password }}</p>
+              <p v-if="form.errors.password" class="text-xs text-red-500">{{ form.errors.password }}</p>
             </div>
 
-            <button type="submit"
-              class="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-sky-600 py-3 text-sm sm:text-base font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
-              :disabled="form.processing">
+            <!-- Forgot Password Link -->
+            <div class="text-right">
+              <Link href="/forgot-password" class="text-sm font-medium text-sky-600 hover:underline">
+                Lupa kata sandi?
+              </Link>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" :disabled="form.processing"
+              class="w-full flex items-center justify-center gap-2 rounded-lg bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-600 disabled:bg-slate-200 disabled:text-slate-400">
               <svg v-if="form.processing" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
                 viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -119,39 +157,20 @@ const showPassword = ref(false);
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
               </svg>
-              {{ form.processing ? 'Memproses...' : 'Login' }}
+              {{ form.processing ? 'Memproses' : 'Masuk' }}
             </button>
-
-            <p v-if="form.errors.email && !form.errors.password" class="text-center text-sm text-red-500">
-              {{ form.errors.email }}
-            </p>
-
-            <p v-if="flashSuccess" class="text-center text-sm text-green-600">
-              {{ flashSuccess }}
-            </p>
-
-            <p class="mt-2 text-center text-xs sm:text-sm text-slate-500">
-              Lupa Kata Sandi?
-              <Link href="/forgot-password" class="font-semibold text-sky-600 hover:underline">
-                Atur Ulang Kata Sandi
-              </Link>
-            </p>
-
-            <div class="mt-4 flex items-center gap-3 text-xs text-slate-400">
-              <div class="h-px flex-1 bg-slate-200"></div>
-              <span>Atau</span>
-              <div class="h-px flex-1 bg-slate-200"></div>
-            </div>
-
-            <p class="text-center text-xs sm:text-sm text-slate-500">
-              Belum punya akun?
-              <Link href="/register-as" class="font-semibold text-sky-600 hover:underline">Daftar Sekarang</Link>
-            </p>
           </form>
+
+          <!-- Register Link -->
+          <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+            <p class="text-sm text-slate-500">
+              Belum punya akun?
+              <Link href="/register?role=seller" class="font-medium text-sky-600 hover:underline">Daftar Sekarang</Link>
+            </p>
+          </div>
         </div>
+
       </div>
     </div>
-
-    <CustomerCareButton />
   </section>
 </template>

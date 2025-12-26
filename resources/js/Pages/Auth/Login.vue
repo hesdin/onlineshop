@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 const roleLabel = 'Admin';
 const postUrl = '/admin/login';
@@ -23,6 +24,24 @@ const submit = () => {
 
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success ?? '');
+const localSuccess = ref('');
+
+watch(
+  flashSuccess,
+  (newVal) => {
+    if (newVal) {
+      localSuccess.value = newVal;
+      setTimeout(() => {
+        localSuccess.value = '';
+      }, 8000);
+    }
+  },
+  { immediate: true }
+);
+
+const closeAlert = () => {
+  localSuccess.value = '';
+};
 </script>
 
 <template>
@@ -109,9 +128,9 @@ const flashSuccess = computed(() => page.props.flash?.success ?? '');
             {{ form.errors.email }}
           </p>
 
-          <p v-if="flashSuccess" class="text-center text-sm text-green-600">
-            {{ flashSuccess }}
-          </p>
+          <!-- Success Alert -->
+          <AlertBanner type="success" :message="localSuccess" :show="!!localSuccess" :dismissible="true"
+            @close="closeAlert" />
 
           <div class="mt-3 rounded-md bg-slate-50 px-4 py-3 text-center text-xs text-slate-500">
             Akses Admin diberikan oleh tim pengelola marketplace. <br> Hubungi administrator jika membutuhkan akun baru.

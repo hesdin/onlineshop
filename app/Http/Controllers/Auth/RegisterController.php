@@ -118,4 +118,34 @@ class RegisterController extends Controller
 
         return back()->with('success', 'Registrasi berhasil. Silakan cek email Anda untuk verifikasi dan melengkapi data usaha.');
     }
+
+    public function resendCustomerActivation(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if ($user && $user->hasRole('customer') && !$user->hasVerifiedEmail()) {
+            Mail::to($user)->queue(new VerifyAndSetPasswordMail($user, 'customer_self'));
+        }
+
+        return back()->with('success', 'Email aktivasi telah dikirim ulang.');
+    }
+
+    public function resendSellerActivation(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if ($user && $user->hasRole('seller') && !$user->hasVerifiedEmail()) {
+            Mail::to($user)->queue(new VerifyAndSetPasswordMail($user, 'seller_self'));
+        }
+
+        return back()->with('success', 'Email aktivasi telah dikirim ulang.');
+    }
 }

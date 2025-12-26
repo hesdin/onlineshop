@@ -76,7 +76,9 @@ Route::get('/register', function (Request $request) {
 })->name('register');
 
 Route::post('/register/customer', [RegisterController::class, 'storeCustomer'])->name('register.customer');
+Route::post('/register/customer/resend', [RegisterController::class, 'resendCustomerActivation'])->name('register.customer.resend');
 Route::post('/register/seller', [RegisterController::class, 'storeSeller'])->name('register.seller');
+Route::post('/register/seller/resend', [RegisterController::class, 'resendSellerActivation'])->name('register.seller.resend');
 
 Route::get('/verify-and-set-password/{id}/{hash}', [VerifyAndSetPasswordController::class, 'show'])
     ->middleware('signed')

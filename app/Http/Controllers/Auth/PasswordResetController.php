@@ -31,7 +31,7 @@ class PasswordResetController extends Controller
         ]);
     }
 
-    public function update(Request $request, int $id, string $hash): RedirectResponse
+    public function update(Request $request, int $id, string $hash): Response
     {
         $user = User::findOrFail($id);
 
@@ -52,7 +52,7 @@ class PasswordResetController extends Controller
             'password_changed_at' => now(),
         ])->save();
 
-        return redirect()->route($this->loginRouteName($user))->with('success', 'Password berhasil diubah. Silakan login.');
+        return Inertia::render('Auth/PasswordResetSuccess');
     }
 
     private function loginRouteName(User $user): string

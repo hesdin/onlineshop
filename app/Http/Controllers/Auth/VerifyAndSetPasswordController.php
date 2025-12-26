@@ -33,7 +33,7 @@ class VerifyAndSetPasswordController extends Controller
         ]);
     }
 
-    public function update(Request $request, int $id, string $hash): RedirectResponse
+    public function update(Request $request, int $id, string $hash): Response|RedirectResponse
     {
         $user = User::findOrFail($id);
 
@@ -62,7 +62,7 @@ class VerifyAndSetPasswordController extends Controller
                 ->with('success', 'Password berhasil dibuat. Silakan lengkapi dokumen usaha Anda.');
         }
 
-        return redirect()->route($this->loginRouteName($user))->with('success', 'Password berhasil diubah. Silakan login.');
+        return Inertia::render('Auth/PasswordResetSuccess');
     }
 
     public function forceForm(): Response

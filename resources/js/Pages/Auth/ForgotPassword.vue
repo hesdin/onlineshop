@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import CustomerCareButton from '@/components/CustomerCareButton.vue';
-import heroIllustration from '@/../images/illustrations/online-shopping.svg';
-
-const logoUrl = '/images/logo-pkk.png';
+import { computed, ref, watch, onUnmounted } from 'vue';
 
 const props = defineProps<{
   loginUrl?: string;
@@ -14,89 +10,209 @@ const form = useForm({
   email: '',
 });
 
+const emailSent = ref(false);
+const sentEmail = ref('');
+const cooldownSeconds = ref(0);
+let cooldownInterval: ReturnType<typeof setInterval> | null = null;
+
+const canResend = computed(() => cooldownSeconds.value === 0 && !form.processing);
+
+const startCooldown = () => {
+  if (cooldownInterval) clearInterval(cooldownInterval);
+  cooldownSeconds.value = 150; // 2.5 minutes = 150 seconds
+  cooldownInterval = setInterval(() => {
+    if (cooldownSeconds.value > 0) {
+      cooldownSeconds.value--;
+    }
+    if (cooldownSeconds.value <= 0) {
+      clearInterval(cooldownInterval!);
+      cooldownInterval = null;
+    }
+  }, 1000);
+};
+
+const formatCooldown = computed(() => {
+  const minutes = Math.floor(cooldownSeconds.value / 60);
+  const seconds = cooldownSeconds.value % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+});
+
 const submit = () => {
   form.post('/forgot-password', {
     preserveScroll: true,
+    onSuccess: () => {
+      sentEmail.value = form.email;
+      emailSent.value = true;
+      startCooldown();
+    },
+  });
+};
+
+const resendEmail = () => {
+  if (!canResend.value) return;
+  form.email = sentEmail.value;
+  form.post('/forgot-password', {
+    preserveScroll: true,
+    onSuccess: () => {
+      startCooldown();
+    },
   });
 };
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? '');
+const flashSuccess = computed(() => (page.props.flash as any)?.success ?? '');
+
+// If page loads with flash success (e.g., from redirect), show email sent view
+watch(
+  flashSuccess,
+  (newVal) => {
+    if (newVal && form.email) {
+      sentEmail.value = form.email;
+      emailSent.value = true;
+      startCooldown();
+    }
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  if (cooldownInterval) {
+    clearInterval(cooldownInterval);
+  }
+});
 </script>
 
 <template>
 
   <Head title="Lupa Kata Sandi" />
 
-  <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-white text-slate-900">
-    <div class="pointer-events-none absolute inset-0">
-      <span class="absolute -left-24 bottom-10 h-40 w-40 rotate-6 rounded-4xl border border-slate-200/70"></span>
-      <span class="absolute -right-10 top-10 h-32 w-32 rounded-4xl border border-slate-200/70"></span>
-      <span class="absolute -bottom-24 right-1/3 h-56 w-56 rounded-full bg-sky-100/60 blur-3xl"></span>
-    </div>
+  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+      <!-- Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-8 sm:p-10">
 
-    <div
-      class="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 py-12 lg:flex-row lg:items-stretch lg:gap-16 lg:py-16">
-      <div class="flex flex-1 flex-col items-center justify-center text-center lg:items-start lg:text-left">
-        <div class="max-w-md space-y-6">
-          <!-- <img :src="heroIllustration" alt="Lupa kata sandi"
-            class="mx-auto w-[240px] sm:w-[300px] lg:w-[340px] object-contain" /> -->
-          <div class="space-y-2">
-            <h2 class="text-2xl sm:text-3xl font-bold">Lupa Kata Sandi</h2>
-            <p class="text-sm sm:text-base text-slate-600">
-              Masukkan email Anda, kami kirim tautan untuk mengatur ulang kata sandi dengan aman.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div class="relative flex-1">
-        <div
-          class="relative z-10 ml-auto w-full max-w-xl rounded-xl border border-slate-100 bg-white p-8 sm:p-10 shadow-lg min-h-[420px]">
-          <div class="mb-6 flex items-center justify-between gap-4">
-            <Link :href="props.loginUrl || '/login'"
-              class="flex h-10 w-10 items-center justify-center rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
-              <span class="text-xl font-semibold leading-none">&larr;</span>
-            </Link>
-            <div class="flex h-14 w-24 items-center justify-center text-xs font-bold text-sky-600">
-              <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
-                draggable="false" />
+        <!-- Email Sent Success View -->
+        <template v-if="emailSent">
+          <!-- Icon -->
+          <div class="flex justify-center mb-6">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-sky-50">
+              <svg class="h-8 w-8 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+              </svg>
             </div>
           </div>
 
-          <div class="space-y-2">
-            <h3 class="text-xl sm:text-2xl font-bold text-slate-900">Atur Ulang Kata Sandi</h3>
-            <p class="text-sm text-slate-600">
-              Masukkan email terdaftar untuk menerima tautan reset kata sandi.
+          <!-- Title -->
+          <h1 class="text-2xl font-bold text-slate-900 text-center">Cek Email Anda</h1>
+          <p class="mt-2 text-sm text-slate-500 text-center">
+            Kami telah mengirimkan tautan reset kata sandi ke
+            <span class="font-medium text-slate-700">{{ sentEmail }}</span>
+          </p>
+
+          <!-- Open Gmail Button -->
+          <a href="https://mail.google.com" target="_blank"
+            class="mt-8 w-full flex items-center justify-center gap-2 rounded-lg bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-600">
+            Buka Gmail
+          </a>
+
+          <!-- Resend Link -->
+          <div class="mt-5 text-center">
+            <p class="text-sm text-slate-500">
+              Tidak menerima email?
+            </p>
+            <button v-if="canResend" type="button" @click="resendEmail"
+              class="mt-1 font-medium text-sm text-sky-600 hover:text-sky-700 hover:underline">
+              Kirim ulang tautan
+            </button>
+            <p v-else class="mt-1 text-sm text-slate-400">
+              <span v-if="form.processing" class="inline-flex items-center gap-1.5">
+                <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
+                Mengirim ulang...
+              </span>
+              <span v-else>Kirim ulang dalam <span class="font-medium text-slate-500">{{ formatCooldown }}</span></span>
             </p>
           </div>
 
-          <form class="mt-6 space-y-5" @submit.prevent="submit">
-            <div class="space-y-2">
-              <label for="email" class="text-sm font-semibold text-slate-700">Alamat Email</label>
+          <!-- Back to Login -->
+          <div class="mt-6 text-center">
+            <Link :href="props.loginUrl || '/login'"
+              class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-sky-600">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Kembali ke halaman login
+            </Link>
+          </div>
+        </template>
+
+        <!-- Initial Form View -->
+        <template v-else>
+          <!-- Icon -->
+          <div class="flex justify-center mb-6">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-sky-50">
+              <svg class="h-8 w-8 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Title -->
+          <h1 class="text-2xl font-bold text-slate-900 text-center">Lupa Kata Sandi?</h1>
+          <p class="mt-2 text-sm text-slate-500 text-center">
+            Jangan khawatir, kami akan mengirimkan instruksi untuk mengatur ulang kata sandi Anda.
+          </p>
+
+          <!-- Form -->
+          <form @submit.prevent="submit" class="mt-8 space-y-5">
+            <!-- Email -->
+            <div class="space-y-1.5">
+              <label for="email" class="text-sm font-medium text-slate-700">Email</label>
               <input id="email" v-model="form.email" type="email" autocomplete="email" required
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:text-base text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:outline-none"
-                placeholder="Masukkan email Anda" :disabled="form.processing" />
+                placeholder="Masukkan email Anda"
+                class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                :class="{ 'border-red-400 focus:border-red-400 focus:ring-red-400': form.errors.email }"
+                :disabled="form.processing" />
               <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
             </div>
 
+            <!-- Submit Button -->
             <button type="submit" :disabled="form.processing"
-              class="flex w-full items-center justify-center rounded-md bg-sky-600 py-3 text-sm sm:text-base font-semibold text-white transition hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400">
-              {{ form.processing ? 'Mengirim...' : 'Reset Kata Sandi' }}
+              class="w-full flex items-center justify-center gap-2 rounded-lg bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-600 disabled:bg-slate-200 disabled:text-slate-400">
+              <svg v-if="form.processing" class="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              {{ form.processing ? 'Mengirim' : 'Reset Kata Sandi' }}
             </button>
-
-            <p v-if="flashSuccess" class="text-center text-sm text-green-600">
-              {{ flashSuccess }}
-            </p>
           </form>
 
-          <p class="mt-4 text-center text-sm font-semibold text-sky-600">
-            <Link :href="props.loginUrl || '/login'" class="hover:underline">Kembali ke halaman login</Link>
-          </p>
-        </div>
+          <!-- Back to Login -->
+          <div class="mt-6 text-center">
+            <Link :href="props.loginUrl || '/login'"
+              class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-sky-600">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Kembali ke halaman login
+            </Link>
+          </div>
+        </template>
+
       </div>
     </div>
-
-    <CustomerCareButton />
   </section>
 </template>
