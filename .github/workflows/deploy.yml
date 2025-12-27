@@ -86,6 +86,7 @@ jobs:
             docker exec onlineshop-app php artisan config:clear && \
             docker exec onlineshop-app php artisan cache:clear && \
             docker exec onlineshop-app php artisan view:clear && \
+            docker exec onlineshop-postgres psql -U \\\$POSTGRES_USER -d \\\$POSTGRES_DB -c \\\"SELECT setval('migrations_id_seq', COALESCE((SELECT MAX(id) FROM migrations), 0) + 1, false);\\\" && \
             docker exec onlineshop-app php artisan migrate --force && \
             echo 'Deployment complete!'"
 
