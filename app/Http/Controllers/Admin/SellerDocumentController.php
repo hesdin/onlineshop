@@ -150,14 +150,24 @@ class SellerDocumentController extends Controller
             return back()->with('error', 'Dokumen wajib belum lengkap. Pastikan KTP, NPWP, dan NIB sudah diunggah.');
         }
 
-        if ($data['submission_status'] === 'approved') {
-            $data['ktp_status'] = 'approved';
-            $data['npwp_status'] = 'approved';
-            $data['nib_status'] = 'approved';
-        }
+        // Auto-determine submission_status based on individual document statuses
+        $allApproved = $data['ktp_status'] === 'approved'
+            && $data['npwp_status'] === 'approved'
+            && $data['nib_status'] === 'approved';
 
-        if (in_array('rejected', [$data['ktp_status'], $data['npwp_status'], $data['nib_status']], true)) {
+        $anyRejected = in_array('rejected', [$data['ktp_status'], $data['npwp_status'], $data['nib_status']], true);
+
+        // Logic priority:
+        // 1. If any document is rejected -> submission_status = rejected
+        // 2. If all documents are approved -> submission_status = approved
+        // 3. If mixed (some approved, some pending, none rejected) -> submission_status = submitted
+        if ($anyRejected) {
             $data['submission_status'] = 'rejected';
+        } elseif ($allApproved && $hasKtp && $hasNpwp && $hasNib) {
+            $data['submission_status'] = 'approved';
+        } elseif ($data['submission_status'] === 'approved') {
+            // Admin tries to approve but not all documents are approved yet
+            return back()->with('error', 'Tidak dapat approve. Pastikan semua dokumen (KTP, NPWP, NIB) sudah disetujui terlebih dahulu.');
         }
 
         $sellerDocument->update([
@@ -182,13 +192,25 @@ class SellerDocumentController extends Controller
         if ($store && $data['submission_status'] === 'rejected' && $previousStatus !== 'rejected') {
             $store->update(['is_verified' => false]);
 
-            // Notify seller about rejection (database only)
+            // Notify seller about rejection (database + email)
             if ($store->user) {
                 $store->user->notify(new StoreRejectedNotification($store->name, $data['admin_notes']));
             }
         }
 
-        return back()->with('success', 'Review dokumen berhasil disimpan.');
+        // Provide clear feedback
+        $message = 'Review dokumen berhasil disimpan.';
+        if ($data['submission_status'] === 'approved') {
+            $message = 'Dokumen berhasil disetujui. Toko sekarang terverifikasi.';
+        } elseif ($anyRejected) {
+            $rejectedDocs = [];
+            if ($data['ktp_status'] === 'rejected') $rejectedDocs[] = 'KTP';
+            if ($data['npwp_status'] === 'rejected') $rejectedDocs[] = 'NPWP';
+            if ($data['nib_status'] === 'rejected') $rejectedDocs[] = 'NIB';
+            $message = 'Dokumen ditolak: ' . implode(', ', $rejectedDocs) . '. Seller akan mendapat notifikasi untuk upload ulang.';
+        }
+
+        return back()->with('success', $message);
     }
 }
 

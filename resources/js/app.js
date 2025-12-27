@@ -58,3 +58,36 @@ createInertiaApp({
     color: '#0ea5e9',
   },
 });
+
+// Heartbeat for online status tracking
+// Sends ping every 3 minutes to keep user marked as online
+(function initHeartbeat() {
+  const HEARTBEAT_INTERVAL = 3 * 60 * 1000; // 3 minutes
+
+  const sendHeartbeat = async () => {
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      if (!csrfToken) return;
+
+      await fetch('/heartbeat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+      });
+    } catch (e) {
+      // Silently fail - user might be logged out
+    }
+  };
+
+  // Only start heartbeat if there's a CSRF token (meaning we're in Laravel app)
+  if (document.querySelector('meta[name="csrf-token"]')) {
+    // Send initial heartbeat
+    sendHeartbeat();
+    // Then send every 3 minutes
+    setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+  }
+})();

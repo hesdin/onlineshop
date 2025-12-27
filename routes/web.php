@@ -139,6 +139,11 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+// Heartbeat route for online status tracking
+Route::post('/heartbeat', function () {
+    return response()->json(['status' => 'ok']);
+})->middleware('auth')->name('heartbeat');
+
 Route::middleware(['auth', 'role:superadmin'])
     ->prefix('admin')
     ->name('admin.')

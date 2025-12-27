@@ -25,9 +25,6 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     Route::post('address/{address}/select', [AddressController::class, 'select'])->name('address.select');
     Route::delete('address/{address}', [AddressController::class, 'destroy'])->name('address.destroy');
 
-    Route::get('payment', function () {
-        return Inertia::render('Customer/Payment');
-    })->name('payment');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions');
 

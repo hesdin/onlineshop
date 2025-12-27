@@ -59,27 +59,27 @@ const statusConfig = computed(() => {
 
 <template>
   <Link href="/seller/documents"
-    class="block rounded-lg border border-slate-200 bg-white p-4 transition hover:bg-slate-50">
-    <div class="flex items-center justify-between mb-3">
-      <div class="flex items-center gap-2">
-        <component :is="statusConfig.icon" :class="['h-4 w-4', statusConfig.color]" />
-        <span class="text-sm font-medium text-slate-900">Verifikasi Toko</span>
+    class="block rounded-lg border border-slate-200 bg-white p-2.5 transition hover:bg-slate-50">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-1.5">
+        <component :is="statusConfig.icon" :class="['h-3.5 w-3.5', statusConfig.color]" />
+        <span class="text-xs font-medium text-slate-900">Verifikasi Toko</span>
       </div>
-      <span :class="['rounded-full px-2 py-0.5 text-xs font-medium', statusConfig.bgColor, statusConfig.color]">
+      <span :class="['rounded-full px-2 py-0.5 text-[10px] font-medium', statusConfig.bgColor, statusConfig.color]">
         {{ statusConfig.label }}
       </span>
     </div>
 
     <!-- Progress Bar -->
-    <div class="mb-2">
-      <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+    <div class="mb-1.5">
+      <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div :class="['h-full transition-all duration-300', statusConfig.progressColor]"
           :style="{ width: `${percentage}%` }" />
       </div>
     </div>
 
     <!-- Progress Text -->
-    <p class="text-xs text-slate-600">
+    <p class="text-[10px] text-slate-600">
       <template v-if="submissionStatus === 'approved'">
         Dokumen terverifikasi
       </template>

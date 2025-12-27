@@ -7,6 +7,7 @@ use App\Http\Controllers\Seller\NotificationController;
 use App\Http\Controllers\Seller\OrderController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\ProfileController;
+use App\Http\Controllers\Seller\SearchController;
 
 use App\Http\Controllers\Seller\StoreController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => redirect()->route('seller.dashboard.index'))->name('dashboard');
 
 Route::get('dashboard', DashboardController::class)->name('dashboard.index');
+
+// Search
+Route::get('search', [SearchController::class, 'index'])->name('search');
 
 // Redirect old documents route to settings
 Route::get('documents', fn () => redirect()->route('seller.settings.edit'))->name('documents.show');

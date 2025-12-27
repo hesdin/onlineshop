@@ -234,8 +234,9 @@ class OrderController extends Controller
     private function orderStatuses(): array
     {
         return [
-            ['value' => 'pending_payment', 'label' => 'Menunggu Pembayaran'],
+            ['value' => 'pending_payment', 'label' => 'Menunggu Konfirmasi'],
             ['value' => 'processing', 'label' => 'Diproses'],
+            ['value' => 'ready_for_pickup', 'label' => 'Siap Diambil'],
             ['value' => 'shipped', 'label' => 'Dikirim'],
             ['value' => 'delivered', 'label' => 'Diterima'],
             ['value' => 'completed', 'label' => 'Selesai'],
@@ -246,10 +247,8 @@ class OrderController extends Controller
     private function paymentStatuses(): array
     {
         return [
-            ['value' => 'pending', 'label' => 'Menunggu'],
-            ['value' => 'paid', 'label' => 'Dibayar'],
-            ['value' => 'expired', 'label' => 'Kedaluwarsa'],
-            ['value' => 'failed', 'label' => 'Gagal'],
+            ['value' => 'pending', 'label' => 'Belum Dibayar'],
+            ['value' => 'paid', 'label' => 'Lunas'],
         ];
     }
 }

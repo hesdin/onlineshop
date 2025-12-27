@@ -35,8 +35,8 @@ const navMain = [
   { title: 'Dashboard', href: '/seller/dashboard', icon: LayoutDashboard },
   { title: 'Produk Saya', href: '/seller/products', icon: Box },
   { title: 'Pesanan', href: '/seller/orders', icon: ShoppingBag },
-  { title: 'Chat', href: '/seller/chats', icon: MessageCircle },
   { title: 'Customer', href: '/seller/customers', icon: Users },
+  { title: 'Chat', href: '/seller/chats', icon: MessageCircle },
   { title: 'Settings', href: '/seller/settings', icon: Settings },
 ];
 
@@ -52,14 +52,16 @@ const storeName = computed(() => store.value?.name || 'Seller Center');
 
 <template>
   <Sidebar collapsible="icon" variant="sidebar" class="border-r border-slate-200 bg-white">
-    <SidebarHeader class="border-b border-slate-100" :class="isCollapsed ? 'px-2 py-3' : 'px-4 py-4'">
+    <SidebarHeader class="border-b border-slate-100" :class="isCollapsed ? 'px-2 py-3' : 'px-4 py-2'">
       <div class="flex items-center gap-2" :class="isCollapsed ? 'flex-col' : 'justify-between'">
         <div class="flex items-center gap-2 min-w-0" :class="{ 'flex-1': !isCollapsed }">
-          <div
-            class="h-7 w-7 rounded-sm bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">
-            <span class="text-white font-bold text-sm">{{ storeInitials }}</span>
+          <div class="h-12 w-12 rounded-sm flex items-center justify-center shrink-0 overflow-hidden"
+            :class="store?.logo_url ? 'bg-white' : 'bg-gradient-to-br from-blue-500 to-blue-600'">
+            <img v-if="store?.logo_url" :src="store.logo_url" :alt="storeName" class="h-full w-full object-cover" />
+            <span v-else class="text-white font-bold text-sm">{{ storeInitials }}</span>
           </div>
-          <div v-if="!isCollapsed" class="flex flex-col min-w-0">
+          <!-- Show store name only if there's no logo -->
+          <div v-if="!isCollapsed && !store?.logo_url" class="flex flex-col min-w-0">
             <span class="text-xl font-bold tracking-tight text-slate-900 truncate">{{ storeName }}</span>
           </div>
         </div>
@@ -85,14 +87,13 @@ const storeName = computed(() => store.value?.name || 'Seller Center');
 
     <SidebarContent class="px-3">
       <div
-        v-if="($page.props.auth as any).seller_document?.exists && !($page.props.auth as any).seller_document?.is_approved"
-        class="mb-4 mt-2">
+        v-if="!isCollapsed && ($page.props.auth as any).seller_document?.exists && !($page.props.auth as any).seller_document?.is_approved"
+        class="mb-3 mt-1.5">
         <DocumentProgressTracker :documents-uploaded="($page.props.auth as any).seller_document.documents_uploaded"
           :submission-status="($page.props.auth as any).seller_document.submission_status" />
       </div>
 
       <SidebarGroup>
-        <SidebarGroupLabel>GENERAL</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="item in navMain" :key="item.title">

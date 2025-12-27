@@ -29,6 +29,7 @@ interface Conversation {
   last_message: LastMessage | null;
   last_message_at: string;
   unread_count: number;
+  customer_is_online: boolean;
 }
 
 interface PaginatedConversations {
@@ -41,6 +42,22 @@ interface PaginatedConversations {
 const props = defineProps<{
   conversations: PaginatedConversations;
 }>();
+
+// Polling interval for auto-refresh (30 seconds)
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+  // Start polling for online status updates
+  pollingInterval = setInterval(() => {
+    router.reload({ only: ['conversations'] });
+  }, 30000); // 30 seconds
+});
+
+onUnmounted(() => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+  }
+});
 
 const formatTime = (dateString: string) => {
   if (!dateString) return '';
@@ -71,6 +88,12 @@ const getAvatarUrl = (customer: Customer) => {
   }
   return null;
 };
+
+const getMessagePrefix = (senderType: string | undefined) => {
+  if (senderType === 'seller') return 'Anda: ';
+  if (senderType === 'customer') return 'Customer: ';
+  return '';
+};
 </script>
 
 <template>
@@ -95,20 +118,24 @@ const getAvatarUrl = (customer: Customer) => {
           <p class="mt-1 text-sm text-slate-400">Pesan dari pelanggan akan muncul di sini</p>
         </div>
 
-        <div v-else class="divide-y divide-slate-100">
+        <div v-else class="divide-y divide-slate-100 overflow-hidden">
           <Link v-for="conv in conversations.data" :key="conv.id" :href="`/seller/chats/${conv.id}`"
-            class="flex items-center gap-4 px-5 py-4 transition hover:bg-slate-50"
+            class="flex items-center gap-4 px-5 py-4 transition hover:bg-slate-50 first:rounded-t-xl last:rounded-b-xl"
             :class="{ 'bg-blue-50/50': conv.unread_count > 0 }">
 
-            <!-- Avatar -->
+            <!-- Avatar with Online Status -->
             <div class="relative flex-shrink-0">
               <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
                 <img v-if="getAvatarUrl(conv.customer)" :src="getAvatarUrl(conv.customer)" :alt="conv.customer.name"
                   class="h-12 w-12 rounded-full object-cover" />
                 <User v-else class="h-6 w-6 text-slate-400" />
               </div>
+              <!-- Online Status Indicator -->
+              <span class="absolute bottom-0 right-0 z-10 block h-3 w-3 rounded-full ring-2 ring-white"
+                :class="conv.customer_is_online ? 'bg-green-500' : 'bg-gray-300'"></span>
+              <!-- Unread Badge -->
               <span v-if="conv.unread_count > 0"
-                class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                class="absolute -right-1 -top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                 {{ conv.unread_count > 9 ? '9+' : conv.unread_count }}
               </span>
             </div>
@@ -116,9 +143,12 @@ const getAvatarUrl = (customer: Customer) => {
             <!-- Content -->
             <div class="min-w-0 flex-1">
               <div class="flex items-center justify-between">
-                <h3 class="font-semibold text-slate-900" :class="{ 'font-bold': conv.unread_count > 0 }">
-                  {{ conv.customer.name }}
-                </h3>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold text-slate-900" :class="{ 'font-bold': conv.unread_count > 0 }">
+                    {{ conv.customer.name }}
+                  </h3>
+                  <span v-if="conv.customer_is_online" class="text-xs text-green-600 font-medium">Online</span>
+                </div>
                 <span class="text-xs text-slate-400">
                   {{ formatTime(conv.last_message_at) }}
                 </span>
@@ -128,7 +158,7 @@ const getAvatarUrl = (customer: Customer) => {
               </p>
               <p class="mt-0.5 text-sm text-slate-600 truncate"
                 :class="{ 'font-medium text-slate-800': conv.unread_count > 0 }">
-                <span v-if="conv.last_message?.sender_type === 'seller'" class="text-slate-400">Anda: </span>
+                <span class="text-slate-400">{{ getMessagePrefix(conv.last_message?.sender_type) }}</span>
                 {{ truncateText(conv.last_message?.content || 'Belum ada pesan') }}
               </p>
             </div>

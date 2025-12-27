@@ -2,7 +2,7 @@
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 import CustomerSidebarMenu from '@/components/Customer/SidebarMenu.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 defineOptions({
   layout: LandingLayout,
@@ -30,7 +31,19 @@ const props = defineProps({
 });
 
 const page = usePage();
-const flash = computed(() => page.props.flash);
+const flash = computed(() => page.props.flash ?? {});
+const flashSuccess = computed(() => flash.value.success ?? '');
+const showSuccess = ref(false);
+
+// Watch flash for success messages with auto-hide
+watch(() => page.props.flash, (newFlash) => {
+  if (newFlash?.success) {
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+    }, 5000);
+  }
+}, { deep: true, immediate: true });
 
 const activeTab = ref('pending');
 
@@ -121,11 +134,14 @@ const submitReview = () => {
               <p class="mt-1 text-sm text-slate-500">Berikan ulasan untuk produk yang sudah Anda beli</p>
             </div>
 
-            <!-- Success Flash -->
-            <div v-if="flash?.success"
-              class="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-700">
-              {{ flash.success }}
-            </div>
+            <!-- Floating Success Alert -->
+            <Teleport to="body">
+              <div v-if="showSuccess && flashSuccess"
+                class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[400px] max-w-xl shadow-lg rounded-lg overflow-hidden">
+                <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+                  @close="showSuccess = false" />
+              </div>
+            </Teleport>
 
             <!-- Tabs -->
             <div class="border-b border-slate-200">

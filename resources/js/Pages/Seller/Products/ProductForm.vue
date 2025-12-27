@@ -264,8 +264,8 @@ const validateRequiredFields = () => {
   ensure('location_district_id', hasValue(form.location_district_id), 'Kecamatan wajib dipilih');
   ensure('location_postal_code', hasValue(form.location_postal_code), 'Kode pos wajib diisi');
 
-  // Shipping methods are optional - seller can choose one, both, or configure later
-  // No validation required here
+  // Shipping methods validation
+  ensure('shipping_methods', form.shipping_pickup || form.shipping_delivery, 'Pilih minimal satu metode pengiriman');
 
   return valid;
 };
@@ -386,7 +386,7 @@ const categorySearch = ref('');
 
 const filteredCategoryOptions = computed(() => {
   if (!categorySearch.value) {
-    return props.categoryOptions.slice(0, 5);
+    return props.categoryOptions;
   }
   const term = categorySearch.value.toLowerCase();
   return props.categoryOptions.filter((option) => option.name.toLowerCase().includes(term));
@@ -666,8 +666,8 @@ onBeforeUnmount(() => {
           </p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div class="space-y-2 md:col-span-2 xl:col-span-2">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-2">
             <Label for="category" class="flex items-center gap-1">
               Kategori
               <span class="text-red-500">*</span>
@@ -683,20 +683,22 @@ onBeforeUnmount(() => {
                   <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" class="w-[280px] p-0 text-left">
+              <PopoverContent align="start" class="!w-full !p-0">
                 <Command>
                   <CommandInput v-model="categorySearch" placeholder="Cari kategori..." />
                   <CommandEmpty>
                     Kategori tidak ditemukan.
                   </CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem v-for="option in filteredCategoryOptions" :key="option.id" :value="option.name"
-                      @select="() => selectCategory(option)">
-                      <Check class="mr-2 h-4 w-4"
-                        :class="form.category_id === option.id.toString() ? 'opacity-100' : 'opacity-0'" />
-                      <span>{{ option.name }}</span>
-                    </CommandItem>
-                  </CommandGroup>
+                  <CommandList class="max-h-[300px]">
+                    <CommandGroup>
+                      <CommandItem v-for="option in filteredCategoryOptions" :key="option.id" :value="option.name"
+                        @select="() => selectCategory(option)">
+                        <Check class="mr-2 h-4 w-4"
+                          :class="form.category_id === option.id.toString() ? 'opacity-100' : 'opacity-0'" />
+                        <span>{{ option.name }}</span>
+                      </CommandItem>
+                    </CommandGroup>
+                  </CommandList>
                 </Command>
               </PopoverContent>
             </Popover>
@@ -817,16 +819,6 @@ onBeforeUnmount(() => {
           <input ref="imageInputRef" id="images" type="file" accept="image/*" multiple class="sr-only"
             :disabled="form.processing" @change="handleImagesChange" />
 
-          <div class="flex flex-col gap-1">
-            <Button type="button" variant="outline" size="sm" @click="triggerImagePicker" :disabled="form.processing">
-              <ImagePlus class="mr-2 h-4 w-4" />
-              Tambah Gambar
-            </Button>
-            <p class="text-xs text-slate-500">
-              Bisa pilih sekaligus atau tambahkan satu per satu.
-            </p>
-          </div>
-
           <p v-if="form.errors.images" class="text-xs text-red-600">
             {{ form.errors.images }}
           </p>
@@ -895,7 +887,8 @@ onBeforeUnmount(() => {
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">Rp</span>
             <Input id="price" v-model="form.price" type="number" min="0" placeholder="0" required class="pl-10"
-              :class="form.errors.price ? 'border-red-500' : ''" />
+              :class="form.errors.price ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9]/.test(e.key) && e.preventDefault()" />
           </div>
           <p v-if="form.errors.price" class="text-xs text-red-600">
             {{ form.errors.price }}
@@ -912,7 +905,8 @@ onBeforeUnmount(() => {
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">Rp</span>
             <Input id="sale_price" v-model="form.sale_price" type="number" min="0" placeholder="0" class="pl-10"
-              :class="form.errors.sale_price ? 'border-red-500' : ''" />
+              :class="form.errors.sale_price ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9]/.test(e.key) && e.preventDefault()" />
           </div>
           <p v-if="form.errors.sale_price" class="text-xs text-red-600">
             {{ form.errors.sale_price }}
@@ -925,7 +919,8 @@ onBeforeUnmount(() => {
             <span class="text-red-500">*</span>
           </Label>
           <Input id="min_order" v-model="form.min_order" type="number" min="1" placeholder="1" required
-            :class="form.errors.min_order ? 'border-red-500' : ''" />
+            :class="form.errors.min_order ? 'border-red-500' : ''"
+            @keypress="(e) => !/[0-9]/.test(e.key) && e.preventDefault()" />
           <p v-if="form.errors.min_order" class="text-xs text-red-600">
             {{ form.errors.min_order }}
           </p>
@@ -937,7 +932,8 @@ onBeforeUnmount(() => {
             <span class="text-red-500">*</span>
           </Label>
           <Input id="stock" v-model="form.stock" type="number" min="0" placeholder="0" required
-            :class="form.errors.stock ? 'border-red-500' : ''" />
+            :class="form.errors.stock ? 'border-red-500' : ''"
+            @keypress="(e) => !/[0-9]/.test(e.key) && e.preventDefault()" />
           <p v-if="form.errors.stock" class="text-xs text-red-600">
             {{ form.errors.stock }}
           </p>
@@ -963,43 +959,45 @@ onBeforeUnmount(() => {
         </div>
       </CardHeader>
       <CardContent class="space-y-6">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div class="space-y-2">
             <Label for="weight" class="flex items-center gap-1">
               Berat (gram)
               <span class="text-red-500">*</span>
             </Label>
             <Input id="weight" v-model="form.weight" type="number" min="0" placeholder="0" required
-              :class="form.errors.weight ? 'border-red-500' : ''" />
+              :class="form.errors.weight ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9]/.test(e.key) && e.preventDefault()" />
             <p v-if="form.errors.weight" class="text-xs text-red-600">
               {{ form.errors.weight }}
             </p>
           </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div class="space-y-2">
-              <Label for="length">Panjang</Label>
-              <Input id="length" v-model="form.length" type="number" min="0" step="0.1" placeholder="0"
-                :class="form.errors.length ? 'border-red-500' : ''" />
-              <p v-if="form.errors.length" class="text-xs text-red-600">
-                {{ form.errors.length }}
-              </p>
-            </div>
-            <div class="space-y-2">
-              <Label for="width">Lebar</Label>
-              <Input id="width" v-model="form.width" type="number" min="0" step="0.1" placeholder="0"
-                :class="form.errors.width ? 'border-red-500' : ''" />
-              <p v-if="form.errors.width" class="text-xs text-red-600">
-                {{ form.errors.width }}
-              </p>
-            </div>
-            <div class="space-y-2">
-              <Label for="height">Tinggi</Label>
-              <Input id="height" v-model="form.height" type="number" min="0" step="0.1" placeholder="0"
-                :class="form.errors.height ? 'border-red-500' : ''" />
-              <p v-if="form.errors.height" class="text-xs text-red-600">
-                {{ form.errors.height }}
-              </p>
-            </div>
+          <div class="space-y-2">
+            <Label for="length">Panjang</Label>
+            <Input id="length" v-model="form.length" type="number" min="0" step="0.1" placeholder="0"
+              :class="form.errors.length ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9.]/.test(e.key) && e.preventDefault()" />
+            <p v-if="form.errors.length" class="text-xs text-red-600">
+              {{ form.errors.length }}
+            </p>
+          </div>
+          <div class="space-y-2">
+            <Label for="width">Lebar</Label>
+            <Input id="width" v-model="form.width" type="number" min="0" step="0.1" placeholder="0"
+              :class="form.errors.width ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9.]/.test(e.key) && e.preventDefault()" />
+            <p v-if="form.errors.width" class="text-xs text-red-600">
+              {{ form.errors.width }}
+            </p>
+          </div>
+          <div class="space-y-2">
+            <Label for="height">Tinggi</Label>
+            <Input id="height" v-model="form.height" type="number" min="0" step="0.1" placeholder="0"
+              :class="form.errors.height ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9.]/.test(e.key) && e.preventDefault()" />
+            <p v-if="form.errors.height" class="text-xs text-red-600">
+              {{ form.errors.height }}
+            </p>
           </div>
         </div>
 
@@ -1034,7 +1032,8 @@ onBeforeUnmount(() => {
               <span class="text-red-500">*</span>
             </Label>
             <Input id="location_postal_code" v-model="form.location_postal_code" placeholder="Kode pos asal" required
-              :disabled="locationFieldsDisabled" :class="form.errors.location_postal_code ? 'border-red-500' : ''" />
+              :disabled="locationFieldsDisabled" :class="form.errors.location_postal_code ? 'border-red-500' : ''"
+              @keypress="(e) => !/[0-9]/.test(e.key) && e.preventDefault()" />
             <p v-if="form.errors.location_postal_code" class="text-xs text-red-600">
               {{ form.errors.location_postal_code }}
             </p>
@@ -1100,9 +1099,6 @@ onBeforeUnmount(() => {
         </div>
       </CardHeader>
       <CardContent class="space-y-4">
-        <p class="text-sm text-slate-600">
-          Pilih metode pengiriman yang didukung untuk produk ini. Minimal pilih satu metode.
-        </p>
         <div class="grid gap-4 md:grid-cols-2">
           <label
             class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50/60 px-4 py-3 cursor-pointer hover:border-blue-300 transition"
@@ -1126,9 +1122,6 @@ onBeforeUnmount(() => {
               class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
           </label>
         </div>
-        <p v-if="!form.shipping_pickup && !form.shipping_delivery" class="text-xs text-red-600 font-medium">
-          Pilih minimal satu metode pengiriman
-        </p>
       </CardContent>
       <CardFooter class="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
         <Button v-if="$slots.cancel" type="button" variant="outline" as-child>

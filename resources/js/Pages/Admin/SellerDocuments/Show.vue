@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CheckCircle2, FileText, ShieldAlert } from 'lucide-vue-next';
+import { FileText } from 'lucide-vue-next';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 type DocumentPayload = {
   id: number;
@@ -38,8 +38,28 @@ defineOptions({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => (page.props.flash as any)?.success ?? '');
-const flashError = computed(() => (page.props.flash as any)?.error ?? '');
+const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>);
+const flashSuccess = computed(() => flash.value.success ?? '');
+const flashError = computed(() => flash.value.error ?? '');
+const showSuccess = ref(false);
+const showError = ref(false);
+
+// Watch for success messages
+watch(() => page.props.flash, (newFlash) => {
+  const flashData = newFlash as Record<string, string> | undefined;
+  if (flashData?.success) {
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+    }, 5000);
+  }
+  if (flashData?.error) {
+    showError.value = true;
+    setTimeout(() => {
+      showError.value = false;
+    }, 5000);
+  }
+}, { deep: true, immediate: true });
 
 const isPdf = (url: string) => url.toLowerCase().indexOf('.pdf') !== -1;
 
@@ -101,21 +121,23 @@ const closePreview = () => {
 
     <Head :title="`Review Dokumen #${document.id}`" />
 
-    <Alert v-if="flashSuccess" variant="default" class="flex items-start gap-3 border-green-200 bg-green-50">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <div class="space-y-1">
-        <AlertTitle class="text-green-800">Berhasil</AlertTitle>
-        <AlertDescription class="text-green-700">{{ flashSuccess }}</AlertDescription>
+    <!-- Floating Success Alert -->
+    <Teleport to="body">
+      <div v-if="showSuccess && flashSuccess"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+          @close="showSuccess = false" />
       </div>
-    </Alert>
+    </Teleport>
 
-    <Alert v-if="flashError" variant="destructive" class="flex items-start gap-3 border-red-200 bg-red-50">
-      <ShieldAlert class="h-5 w-5 text-red-600" />
-      <div class="space-y-1">
-        <AlertTitle class="text-red-800">Gagal</AlertTitle>
-        <AlertDescription class="text-red-700">{{ flashError }}</AlertDescription>
+    <!-- Floating Error Alert -->
+    <Teleport to="body">
+      <div v-if="showError && flashError"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="error" :message="flashError" :show="showError" :dismissible="true"
+          @close="showError = false" />
       </div>
-    </Alert>
+    </Teleport>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="space-y-1">

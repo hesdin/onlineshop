@@ -43,8 +43,10 @@ type Notification = {
 
 const notifications = ref<Notification[]>([]);
 const unreadCount = ref(0);
+const unreadChatCount = ref(0);
 const isLoadingNotifications = ref(false);
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
+let chatPollingInterval: ReturnType<typeof setInterval> | null = null;
 
 const fetchNotifications = async () => {
   try {
@@ -155,16 +157,31 @@ const getIconColor = (icon: string) => {
   }
 };
 
+// Fetch chat unread count
+const fetchChatUnreadCount = async () => {
+  try {
+    const response = await axios.get('/seller/chats/unread-count');
+    unreadChatCount.value = response.data.unread_count;
+  } catch (error) {
+    console.error('Failed to fetch chat unread count:', error);
+  }
+};
+
 // Start polling on mount
 onMounted(() => {
   fetchNotifications();
+  fetchChatUnreadCount();
   pollingInterval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
+  chatPollingInterval = setInterval(fetchChatUnreadCount, 30000); // Poll every 30 seconds
 });
 
 // Clean up on unmount
 onUnmounted(() => {
   if (pollingInterval) {
     clearInterval(pollingInterval);
+  }
+  if (chatPollingInterval) {
+    clearInterval(chatPollingInterval);
   }
 });
 
@@ -183,6 +200,21 @@ const confirmLogout = () => {
 const cancelLogout = () => {
   showLogoutModal.value = false;
 };
+
+// Search functionality
+const searchQuery = ref('');
+
+const handleSearch = () => {
+  if (searchQuery.value.trim()) {
+    router.visit(`/seller/search?q=${encodeURIComponent(searchQuery.value.trim())}`);
+  }
+};
+
+const handleSearchKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    handleSearch();
+  }
+};
 </script>
 
 <template>
@@ -193,7 +225,7 @@ const cancelLogout = () => {
       <div class="flex items-center gap-4 flex-1 max-w-xl">
         <div class="relative flex-1">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input type="text" placeholder="Cari produk, pesanan..."
+          <input v-model="searchQuery" @keydown="handleSearchKeydown" type="text" placeholder="Cari produk, pesanan..."
             class="w-full h-9 pl-9 pr-4 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all" />
         </div>
       </div>
@@ -204,9 +236,9 @@ const cancelLogout = () => {
         <Button variant="ghost" size="icon" class="relative hover:bg-slate-100 transition-colors" as-child>
           <Link href="/seller/chats">
             <MessageCircle class="h-5 w-5 text-slate-600" />
-            <Badge v-if="(page.props as any).unread_chat_count > 0"
+            <Badge v-if="unreadChatCount > 0"
               class="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-emerald-500 text-[10px] font-semibold text-white border-2 border-white">
-              {{ (page.props as any).unread_chat_count > 9 ? '9+' : (page.props as any).unread_chat_count }}
+              {{ unreadChatCount > 9 ? '9+' : unreadChatCount }}
             </Badge>
             <span class="sr-only">Chat</span>
           </Link>
@@ -287,7 +319,7 @@ const cancelLogout = () => {
           <DropdownMenuTrigger as-child>
             <Button variant="ghost" class="gap-2 hover:bg-slate-100 transition-colors">
               <Avatar class="h-8 w-8 border border-slate-200">
-                <AvatarImage :src="user?.avatar_url" :alt="user?.name" />
+                <AvatarImage v-if="user?.avatar_url" :src="user.avatar_url" :alt="user?.name" />
                 <AvatarFallback
                   class="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white text-xs font-semibold">
                   {{ userInitials }}
@@ -309,13 +341,13 @@ const cancelLogout = () => {
             <DropdownMenuItem as-child>
               <Link href="/seller/profile" class="cursor-pointer">
                 <User class="mr-2 h-4 w-4" />
-                <span>Profil Saya</span>
+                <span>Profile</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem as-child>
               <Link href="/seller/settings" class="cursor-pointer">
                 <Settings class="mr-2 h-4 w-4" />
-                <span>Pengaturan Toko</span>
+                <span>Settings</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

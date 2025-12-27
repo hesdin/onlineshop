@@ -27,8 +27,9 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-import { AlertTriangle, CheckCircle2, Edit2, Filter, Plus, Search, Trash2 } from 'lucide-vue-next';
+import { AlertTriangle, Edit2, Filter, Plus, Search, Trash2 } from 'lucide-vue-next';
 import RestrictedActionTooltip from '@/components/RestrictedActionTooltip.vue';
+import AlertBanner from '@/components/AlertBanner.vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 
 type Option = {
@@ -98,7 +99,7 @@ watch(
       successVisible.value = true;
       successTimeout = setTimeout(() => {
         successVisible.value = false;
-      }, 3000);
+      }, 5000);
     } else {
       successVisible.value = false;
     }
@@ -420,14 +421,17 @@ const hasActiveFilters = computed(
 
     <Head title="Produk Saya" />
 
-    <Alert v-if="successVisible && flashSuccess" variant="default"
-      class="flex items-center gap-2 border-green-200 bg-green-50 text-sm font-medium text-green-700">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <span>{{ flashSuccess }}</span>
-    </Alert>
+    <!-- Floating Success Alert -->
+    <Teleport to="body">
+      <div v-if="successVisible && flashSuccess"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="success" :message="flashSuccess" :show="successVisible" :dismissible="true"
+          @close="successVisible = false" />
+      </div>
+    </Teleport>
 
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 class="text-2xl font-semibold text-slate-900">Produk Toko</h1>
         <p class="text-sm text-slate-500">Kelola katalog dan stok yang tampil di etalase.</p>
@@ -435,15 +439,13 @@ const hasActiveFilters = computed(
       <RestrictedActionTooltip :disabled="!($page.props.auth as any).seller_document?.is_approved" :reason="($page.props.auth as any).seller_document?.submission_status === 'submitted'
         ? 'Dokumen sedang dalam proses verifikasi. Fitur ini akan aktif setelah disetujui.'
         : 'Lengkapi dan verifikasi dokumen toko untuk menambah produk.'">
-        <div class="w-full">
-          <Button as-child :disabled="!($page.props.auth as any).seller_document?.is_approved">
-            <Link href="/seller/products/create"
-              :class="{ 'pointer-events-none opacity-50': !($page.props.auth as any).seller_document?.is_approved }">
-              <Plus class="h-4 w-4" />
-              Produk
-            </Link>
-          </Button>
-        </div>
+        <Button as-child :disabled="!($page.props.auth as any).seller_document?.is_approved">
+          <Link href="/seller/products/create"
+            :class="{ 'pointer-events-none opacity-50': !($page.props.auth as any).seller_document?.is_approved }">
+            <Plus class="h-4 w-4" />
+            Produk
+          </Link>
+        </Button>
       </RestrictedActionTooltip>
     </div>
 
@@ -482,7 +484,7 @@ const hasActiveFilters = computed(
                       <SelectTrigger class="w-full bg-white">
                         <SelectValue placeholder="Semua kategori" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent class="max-h-[250px] z-[100]">
                         <SelectItem value="all">Semua kategori</SelectItem>
                         <SelectItem v-for="option in categoryOptions" :key="option.id" :value="option.id.toString()">
                           {{ option.name }}
@@ -496,7 +498,7 @@ const hasActiveFilters = computed(
                       <SelectTrigger class="w-full bg-white">
                         <SelectValue placeholder="Semua status" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent class="z-[100]">
                         <SelectItem value="all">Semua status</SelectItem>
                         <SelectItem v-for="option in statuses" :key="option.value" :value="option.value">
                           {{ option.label }}

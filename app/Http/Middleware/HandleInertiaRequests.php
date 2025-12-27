@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Models\Cart;
 use App\Models\Category;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -49,7 +49,8 @@ class HandleInertiaRequests extends Middleware
                         'roles' => method_exists($request->user(), 'getRoleNames')
                             ? $request->user()->getRoleNames()->toArray()
                             : [],
-                        'avatar_url' => $request->user()->getFirstMediaUrl('profile_image') ?: null,
+                        'avatar_url' => $this->getUserAvatarUrl($request->user()),
+                        'buyer_type_label' => $this->getBuyerTypeLabel($request->user()),
                         'store' => $this->getStoreData($request),
                     ]
                     : null,
@@ -61,6 +62,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'cart' => fn () => $this->cartData($request),
             'megaMenu' => fn () => $this->megaMenuData(),
+            'unread_chat_count' => fn () => $this->getUnreadChatCount($request),
             'csrf_token' => csrf_token(),
             'recaptcha' => [
                 'siteKey' => config('recaptchav3.sitekey', ''),
@@ -170,14 +172,14 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
         // Check if user has a store (seller role)
         $store = $user->store;
 
-        if (!$store) {
+        if (! $store) {
             return null;
         }
 
@@ -185,6 +187,7 @@ class HandleInertiaRequests extends Middleware
             'id' => $store->id,
             'name' => $store->name,
             'slug' => $store->slug,
+            'logo_url' => $store->logo_url,
         ];
     }
 
@@ -192,13 +195,13 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
-        if (!$user || !$user->store) {
+        if (! $user || ! $user->store) {
             return null;
         }
 
         $sellerDocument = $user->store->sellerDocument;
 
-        if (!$sellerDocument) {
+        if (! $sellerDocument) {
             return [
                 'exists' => false,
                 'submission_status' => 'draft',
@@ -231,5 +234,57 @@ class HandleInertiaRequests extends Middleware
             'documents_uploaded' => $documentsUploaded,
             'admin_notes' => $sellerDocument->admin_notes,
         ];
+    }
+
+    protected function getUserAvatarUrl($user): ?string
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $media = $user->getFirstMedia('profile_image');
+        if (! $media) {
+            return null;
+        }
+
+        // Return relative URL for consistency
+        return '/storage/'.$media->id.'/'.$media->file_name;
+    }
+
+    protected function getUnreadChatCount(Request $request): int
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->store) {
+            return 0;
+        }
+
+        return \App\Models\Message::whereHas('conversation', function ($q) use ($user) {
+            $q->where('store_id', $user->store->id);
+        })
+            ->where('sender_type', 'customer')
+            ->whereNull('read_at')
+            ->count();
+    }
+
+    protected function getBuyerTypeLabel($user): string
+    {
+        if (! $user) {
+            return 'Guest';
+        }
+
+        // Check roles to determine buyer type
+        if (method_exists($user, 'hasRole')) {
+            if ($user->hasRole('seller')) {
+                return 'Penjual';
+            }
+            if ($user->hasRole('admin')) {
+                return 'Administrator';
+            }
+        }
+
+        // Default for customers
+        // return 'Buyer Retail';
+        return 'customer';
     }
 }

@@ -72,7 +72,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { MessageSquare, PhoneOff, Copy, Check, ExternalLink, Info } from 'lucide-vue-next';
+import { MessageSquare, PhoneOff, Copy, Check, ExternalLink, Info, Star } from 'lucide-vue-next';
 
 // ... existing refs ...
 
@@ -395,15 +395,24 @@ const buyAgain = async (order) => {
                       class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700 transition-colors hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
                       Bayar
                     </button>
-                    <button v-else @click="buyAgain(order)" :disabled="isBuyingAgain"
-                      class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
-                      <svg v-if="isBuyingAgain" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2">
-                        <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
-                        <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round"></path>
-                      </svg>
-                      {{ isBuyingAgain ? 'Memproses...' : 'Beli Lagi' }}
-                    </button>
+                    <template v-else>
+                      <!-- Review Button for completed orders -->
+                      <Link v-if="order.status === 'completed' && order.has_pending_reviews"
+                        href="/customer/dashboard/reviews"
+                        class="rounded-md border border-amber-500 bg-amber-50 px-4 py-2 font-bold text-amber-600 hover:bg-amber-100 transition-colors flex items-center gap-1.5">
+                        <Star class="h-4 w-4" />
+                        Beri Ulasan
+                      </Link>
+                      <button @click="buyAgain(order)" :disabled="isBuyingAgain"
+                        class="rounded-md bg-sky-600 px-5 py-2 font-bold text-white shadow hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
+                        <svg v-if="isBuyingAgain" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
+                          <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round"></path>
+                        </svg>
+                        {{ isBuyingAgain ? 'Memproses...' : 'Beli Lagi' }}
+                      </button>
+                    </template>
                     <!-- More menu placeholder -->
                   </div>
                 </div>
@@ -420,7 +429,7 @@ const buyAgain = async (order) => {
                     <AlertDialogTitle class="text-center text-xl font-bold">Informasi Belum Lengkap</AlertDialogTitle>
                     <AlertDialogDescription class="text-center text-slate-600 pt-2">
                       Toko <span class="font-semibold text-slate-900">{{ (selectedOrder || pendingOrder)?.store.name
-                        }}</span> {{ fallbackReason }}. Apakah Anda ingin menghubungi mereka melalui chat
+                      }}</span> {{ fallbackReason }}. Apakah Anda ingin menghubungi mereka melalui chat
                       internal?
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -528,7 +537,7 @@ const buyAgain = async (order) => {
                       <div class="flex-1">
                         <div class="font-bold text-slate-900 line-clamp-2">{{ item.name }}</div>
                         <div class="mt-1 text-sm text-slate-500">{{ item.quantity }} x {{ formatPrice(item.unit_price)
-                        }}</div>
+                          }}</div>
                         <div v-if="item.note" class="mt-1 text-xs text-slate-500 italic">"{{ item.note }}"</div>
                       </div>
                     </div>
@@ -608,7 +617,7 @@ const buyAgain = async (order) => {
                       <span class="text-slate-600">Total Harga ({{ selectedOrder.items_count }} barang)</span>
                       <span class="text-slate-900">{{ formatPrice(selectedOrder.grand_total -
                         (selectedOrder.shipping_info?.cost || 0))
-                        }}</span>
+                      }}</span>
                     </div>
                     <!-- Shipping Cost removed as requested -->
 
@@ -668,6 +677,14 @@ const buyAgain = async (order) => {
                   class="w-full rounded-md bg-sky-600 px-4 py-2 font-bold text-white shadow hover:bg-sky-700">
                   Lacak Pengiriman
                 </button>
+
+                <!-- Review CTA for completed orders -->
+                <Link v-if="selectedOrder.status === 'completed' && selectedOrder.has_pending_reviews"
+                  href="/customer/dashboard/reviews"
+                  class="w-full rounded-md bg-amber-500 px-4 py-2.5 font-bold text-white shadow hover:bg-amber-600 flex items-center justify-center gap-2 transition-colors">
+                  <Star class="h-4 w-4" />
+                  Beri Ulasan Produk
+                </Link>
 
                 <!-- Invoice Link -->
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
@@ -735,7 +752,7 @@ const buyAgain = async (order) => {
                 <div class="flex items-center justify-between">
                   <span class="font-bold text-sky-600 text-2xl tracking-tight">{{
                     formatPrice(selectedOrder?.grand_total)
-                    }}</span>
+                  }}</span>
                   <button @click="copyToClipboard(selectedOrder?.grand_total, 'amount')"
                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-sky-600 text-xs font-bold transition-all hover:border-sky-300 hover:bg-sky-50 active:scale-95 shadow-sm">
                     <component :is="copiedField === 'amount' ? Check : Copy" class="h-3.5 w-3.5" />

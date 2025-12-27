@@ -40,7 +40,7 @@ class ReorderController extends Controller
                     'price' => $product->price,
                     'image_url' => $product->image_url,
                     'stock' => $product->stock,
-                    'is_available' => $product->is_active && $product->stock > 0,
+                    'is_available' => $product->status !== 'inactive' && $product->stock > 0,
                     'store' => [
                         'id' => $product->store?->id,
                         'name' => $product->store?->name,

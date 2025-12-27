@@ -1,35 +1,51 @@
 <script setup lang="ts">
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { Head, useForm, usePage, router } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 import CustomerSidebarMenu from '@/components/Customer/SidebarMenu.vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2 } from 'lucide-vue-next';
+import AlertBanner from '@/components/AlertBanner.vue';
+
+interface SessionDevice {
+  id: string;
+  ip_address: string;
+  browser: string;
+  platform: string;
+  device_type: string;
+  last_active: string;
+  is_current: boolean;
+}
 
 const page = usePage<{
   flash?: { success?: string | null };
-  profile?: { avatar_url?: string | null; name?: string; referral_code?: string; phone?: string; email?: string };
+  profile?: { avatar_url?: string | null; name?: string; referral_code?: string; phone?: string; email?: string; password_changed_at?: string | null };
+  sessions?: SessionDevice[];
 }>();
-const successMessage = ref<string | null>(page.props.flash?.success ?? null);
-watch(
-  () => page.props.flash?.success,
-  (val) => {
-    successMessage.value = val ?? null;
-    if (successMessage.value) {
-      setTimeout(() => {
-        successMessage.value = null;
-      }, 3000);
-    }
-  },
-  { immediate: true },
-);
+
+const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>);
+const flashSuccess = computed(() => flash.value.success ?? '');
+const showSuccess = ref(false);
+
+// Watch flash object directly to detect new messages even if content is the same
+watch(() => page.props.flash, (newFlash) => {
+  const flashData = newFlash as Record<string, string> | undefined;
+  if (flashData?.success) {
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+    }, 5000);
+  }
+}, { deep: true, immediate: true });
 
 const props = defineProps({
   profile: {
     type: Object,
     default: () => ({}),
+  },
+  sessions: {
+    type: Array as () => SessionDevice[],
+    default: () => [],
   },
 });
 
@@ -87,11 +103,14 @@ const handleAvatarChange = (event: Event) => {
 const submitProfile = () => {
   form.post('/customer/dashboard/profile', {
     forceFormData: true,
+    preserveScroll: true,
     onSuccess: () => {
       revokeAvatarObjectUrl();
       const latestAvatar = (page.props.profile?.avatar_url as string | null) ?? serverAvatarUrl.value;
       serverAvatarUrl.value = latestAvatar;
       avatarPreview.value = latestAvatar;
+      // Reload to update auth.user.avatar_url for sidebar
+      router.reload({ only: ['auth'] });
     },
     onFinish: () => form.reset('avatar'),
   });
@@ -138,14 +157,16 @@ defineOptions({
       <div class="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <CustomerSidebarMenu active-key="profil" />
 
+        <!-- Floating Success Alert -->
+        <Teleport to="body">
+          <div v-if="showSuccess && flashSuccess"
+            class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+            <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+              @close="showSuccess = false" />
+          </div>
+        </Teleport>
+
         <main class="space-y-6">
-          <Alert v-if="successMessage" variant="default" class="flex items-start gap-3 border-green-200 bg-green-50">
-            <CheckCircle2 class="h-5 w-5 text-emerald-600" />
-            <div>
-              <AlertTitle class="text-green-800">Berhasil</AlertTitle>
-              <AlertDescription class="text-green-700">{{ successMessage }}</AlertDescription>
-            </div>
-          </Alert>
 
           <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <header class="mb-6">
@@ -216,9 +237,58 @@ defineOptions({
               Apabila ada aktivitas yang tidak dikenal, segera tekan Logout Semua Perangkat dan atur ulang kata sandi
               akun Anda.
             </p>
-            <div
-              class="mt-4 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
-              Perangkat Sedang Dipakai
+
+            <!-- Device List -->
+            <div class="mt-4 space-y-3">
+              <div v-for="session in sessions" :key="session.id"
+                class="flex items-center gap-4 rounded-lg border px-4 py-3"
+                :class="session.is_current ? 'border-sky-200 bg-sky-50' : 'border-slate-100 bg-slate-50'">
+                <!-- Device Icon -->
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  :class="session.is_current ? 'bg-sky-100 text-sky-600' : 'bg-slate-200 text-slate-500'">
+                  <!-- Desktop Icon -->
+                  <svg v-if="session.device_type === 'desktop'" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8m-4-4v4" />
+                  </svg>
+                  <!-- Mobile Icon -->
+                  <svg v-else-if="session.device_type === 'mobile'" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5">
+                    <rect x="6" y="2" width="12" height="20" rx="2" />
+                    <path d="M12 18h.01" />
+                  </svg>
+                  <!-- Tablet Icon -->
+                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="4" y="2" width="16" height="20" rx="2" />
+                    <path d="M12 18h.01" />
+                  </svg>
+                </div>
+
+                <!-- Device Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-sm text-slate-900 truncate">
+                      {{ session.browser }} di {{ session.platform }}
+                    </span>
+                    <span v-if="session.is_current"
+                      class="inline-flex items-center rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      Perangkat Ini
+                    </span>
+                  </div>
+                  <div class="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
+                    <span>{{ session.ip_address }}</span>
+                    <span>•</span>
+                    <span>{{ session.last_active }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Empty State -->
+              <div v-if="!sessions || sessions.length === 0"
+                class="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center">
+                <p class="text-sm text-slate-500">Tidak ada data perangkat yang tersedia.</p>
+              </div>
             </div>
           </section>
 
@@ -251,8 +321,9 @@ defineOptions({
           <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h3 class="text-lg font-semibold text-slate-900">Kata Sandi</h3>
-              <div class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                Terakhir diubah 01 Maret 2022
+              <div v-if="props.profile.password_changed_at"
+                class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                Terakhir diubah {{ props.profile.password_changed_at }}
               </div>
             </div>
 

@@ -3,10 +3,11 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class StoreRejectedNotification extends Notification
+class StoreRejectedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -33,19 +34,15 @@ class StoreRejectedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $storeName = $this->storeName ?? 'Toko Anda';
-        $mail = (new MailMessage)
+        $documentsUrl = url('/seller/documents');
+
+        return (new MailMessage)
             ->subject('Verifikasi Toko Ditolak - Tindakan Diperlukan')
-            ->greeting('Halo, ' . $notifiable->name . '!')
-            ->line("Mohon maaf, pengajuan verifikasi toko **{$storeName}** belum dapat kami setujui.");
-
-        if ($this->reason) {
-            $mail->line('**Catatan dari tim verifikasi:**')
-                ->line($this->reason);
-        }
-
-        return $mail
-            ->line('Silakan periksa kembali dokumen Anda dan ajukan ulang verifikasi.')
-            ->action('Periksa Dokumen', url('/seller/documents'))
-            ->line('Jika Anda memiliki pertanyaan, silakan hubungi tim support kami.');
+            ->view('emails.store-rejected', [
+                'user' => $notifiable,
+                'storeName' => $storeName,
+                'reason' => $this->reason,
+                'documentsUrl' => $documentsUrl,
+            ]);
     }
 }

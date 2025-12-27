@@ -13,8 +13,9 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, ShieldCheck, Camera, ImagePlus, X, Building2, MapPin, Landmark, FileText, Clock, XCircle, FileCheck, Upload, Trash2, Loader2, AlertCircle, ChevronRight } from 'lucide-vue-next';
+import { CheckCircle2, ShieldCheck, Camera, ImagePlus, X, Building2, MapPin, Landmark, FileText, Clock, XCircle, FileCheck, Upload, Trash2, Loader2, AlertCircle, ChevronRight, RotateCcw } from 'lucide-vue-next';
 import RegionSelector from '@/components/RegionSelector.vue';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 type SelectOption = {
   value: string;
@@ -85,16 +86,18 @@ const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>)
 const flashSuccess = computed(() => flash.value.success ?? '');
 const flashInfo = computed(() => flash.value.info ?? '');
 const flashError = computed(() => flash.value.error ?? '');
-const showSuccess = ref(!!flashSuccess.value);
+const showSuccess = ref(false);
 
-watch(flashSuccess, (value) => {
-  showSuccess.value = !!value;
-  if (value) {
+// Watch flash object directly to detect new messages even if content is the same
+watch(() => page.props.flash, (newFlash) => {
+  const flashData = newFlash as Record<string, string> | undefined;
+  if (flashData?.success) {
+    showSuccess.value = true;
     setTimeout(() => {
       showSuccess.value = false;
-    }, 3000);
+    }, 5000);
   }
-});
+}, { deep: true, immediate: true });
 
 // Document helpers
 const isPdf = (value: string) => value.toLowerCase().endsWith('.pdf');
@@ -308,6 +311,28 @@ const submit = () => {
 
 const submitForReview = () => {
   localError.value = '';
+
+  // Validate required documents
+  const hasKtp = form.ktp || ktpPreview.value;
+  const hasNpwp = form.npwp || npwpPreview.value;
+  const hasNib = form.nib || nibPreview.value;
+
+  if (!hasKtp || !hasNpwp || !hasNib) {
+    const missingDocs = [];
+    if (!hasKtp) missingDocs.push('KTP');
+    if (!hasNpwp) missingDocs.push('NPWP');
+    if (!hasNib) missingDocs.push('NIB');
+
+    localError.value = `Dokumen wajib belum lengkap: ${missingDocs.join(', ')}. Silakan upload dokumen yang diperlukan sebelum submit untuk verifikasi.`;
+
+    // Scroll to documents section
+    const docSection = document.querySelector('[class*="Dokumen Verifikasi"]');
+    if (docSection) {
+      docSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return;
+  }
+
   isSubmitting.value = true;
 
   // Save first, then submit
@@ -357,31 +382,43 @@ const generateSlug = (value?: string | number | null) =>
 
 const originalSlug = computed(() => props.store.slug ?? '');
 
+// Track if user manually edited the slug
+const slugManuallyEdited = ref(false);
+
+// Watch for manual slug changes
+watch(
+  () => form.slug,
+  (newSlug, oldSlug) => {
+    // If user manually changes the slug (not triggered by auto-generation)
+    if (newSlug !== generateSlug(form.name) && newSlug !== oldSlug) {
+      slugManuallyEdited.value = true;
+    }
+  }
+);
+
+// Auto-generate slug from name (realtime)
 watch(
   () => form.name,
-  (value, _oldValue, onCleanup) => {
+  (value) => {
     if (form.processing) {
       return;
     }
 
-    if (props.hasStore && form.slug && form.slug !== originalSlug.value) {
+    // If user has manually edited the slug, don't auto-update
+    if (slugManuallyEdited.value) {
       return;
     }
 
     const newSlug = generateSlug(value);
     form.slug = newSlug || originalSlug.value;
-
-    if (!props.hasStore) {
-      return;
-    }
-
-    onCleanup(() => {
-      if (!form.processing && props.hasStore && !form.slug) {
-        form.slug = originalSlug.value;
-      }
-    });
   },
 );
+
+// Reset slug to auto-generated value
+const resetSlug = () => {
+  slugManuallyEdited.value = false;
+  form.slug = generateSlug(form.name) || originalSlug.value;
+};
 
 watch(
   () => props.store,
@@ -395,6 +432,9 @@ watch(
     form.reset();
     Object.assign(form, nextState);
     form.clearErrors();
+
+    // Reset slug manual edit flag
+    slugManuallyEdited.value = false;
 
     // Update previews
     logoPreview.value = nextStore.logo_url;
@@ -423,7 +463,7 @@ watch(
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50/50">
+  <div class="min-h-screen bg-slate-50/50 pt-0">
 
     <Head title="Kelola Toko" />
 
@@ -444,13 +484,16 @@ watch(
         </div>
       </div>
 
-      <!-- Alerts -->
-      <div v-if="showSuccess && flashSuccess" class="mb-6">
-        <div class="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-          <CheckCircle2 class="h-5 w-5 flex-shrink-0 text-green-600" />
-          <p class="text-sm text-green-800">{{ flashSuccess }}</p>
+      <!-- Floating Success Alert -->
+      <Teleport to="body">
+        <div v-if="showSuccess && flashSuccess"
+          class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+          <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+            @close="showSuccess = false" />
         </div>
-      </div>
+      </Teleport>
+
+      <!-- Alerts -->
 
       <div v-if="flashError" class="mb-6">
         <div class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
@@ -459,7 +502,7 @@ watch(
         </div>
       </div>
 
-      <div v-if="flashInfo" class="mb-6">
+      <div v-if="flashInfo" class="mb-6 w-full max-w-4xl min-w-[800px] mx-auto">
         <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
           <AlertCircle class="h-5 w-5 flex-shrink-0 text-slate-500" />
           <p class="text-sm text-slate-700">{{ flashInfo }}</p>
@@ -493,7 +536,7 @@ watch(
                     <X class="h-3 w-3" />
                   </button>
                 </div>
-                <div class="text-sm text-slate-500">
+                <div class="text-xs text-slate-500">
                   <p class="font-medium text-slate-700">Upload logo toko</p>
                   <p>Format: JPG, PNG, WEBP. Maksimal 2MB.</p>
                   <p>Ukuran yang disarankan: 200 x 200 px</p>
@@ -509,7 +552,7 @@ watch(
               <Label>Hero Banner <span class="text-red-500">*</span></Label>
               <div class="relative">
                 <div
-                  class="relative h-48 w-full overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100 transition-colors cursor-pointer"
+                  class="relative h-64 w-full overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-slate-100 transition-colors cursor-pointer"
                   @click="bannerInput?.click()">
                   <img v-if="bannerPreview" :src="bannerPreview" alt="Store Banner"
                     class="h-full w-full object-cover" />
@@ -551,15 +594,37 @@ watch(
                 </div>
 
                 <div class="space-y-2 sm:col-span-2">
-                  <Label for="slug">Slug</Label>
+                  <div class="flex items-center justify-between">
+                    <Label for="slug">Slug</Label>
+                    <button v-if="!hasStore && slugManuallyEdited" type="button" @click="resetSlug"
+                      class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                      <RotateCcw class="h-3 w-3" />
+                      Reset ke Auto
+                    </button>
+                  </div>
                   <div class="relative">
-                    <Input id="slug" v-model="form.slug" :disabled="hasStore" class="bg-slate-50 pr-20"
-                      :class="form.errors.slug ? 'border-red-500' : ''" />
-                    <Badge variant="secondary" class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px]">
-                      {{ hasStore ? 'Terkunci' : 'Auto' }}
+                    <Input id="slug" v-model="form.slug" :disabled="hasStore" :class="[
+                      hasStore ? 'bg-slate-50' : (slugManuallyEdited ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-300'),
+                      form.errors.slug ? 'border-red-500' : '',
+                      'pr-20'
+                    ]" />
+                    <Badge :variant="hasStore ? 'secondary' : (slugManuallyEdited ? 'outline' : 'secondary')" :class="[
+                      'absolute right-2 top-1/2 -translate-y-1/2 text-[11px]',
+                      !hasStore && !slugManuallyEdited && 'bg-green-100 text-green-700 border-green-200',
+                      !hasStore && slugManuallyEdited && 'bg-amber-100 text-amber-700 border-amber-200'
+                    ]">
+                      {{ hasStore ? 'Terkunci' : (slugManuallyEdited ? 'Manual' : 'Auto') }}
                     </Badge>
                   </div>
-                  <p class="text-xs text-slate-500">Slug digunakan di URL toko.</p>
+                  <p class="text-xs text-slate-500">
+                    Slug digunakan di URL toko.
+                    <span v-if="!hasStore && !slugManuallyEdited" class="text-green-600 font-medium">
+                      Otomatis berubah saat Nama Toko diubah.
+                    </span>
+                    <span v-else-if="!hasStore && slugManuallyEdited" class="text-amber-600 font-medium">
+                      Mode manual aktif.
+                    </span>
+                  </p>
                   <p v-if="form.errors.slug" class="text-xs text-red-600">
                     {{ form.errors.slug }}
                   </p>
@@ -818,7 +883,7 @@ watch(
                 </span>
               </div>
               <label
-                class="group relative flex h-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
+                class="group relative flex h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
                 :class="{ 'pointer-events-none opacity-60': !canEdit }">
                 <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden"
                   @change="(e) => handleFileChange(e, 'ktp')" :disabled="!canEdit" />
@@ -848,7 +913,7 @@ watch(
                 </span>
               </div>
               <label
-                class="group relative flex h-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
+                class="group relative flex h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
                 :class="{ 'pointer-events-none opacity-60': !canEdit }">
                 <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden"
                   @change="(e) => handleFileChange(e, 'npwp')" :disabled="!canEdit" />
@@ -878,7 +943,7 @@ watch(
                 </span>
               </div>
               <label
-                class="group relative flex h-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
+                class="group relative flex h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
                 :class="{ 'pointer-events-none opacity-60': !canEdit }">
                 <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden"
                   @change="(e) => handleFileChange(e, 'nib')" :disabled="!canEdit" />
@@ -908,7 +973,7 @@ watch(
               <div class="space-y-2">
                 <Label>Surat Pernyataan</Label>
                 <label
-                  class="group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
+                  class="group relative flex h-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors hover:border-indigo-400 hover:bg-slate-100"
                   :class="{ 'pointer-events-none opacity-60': !canEdit }">
                   <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden"
                     @change="(e) => handleFileChange(e, 'company_statement')" :disabled="!canEdit" />

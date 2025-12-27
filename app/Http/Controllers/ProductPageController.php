@@ -199,7 +199,7 @@ class ProductPageController extends Controller
             'isBumnPartner' => (bool) ($store?->bumn_partner ?? false),
             'taxStatus' => $store?->tax_status ?? 'Non PKP',
             'location' => $storeLocation,
-            'avatar' => "https://picsum.photos/seed/store-{$store?->id}/200/200",
+            'avatar' => $store?->logo_url ?? asset('images/placeholder-store.png'),
             'highlights' => $this->storeHighlights($store),
             'transactionsCount' => (int) ($store?->transactions_count ?? 0),
             'rating' => (float) ($store?->rating ?? 0),

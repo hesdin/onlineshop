@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Store;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class SellerDocumentSubmittedNotification extends Notification
+class SellerDocumentSubmittedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -38,15 +39,15 @@ class SellerDocumentSubmittedNotification extends Notification
         $sellerDocumentId = $this->store->sellerDocument?->id;
         $ownerName = $this->store->user?->name ?? 'Seller';
         $ownerEmail = $this->store->user?->email ?? '-';
+        $actionUrl = url($sellerDocumentId ? "/admin/seller-documents/{$sellerDocumentId}" : "/admin/seller-documents");
 
         return (new MailMessage)
             ->subject('Dokumen Seller Baru Perlu Diverifikasi')
-            ->greeting('Halo Admin!')
-            ->line("Ada pengajuan verifikasi dokumen baru yang perlu ditinjau:")
-            ->line("**Nama Toko:** {$this->store->name}")
-            ->line("**Jenis Toko:** " . ucfirst($this->store->type ?? '-'))
-            ->line("**Pemilik:** {$ownerName} ({$ownerEmail})")
-            ->action('Review Dokumen', url($sellerDocumentId ? "/admin/seller-documents/{$sellerDocumentId}" : "/admin/seller-documents"))
-            ->line('Silakan verifikasi dokumen seller dalam 1-3 hari kerja.');
+            ->view('emails.seller-document-submitted', [
+                'store' => $this->store,
+                'ownerName' => $ownerName,
+                'ownerEmail' => $ownerEmail,
+                'actionUrl' => $actionUrl,
+            ]);
     }
 }

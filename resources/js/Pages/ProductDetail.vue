@@ -872,6 +872,10 @@ const formattedProductLocation = computed(() => {
   return normalized;
 });
 
+const formattedStoreLocation = computed(() => {
+  return formatLocationTitleCase(product.value.store?.location) || 'Lokasi tidak tersedia';
+});
+
 const shippingSummary = computed(() => {
   const address = page.props.customerAddress ?? null;
   const normalizeRegion = (value) => (value ? toTitleCase(value) : '');
@@ -1012,7 +1016,7 @@ onBeforeUnmount(() => {
       <div class="mx-auto space-y-6">
 
         <!-- Breadcrumb -->
-        <!-- <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <!-- <nav class="flex items-center gap-2 text-sm text-slate-500">
           <Link class="text-sky-600 hover:underline" href="/">Beranda</Link>
           <span>/</span>
           <Link v-if="product.categoryUrl" class="text-sky-600 hover:underline" :href="product.categoryUrl">
@@ -1036,7 +1040,7 @@ onBeforeUnmount(() => {
                         class="h-[320px] w-full object-cover transition-transform duration-200 ease-out md:h-[420px]" />
                       <div
                         class="pointer-events-none absolute right-3 top-3 hidden items-center gap-2 rounded-full bg-white/80 px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200/70 sm:flex">
-                        <svg class="h-3.5 w-3.5 text-slate-500" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+                        <svg class="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="none" stroke="currentColor"
                           stroke-width="1.6">
                           <circle cx="9" cy="9" r="5.5" />
                           <path d="m12.5 12.5 3.5 3.5" stroke-linecap="round" />
@@ -1072,7 +1076,7 @@ onBeforeUnmount(() => {
                       </svg>
                       <div class="flex-1">
                         <p class="text-sm font-semibold text-red-800">Produk Wilayah Terbatas</p>
-                        <p class="mt-0.5 text-xs text-red-700">
+                        <p class="mt-0.5 text-sm text-red-700">
                           Produk hanya tersedia di wilayah <span class="font-semibold">{{ product.city_name }}</span>
                         </p>
                       </div>
@@ -1087,7 +1091,7 @@ onBeforeUnmount(() => {
                         {{ formatPrice(product.price) }}
                       </p>
                       <div v-if="product.originalPrice && product.originalPrice > product.price"
-                        class="flex items-center gap-2 text-xs">
+                        class="flex items-center gap-2 text-sm">
                         <span v-if="productDiscount"
                           class="inline-flex items-center rounded px-1 py-0.5 text-[11px] font-extrabold bg-red-100 text-red-600">
                           {{ productDiscount }}%
@@ -1098,14 +1102,14 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                    <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <div class="flex items-center gap-1">
                         <span class="font-semibold text-slate-900">{{ product.sold }}</span>
                         <span>Terjual</span>
                       </div>
                       <span>·</span>
                       <div class="flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                        <svg class="h-4 w-4 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M10 2.5 12.4 7l5 .7-3.7 3.6.9 5-4.6-2.4L5.4 16l.9-5L2.6 7.7l5-.7z" />
                         </svg>
                         <span class="font-semibold text-slate-900">{{ reviewStats.average }}</span>
@@ -1197,7 +1201,8 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
-              <div class="flex flex-wrap items-center gap-2">
+              <!-- Bandingkan Produk / comment out for now -->
+              <!-- <div class="flex flex-wrap items-center gap-2">
                 <button type="button"
                   class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-white">
                   <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1206,8 +1211,9 @@ onBeforeUnmount(() => {
                   </svg>
                   <span>Bandingkan Produk</span>
                 </button>
-                <span v-if="copyStatus" class="text-xs font-semibold text-emerald-600">Link disalin</span>
-              </div>
+                <span v-if="copyStatus" class="text-sm font-semibold text-emerald-600">Link disalin</span>
+              </div> -->
+
             </div>
 
             <!-- Store -->
@@ -1221,12 +1227,12 @@ onBeforeUnmount(() => {
                   </div>
                   <div class="min-w-0">
                     <p class="text-base font-semibold text-slate-900 sm:text-lg truncate">{{ product.store.name }}</p>
-                    <div class="flex items-center gap-1 text-xs text-slate-600">
+                    <div class="flex items-center gap-1 text-sm text-slate-600">
                       <svg class="h-4 w-4 flex-shrink-0 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
                         <path
                           d="M10 2.5a5.25 5.25 0 0 0-5.25 5.25c0 3.714 4.338 7.458 4.83 7.88a.56.56 0 0 0 .72 0c.492-.422 4.95-4.166 4.95-7.88A5.25 5.25 0 0 0 10 2.5zm0 7.25a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
                       </svg>
-                      <span class="truncate">{{ formatLocationTitleCase(product.store.location) || 'Lokasi tidak tersedia' }}</span>
+                      <span class="truncate">{{ formattedStoreLocation }}</span>
                     </div>
                   </div>
                 </component>
@@ -1248,7 +1254,7 @@ onBeforeUnmount(() => {
                   </svg>
                   <div class="text-left">
                     <p class="text-base font-semibold text-slate-900">{{ product.store.transactionsCount || 0 }}</p>
-                    <p class="text-xs text-slate-500">Transaksi Selesai</p>
+                    <p class="text-sm text-slate-500">Transaksi Selesai</p>
                   </div>
                 </div>
                 <div class="flex items-center justify-center gap-3 px-1 text-slate-700 sm:px-4">
@@ -1259,7 +1265,7 @@ onBeforeUnmount(() => {
                     <p class="text-base font-semibold text-slate-900">
                       {{ reviewStats.average || product.store.rating || 0 }}
                     </p>
-                    <p class="text-xs text-slate-500">Rating &amp; Ulasan</p>
+                    <p class="text-sm text-slate-500">Rating &amp; Ulasan</p>
                   </div>
                 </div>
                 <div class="hidden items-center justify-center gap-3 px-1 text-slate-700 sm:flex sm:px-4">
@@ -1279,7 +1285,7 @@ onBeforeUnmount(() => {
                       :class="product.store.isBumnPartner ? 'text-emerald-600' : 'text-slate-900'">
                       {{ product.store.isBumnPartner ? 'BUMN Pengampu' : 'Toko Biasa' }}
                     </p>
-                    <p class="text-xs text-slate-500">Status Toko</p>
+                    <p class="text-sm text-slate-500">Status Toko</p>
                   </div>
                 </div>
               </div>
@@ -1317,21 +1323,21 @@ onBeforeUnmount(() => {
                         <path d="M10 2.5 12.4 7l5 .7-3.7 3.6.9 5-4.6-2.4L5.4 16l.9-5L2.6 7.7l5-.7z" />
                       </svg>
                     </div>
-                    <p class="mt-1 text-xs text-slate-500">{{ reviewStats.total }} Ulasan</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ reviewStats.total }} Ulasan</p>
                   </div>
 
                   <div class="space-y-2">
                     <div v-for="row in ratingBreakdown" :key="row.score" class="flex items-center gap-3">
-                      <span class="w-10 text-xs font-semibold text-slate-600">{{ row.score }}★</span>
+                      <span class="w-10 text-sm font-semibold text-slate-600">{{ row.score }}★</span>
                       <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
                         <div class="h-full rounded-full bg-amber-400" :style="{ width: `${row.percentage}%` }" />
                       </div>
-                      <span class="w-10 text-right text-xs text-slate-500">{{ row.count }}</span>
+                      <span class="w-10 text-right text-sm text-slate-500">{{ row.count }}</span>
                     </div>
                   </div>
                 </div>
 
-                <p v-if="!hasRealReviews" class="text-xs text-slate-500">
+                <p v-if="!hasRealReviews" class="text-sm text-slate-500">
                   Belum ada ulasan untuk produk ini.
                 </p>
 
@@ -1340,15 +1346,15 @@ onBeforeUnmount(() => {
                     class="rounded-md border border-slate-100 bg-white p-4">
                     <div class="flex items-center gap-3">
                       <div
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
                         {{ review.user?.initial || reviewerInitials(review.user?.name || 'U') }}
                       </div>
                       <div class="flex-1">
                         <p class="text-sm font-semibold text-slate-900">{{ review.user?.name || 'Pengguna' }}</p>
-                        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                           <div class="flex items-center gap-0.5">
                             <template v-for="i in 5" :key="`review-star-${review.id}-${i}`">
-                              <svg class="h-3.5 w-3.5" :class="i <= review.rating ? 'text-amber-400' : 'text-slate-200'"
+                              <svg class="h-4 w-4" :class="i <= review.rating ? 'text-amber-400' : 'text-slate-200'"
                                 viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M10 2.5 12.4 7l5 .7-3.7 3.6.9 5-4.6-2.4L5.4 16l.9-5L2.6 7.7l5-.7z" />
                               </svg>
@@ -1368,7 +1374,7 @@ onBeforeUnmount(() => {
                         :alt="`Foto review ${idx + 1}`" />
                     </div>
 
-                    <div v-if="review.reply" class="mt-3 rounded-md bg-slate-50 p-3 text-xs text-slate-700">
+                    <div v-if="review.reply" class="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
                       <p class="font-semibold text-slate-900">{{ review.reply.from }}</p>
                       <p class="mt-1 text-slate-700">{{ review.reply.message }}</p>
                       <p class="mt-1 text-slate-500">{{ review.reply.date }}</p>
@@ -1379,201 +1385,162 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <aside class="space-y-4 lg:sticky lg:top-32 lg:z-20 lg:max-h-[calc(100vh-8rem)]">
-            <div class="space-y-5 rounded-md border border-slate-200 bg-white p-4 sm:p-6">
+          <aside class="space-y-3 lg:sticky lg:top-32 lg:z-20 lg:max-h-[calc(100vh-8rem)]">
+            <div class="space-y-3 rounded-md border border-slate-200 bg-white p-3 sm:p-4">
               <div class="flex items-center justify-between">
                 <p class="text-base font-semibold text-slate-900">Atur Pembelian</p>
-                <p class="text-xs font-semibold" :class="isOutOfStock ? 'text-red-600' : 'text-slate-500'">
+                <p class="text-sm font-semibold" :class="isOutOfStock ? 'text-red-600' : 'text-slate-500'">
                   Stok: {{ isOutOfStock ? 'Habis' : product.stock }}
                 </p>
               </div>
 
-              <div class="space-y-2">
-                <p class="text-sm font-semibold text-slate-500">Jumlah Pembelian</p>
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-medium text-slate-500">Jumlah</p>
+                  <p v-if="!isOutOfStock" class="text-sm text-slate-400">Min. {{ minOrderQuantity }} pcs</p>
+                </div>
 
-                <div class="inline-flex overflow-hidden rounded-md border border-slate-300 bg-slate-50">
+                <div class="inline-flex overflow-hidden rounded border border-slate-300 bg-slate-50">
                   <button type="button"
-                    class="px-4 py-1 text-lg text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    class="px-3 py-0.5 text-base text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="isOutOfStock || quantity <= minOrderQuantity" @click="changeQuantity(-1)">
                     –
                   </button>
 
                   <input type="number" :value="quantity" :min="minOrderQuantity" :disabled="isOutOfStock"
-                    class="qty-input w-16 border-x border-slate-300 bg-white px-3 py-1 text-center text-sm font-semibold text-slate-800 focus:outline-none disabled:cursor-not-allowed"
+                    class="qty-input w-12 border-x border-slate-300 bg-white px-2 py-0.5 text-center text-sm font-semibold text-slate-800 focus:outline-none disabled:cursor-not-allowed"
                     @input="handleQuantityInput" />
 
                   <button type="button"
-                    class="px-4 py-1 text-lg text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    class="px-3 py-0.5 text-base text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="isOutOfStock || (stockAvailable !== null && quantity >= stockAvailable)"
                     @click="changeQuantity(1)">
                     +
                   </button>
                 </div>
-                <p v-if="!isOutOfStock" class="text-xs font-semibold text-slate-500">
-                  Min pembelian {{ minOrderQuantity }} pcs
-                </p>
-                <p v-if="isOutOfStock" class="text-xs font-semibold text-red-600">Stok produk sedang habis.</p>
+                <p v-if="isOutOfStock" class="text-sm font-semibold text-red-600">Stok produk sedang habis.</p>
               </div>
 
               <div v-if="cartError || addToCartForm.errors.quantity || addToCartForm.errors.product_id"
-                class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                class="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-sm font-semibold text-red-700">
                 {{ cartError || addToCartForm.errors.quantity || addToCartForm.errors.product_id }}
               </div>
 
-              <div class="space-y-1 pt-2">
-                <p class="text-sm font-semibold text-slate-500">Total Harga</p>
-                <p class="text-xl font-bold sm:text-2xl">
-                  {{ formatPrice(totalPrice) }}
-                </p>
+              <div class="flex items-baseline justify-between border-t border-slate-100 pt-2">
+                <p class="text-sm text-slate-500">Total</p>
+                <div class="text-right">
+                  <p class="text-lg font-bold text-slate-900">{{ formatPrice(totalPrice) }}</p>
+                  <p class="text-sm text-slate-400">inc. PPN</p>
+                </div>
               </div>
 
-              <div
-                class="flex items-center justify-between border-t border-dashed border-slate-200 pt-3 text-xs text-slate-500 sm:text-sm">
-                <span>{{ formatPrice(totalPrice) }}</span>
-                <span class="text-slate-400">(inc. PPN)</span>
-              </div>
-
-              <div class="space-y-4 border-t border-slate-200 pt-4">
-                <p class="text-sm font-semibold text-slate-500">Informasi Pengiriman</p>
+              <div class="space-y-2 border-t border-slate-100 pt-2">
+                <p class="text-sm font-medium text-slate-500">Pengiriman</p>
 
                 <!-- Login Alert for Unauthenticated Users -->
                 <div v-if="!isAuthenticated"
-                  class="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-                  <svg class="h-5 w-5 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                  class="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-2">
+                  <svg class="h-4 w-4 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd"
                       d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
                       clip-rule="evenodd" />
                   </svg>
-                  <div class="flex-1">
-                    <p class="text-xs font-semibold text-amber-800">
-                      Login untuk melihat informasi pengiriman dan melanjutkan pembelian
-                    </p>
-                  </div>
+                  <p class="text-[10px] font-medium text-amber-800">
+                    Login untuk melihat info pengiriman
+                  </p>
                 </div>
 
                 <!-- Shipping Information for Authenticated Users -->
-                <div v-else class="space-y-3 rounded-md border border-slate-200 bg-slate-50/60 p-3">
-                  <div class="flex items-start gap-3">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
-                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <div v-else class="space-y-2 rounded border border-slate-200 bg-slate-50/60 p-2">
+                  <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M3 10.5 4.5 5h15L21 10.5" />
                         <path d="M5 11h14v8H5z" />
                         <path d="M10 15h4" />
                       </svg>
                     </span>
-                    <div>
-                      <p class="text-xs text-slate-500">Dikirim dari</p>
-                      <p class="text-xs font-semibold text-slate-800">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-slate-400">Dari</p>
+                      <p class="text-sm font-semibold text-slate-700 truncate">
                         {{ formattedProductLocation || 'Lokasi belum tersedia' }}
                       </p>
                     </div>
                   </div>
 
-                  <div class="flex items-start gap-3">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
-                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M10 17h4V5H2v12h3" />
                         <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
                         <circle cx="7.5" cy="17.5" r="2.5" />
                         <circle cx="17.5" cy="17.5" r="2.5" />
                       </svg>
                     </span>
-                    <div>
-                      <p class="text-xs text-slate-500">Metode pengiriman tersedia</p>
-                      <div v-if="hasShippingMethods" class="text-xs font-semibold text-slate-800">
-                        <template v-if="product.shipping_pickup && product.shipping_delivery">
-                          <p>- Ambil di Toko</p>
-                          <p>- Diantar ke Tempat</p>
-                        </template>
-                        <template v-else-if="product.shipping_pickup">
-                          <p>Ambil di Toko</p>
-                        </template>
-                        <template v-else-if="product.shipping_delivery">
-                          <p>Diantar ke Tempat</p>
-                        </template>
-                      </div>
-                      <p v-else class="text-xs font-semibold text-slate-400">
-                        Tidak ada metode tersedia
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-slate-400">Metode</p>
+                      <p v-if="hasShippingMethods" class="text-sm font-semibold text-slate-700">
+                        <template v-if="product.shipping_pickup && product.shipping_delivery">Ambil di Toko /
+                          Diantar</template>
+                        <template v-else-if="product.shipping_pickup">Ambil di Toko</template>
+                        <template v-else-if="product.shipping_delivery">Diantar ke Tempat</template>
                       </p>
+                      <p v-else class="text-sm text-slate-400">Tidak tersedia</p>
                     </div>
                   </div>
 
-                  <button type="button" class="flex w-full items-start gap-3 text-left transition hover:opacity-75"
+                  <button type="button" class="flex w-full items-center gap-2 text-left transition hover:opacity-75"
                     @click="openAddressManagementModal">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500">
-                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400">
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
                         <circle cx="12" cy="9.5" r="2.3" />
                       </svg>
                     </span>
-                    <div class="flex-1">
-                      <p class="text-xs text-slate-500">Dikirim ke</p>
-                      <p class="text-xs font-semibold text-slate-800">
-                        {{ shippingSummary.addressTitle }}<template v-if="shippingSummary.addressDetail">, {{
-                          shippingSummary.addressDetail }}</template>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-slate-400">Tujuan</p>
+                      <p class="text-sm font-semibold text-slate-700">
+                        <span class="truncate">{{ shippingSummary.addressTitle }}<template
+                            v-if="shippingSummary.addressDetail">, {{
+                              shippingSummary.addressDetail }}</template></span>
+                        <span class="inline-flex ml-1 text-sky-600 hover:text-sky-700 transition align-middle">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                            viewBox="0 0 16 16">
+                            <path
+                              d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z" />
+                          </svg>
+                        </span>
                       </p>
                     </div>
-                    <svg class="h-4 w-4 flex-shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none"
-                      stroke="currentColor" stroke-width="1.8">
-                      <path d="M7 4.5 12 10l-5 5.5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
                   </button>
                 </div>
               </div>
 
               <div class="border-t border-slate-200 pt-4">
-                <div class="flex items-center gap-4 text-xs font-semibold text-slate-500">
-                  <button v-if="isAuthenticated" type="button"
-                    class="inline-flex items-center gap-2 text-slate-500 transition hover:text-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                      class="bi bi-pencil-square" viewBox="0 0 16 16">
-                      <path
-                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-                      <path fill-rule="evenodd"
-                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
-                    </svg>
-                    <span>Catatan Penjual</span>
-                  </button>
-                  <button v-else type="button" disabled
-                    class="inline-flex items-center gap-2 text-slate-300 cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                      class="bi bi-pencil-square" viewBox="0 0 16 16">
-                      <path
-                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-                      <path fill-rule="evenodd"
-                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
-                    </svg>
-                    <span>Catatan Penjual</span>
-                  </button>
-                  <span class="text-base text-slate-300">•</span>
+                <div class="flex items-center justify-center gap-3 text-sm font-medium text-slate-400">
                   <a v-if="whatsappChatUrl" :href="whatsappChatUrl" target="_blank" rel="noopener noreferrer"
-                    class="inline-flex items-center gap-2 text-slate-500 transition hover:text-emerald-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                      class="bi bi-chat-dots" viewBox="0 0 16 16">
+                    class="inline-flex items-center gap-1.5 transition hover:text-emerald-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                      viewBox="0 0 16 16">
                       <path
-                        d="M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
-                      <path
-                        d="m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.4 10.4 0 0 1-.524 2.318l-.003.011a11 11 0 0 1-.244.637c-.079.186.074.394.273.362a22 22 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a11 11 0 0 0 .398-2" />
+                        d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
                     </svg>
-                    <span>Chat Penjual</span>
+                    <span>WhatsApp</span>
                   </a>
-                  <button v-else type="button" disabled
-                    class="inline-flex items-center gap-2 text-slate-300 cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                      class="bi bi-chat-dots" viewBox="0 0 16 16">
+                  <span v-else class="inline-flex items-center gap-1.5 text-slate-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                      viewBox="0 0 16 16">
                       <path
-                        d="M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
-                      <path
-                        d="m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.4 10.4 0 0 1-.524 2.318l-.003.011a11 11 0 0 1-.244.637c-.079.186.074.394.273.362a22 22 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a11 11 0 0 0 .398-2" />
+                        d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
                     </svg>
-                    <span>Chat Penjual</span>
-                  </button>
+                    <span>WhatsApp</span>
+                  </span>
                 </div>
               </div>
 
-              <div class="grid gap-3 pt-1">
+              <div class="grid gap-2 pt-1">
                 <button type="button"
-                  class="inline-flex items-center justify-center gap-2 rounded-md bg-sky-600 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex items-center justify-center gap-1.5 rounded bg-sky-600 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
                   :disabled="isOutOfStock || isBuyingNow || isAddingToCart" @click="goToCheckout">
                   <template v-if="isBuyingNow">
                     <svg class="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1586,7 +1553,7 @@ onBeforeUnmount(() => {
                 </button>
 
                 <button type="button"
-                  class="inline-flex items-center justify-center gap-2 rounded-md border border-sky-500 bg-white py-2.5 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex items-center justify-center gap-1.5 rounded border border-sky-500 bg-white py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
                   :disabled="isOutOfStock || isAddingToCart" @click="addToCart">
                   <template v-if="isAddingToCart">
                     <svg class="h-4 w-4 animate-spin text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1596,7 +1563,7 @@ onBeforeUnmount(() => {
                     </svg>
                   </template>
                   <template v-else>
-                    <span class="text-lg leading-none">+</span>
+                    <span class="text-sm leading-none">+</span>
                   </template>
                   <span>{{ isAddingToCart ? 'Loading...' : 'Keranjang' }}</span>
                 </button>
@@ -1639,7 +1606,7 @@ onBeforeUnmount(() => {
                       class="h-full rounded-md border border-slate-200 bg-white transition hover:border-sky-300 hover:shadow-md">
                       <div class="overflow-hidden rounded-t-lg h-40 bg-slate-50 flex items-center justify-center">
                         <img v-if="item.image" :src="item.image" :alt="item.name" class="h-full w-full object-cover" />
-                        <span v-else class="text-xs text-slate-400 font-medium">No Image</span>
+                        <span v-else class="text-sm text-slate-400 font-medium">No Image</span>
                       </div>
 
                       <div class="space-y-2 p-3">
@@ -1652,7 +1619,7 @@ onBeforeUnmount(() => {
                           {{ item.name }}
                         </p>
 
-                        <div class="space-y-0.5 text-xs">
+                        <div class="space-y-0.5 text-sm">
                           <p class="text-sm font-bold text-slate-900">
                             {{ formatPrice(item.price) }}
                           </p>
@@ -1750,19 +1717,19 @@ onBeforeUnmount(() => {
             <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md bg-slate-50">
               <img v-if="notification.image" :src="notification.image" :alt="notification.name"
                 class="h-full w-full object-cover" />
-              <span v-else class="text-xs font-semibold text-slate-400">No Image</span>
+              <span v-else class="text-sm font-semibold text-slate-400">No Image</span>
             </div>
             <div class="flex-1">
-              <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600">
                 {{ notification.message }}
               </p>
               <p class="text-sm font-semibold text-slate-900">{{ notification.name }}</p>
-              <p class="text-xs text-slate-500">
+              <p class="text-sm text-slate-500">
                 Jumlah: {{ notification.quantity }} · {{ formatPrice(notification.price) }}
               </p>
             </div>
             <button v-if="notification.showAction" type="button"
-              class="rounded-full border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-600 transition hover:bg-sky-50"
+              class="rounded-full border border-sky-200 px-3 py-1.5 text-sm font-semibold text-sky-600 transition hover:bg-sky-50"
               @click="router.visit('/cart')">
               Lihat Keranjang
             </button>
@@ -1777,17 +1744,17 @@ onBeforeUnmount(() => {
                 </svg>
               </span>
               <div class="flex-1">
-                <p class="text-xs font-semibold text-red-600">
+                <p class="text-sm font-semibold text-red-600">
                   {{ notification.message }}
                 </p>
-                <p v-if="notification.detail" class="text-xs font-semibold text-red-600/80">
+                <p v-if="notification.detail" class="text-sm font-semibold text-red-600/80">
                   {{ notification.detail }}
                 </p>
               </div>
               <button type="button"
                 class="flex h-6 w-6 items-center justify-center rounded-full text-red-600 transition hover:bg-red-50"
                 @click="removeCartNotification(notification.id)">
-                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M5 5l10 10M15 5 5 15" stroke-linecap="round" />
                 </svg>
               </button>
@@ -1975,7 +1942,7 @@ onBeforeUnmount(() => {
           <div v-if="!hasShippingMethods"
             class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-700">
             <p class="font-medium">Tidak ada metode pengiriman</p>
-            <p class="text-xs">Produk ini belum dikonfigurasi metode pengirimannya oleh penjual.</p>
+            <p class="text-sm">Produk ini belum dikonfigurasi metode pengirimannya oleh penjual.</p>
           </div>
         </div>
 

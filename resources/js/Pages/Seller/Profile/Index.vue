@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, User, Lock, Camera, X, Eye, EyeOff } from 'lucide-vue-next';
+import { User, Lock, Camera, X, Eye, EyeOff } from 'lucide-vue-next';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 type ProfileData = {
   name: string;
@@ -29,16 +29,18 @@ defineOptions({
 const page = usePage();
 const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>);
 const flashSuccess = computed(() => flash.value.success ?? '');
-const showSuccess = ref(!!flashSuccess.value);
+const showSuccess = ref(false);
 
-watch(flashSuccess, (value) => {
-  showSuccess.value = !!value;
-  if (value) {
+// Watch flash for new messages
+watch(() => page.props.flash, (newFlash) => {
+  const flashData = newFlash as Record<string, string> | undefined;
+  if (flashData?.success) {
+    showSuccess.value = true;
     setTimeout(() => {
       showSuccess.value = false;
-    }, 3000);
+    }, 5000);
   }
-});
+}, { deep: true, immediate: true });
 
 // Profile form
 const profileForm = useForm({
@@ -107,19 +109,19 @@ const submitPassword = () => {
 
     <Head title="Profil Saya" />
 
+    <!-- Floating Success Alert -->
+    <Teleport to="body">
+      <div v-if="showSuccess && flashSuccess"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+          @close="showSuccess = false" />
+      </div>
+    </Teleport>
+
     <div>
       <h1 class="text-2xl font-semibold text-slate-900">Profil Saya</h1>
       <p class="text-sm text-slate-500">Kelola informasi pribadi dan keamanan akun Anda.</p>
     </div>
-
-    <Alert v-if="showSuccess && flashSuccess" variant="default"
-      class="flex items-center gap-2 border-green-200 bg-green-50 text-green-700">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <div class="flex flex-wrap gap-1 text-sm">
-        <span class="font-semibold">Berhasil.</span>
-        <span>{{ flashSuccess }}</span>
-      </div>
-    </Alert>
 
     <div class="grid gap-6 lg:grid-cols-2">
       <!-- Profile Information Card -->
@@ -167,7 +169,7 @@ const submitPassword = () => {
 
             <div class="space-y-2">
               <Label for="email">Email</Label>
-              <Input id="email" :value="profile.email" disabled class="bg-slate-50 text-slate-500" />
+              <Input id="email" :model-value="profile.email" readonly class="bg-slate-100 cursor-not-allowed" />
               <p class="text-xs text-slate-500">Email tidak dapat diubah.</p>
             </div>
 

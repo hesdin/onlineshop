@@ -25,7 +25,7 @@ class ReviewRequestNotification extends Notification
             'title' => 'Bagaimana Pesanan Anda?',
             'message' => "Pesanan #{$this->order->order_number} sudah selesai. Yuk beri ulasan untuk produk yang Anda beli!",
             'icon' => 'star',
-            'action_url' => '/customer/dashboard/transactions',
+            'action_url' => '/customer/dashboard/reviews',
             'order_id' => $this->order->id,
         ];
     }

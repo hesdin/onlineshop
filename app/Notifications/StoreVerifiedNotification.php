@@ -3,10 +3,11 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class StoreVerifiedNotification extends Notification
+class StoreVerifiedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -32,16 +33,14 @@ class StoreVerifiedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $storeName = $this->storeName ?? 'Toko Anda';
+        $dashboardUrl = url('/seller/dashboard');
 
         return (new MailMessage)
             ->subject('Selamat! Toko Anda Telah Terverifikasi')
-            ->greeting('Halo, '.$notifiable->name.'!')
-            ->line("Kabar baik! Toko **{$storeName}** telah berhasil diverifikasi oleh tim kami.")
-            ->line('Toko Anda sekarang sudah dapat:')
-            ->line('✅ Menerima pesanan dari customer')
-            ->line('✅ Menampilkan produk di marketplace')
-            ->line('✅ Memproses transaksi')
-            ->action('Buka Dashboard', url('/seller/dashboard'))
-            ->line('Terima kasih telah bergabung dengan marketplace kami!');
+            ->view('emails.store-verified', [
+                'user' => $notifiable,
+                'storeName' => $storeName,
+                'dashboardUrl' => $dashboardUrl,
+            ]);
     }
 }

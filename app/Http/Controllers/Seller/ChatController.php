@@ -25,15 +25,17 @@ class ChatController extends Controller
             ]);
         }
 
-        $conversations = Conversation::with(['customer:id,name', 'product:id,name'])
+        $conversations = Conversation::with(['customer:id,name,last_active_at', 'product:id,name'])
             ->withCount(['unreadMessagesForSeller as unread_count'])
             ->where('store_id', $store->id)
             ->orderByDesc('last_message_at')
             ->paginate(20);
 
-        // Get latest message for each conversation
+        // Get latest message for each conversation and add online status
         $conversations->getCollection()->transform(function ($conversation) {
-            $conversation->last_message = $conversation->messages()->latest()->first();
+            // Use reorder() to clear default ASC ordering from relationship
+            $conversation->last_message = $conversation->messages()->reorder()->orderByDesc('id')->first();
+            $conversation->customer_is_online = $conversation->customer?->isOnline() ?? false;
             return $conversation;
         });
 
@@ -92,6 +94,17 @@ class ChatController extends Controller
         ]);
 
         $conversation->update(['last_message_at' => now()]);
+
+        // Check if customer is offline and send email notification
+        $customer = $conversation->customer;
+        if ($customer && !$customer->isOnline()) {
+            $messagePreview = \Illuminate\Support\Str::limit($validated['content'], 100);
+            $customer->notify(new \App\Notifications\NewChatMessageNotification(
+                $store,
+                $messagePreview,
+                $conversation
+            ));
+        }
 
         $message->load('sender:id,name');
 

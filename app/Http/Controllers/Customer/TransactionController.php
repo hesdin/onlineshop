@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Review;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -90,6 +91,9 @@ class TransactionController extends Controller
                     ],
                     'created_at' => $order->created_at?->toDateTimeString(),
                     'invoice_url' => route('orders.invoice.download', $order),
+                    'has_pending_reviews' => $order->status === 'completed'
+                        ? $order->items->count() > Review::where('order_id', $order->id)->count()
+                        : false,
                 ];
             })
             ->values();
@@ -104,8 +108,9 @@ class TransactionController extends Controller
     private function orderStatuses(): array
     {
         return [
-            ['value' => 'pending_payment', 'label' => 'Menunggu Pembayaran'],
+            ['value' => 'pending_payment', 'label' => 'Menunggu Konfirmasi'],
             ['value' => 'processing', 'label' => 'Diproses'],
+            ['value' => 'ready_for_pickup', 'label' => 'Siap Diambil'],
             ['value' => 'shipped', 'label' => 'Dikirim'],
             ['value' => 'delivered', 'label' => 'Diterima'],
             ['value' => 'completed', 'label' => 'Selesai'],
@@ -116,10 +121,8 @@ class TransactionController extends Controller
     private function paymentStatuses(): array
     {
         return [
-            ['value' => 'pending', 'label' => 'Menunggu'],
-            ['value' => 'paid', 'label' => 'Dibayar'],
-            ['value' => 'expired', 'label' => 'Kedaluwarsa'],
-            ['value' => 'failed', 'label' => 'Gagal'],
+            ['value' => 'pending', 'label' => 'Belum Dibayar'],
+            ['value' => 'paid', 'label' => 'Lunas'],
         ];
     }
 }

@@ -1,4 +1,10 @@
 <script setup>
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+
 const menuSections = [
   {
     label: 'Pengaturan',
@@ -33,15 +39,19 @@ defineProps({
   <aside class="space-y-4">
     <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div class="flex items-center gap-3">
-        <div class="grid h-12 w-12 place-items-center rounded-full bg-slate-100">
-          <svg class="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <circle cx="12" cy="8" r="3.5" />
-            <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-          </svg>
+        <div class="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-slate-100">
+          <img v-if="user?.avatar_url" :src="user.avatar_url" :alt="user?.name" class="h-full w-full object-cover">
+          <div v-else class="grid h-full w-full place-items-center">
+            <svg class="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.8">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+            </svg>
+          </div>
         </div>
         <div>
-          <p class="text-sm font-semibold text-slate-900">Hesdin Mukhsin</p>
-          <p class="text-xs text-slate-500">Buyer Retail</p>
+          <p class="text-sm font-semibold text-slate-900">{{ user?.name ?? 'Guest' }}</p>
+          <p class="text-xs text-slate-500">{{ user?.buyer_type_label ?? 'Customer' }}</p>
         </div>
       </div>
     </div>

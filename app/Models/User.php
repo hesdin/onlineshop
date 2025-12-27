@@ -27,6 +27,7 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
         'name',
         'email',
         'password',
+        'last_active_at',
     ];
 
     /**
@@ -50,7 +51,20 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'password_changed_at' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Check if user is online (active within last 5 minutes)
+     */
+    public function isOnline(): bool
+    {
+        if (!$this->last_active_at) {
+            return false;
+        }
+
+        return $this->last_active_at->diffInMinutes(now()) < 5;
     }
 
     public function profile(): HasOne

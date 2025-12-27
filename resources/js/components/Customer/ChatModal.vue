@@ -176,7 +176,8 @@ defineExpose({ open });
 
 <template>
   <!-- Chat Button -->
-  <Button variant="outline" size="sm" class="gap-2" @click="open">
+  <Button variant="default" size="sm"
+    class="gap-2 bg-sky-600 text-white hover:bg-sky-700 hover:text-white hover:cursor-pointer" @click="open">
     <MessageCircle class="h-4 w-4" />
     Chat Penjual
   </Button>

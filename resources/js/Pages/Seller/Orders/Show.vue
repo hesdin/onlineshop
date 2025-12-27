@@ -13,9 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogClose,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -36,8 +46,16 @@ import {
   FileText,
   Upload,
   Image,
+  AlertCircle,
 } from 'lucide-vue-next';
 import RestrictedActionTooltip from '@/components/RestrictedActionTooltip.vue';
+import AlertBanner from '@/components/AlertBanner.vue';
+import {
+  OrderStatus,
+  PaymentStatus,
+  ORDER_STATUS_CONFIG,
+  PAYMENT_STATUS_CONFIG,
+} from '@/types/enums';
 
 type StatusOption = {
   value: string;
@@ -104,34 +122,21 @@ defineOptions({
 
 const page = usePage();
 const flashSuccess = computed(() => (page.props.flash as any)?.success ?? '');
-const successVisible = ref(false);
-let successTimeout: ReturnType<typeof setTimeout> | null = null;
+const showSuccess = ref(false);
 
 watch(
-  flashSuccess,
-  (value) => {
-    if (successTimeout) {
-      clearTimeout(successTimeout);
-      successTimeout = null;
-    }
-
-    if (value) {
-      successVisible.value = true;
-      successTimeout = setTimeout(() => {
-        successVisible.value = false;
-      }, 3000);
-    } else {
-      successVisible.value = false;
+  () => page.props.flash,
+  (newFlash) => {
+    const flashData = newFlash as any;
+    if (flashData?.success) {
+      showSuccess.value = true;
+      setTimeout(() => {
+        showSuccess.value = false;
+      }, 5000);
     }
   },
-  { immediate: true },
+  { deep: true, immediate: true }
 );
-
-onBeforeUnmount(() => {
-  if (successTimeout) {
-    clearTimeout(successTimeout);
-  }
-});
 
 const form = useForm({
   status: props.order.status,
@@ -144,8 +149,8 @@ const paymentProofInputRef = ref<HTMLInputElement | null>(null);
 
 const requiresPaymentProof = computed(() => {
   // Show upload when changing to paid, or when already paid but no proof uploaded
-  const changingToPaid = form.payment_status === 'paid' && props.order.payment_status !== 'paid';
-  const paidButNoProof = form.payment_status === 'paid' && !props.order.payment_proof_url;
+  const changingToPaid = form.payment_status === PaymentStatus.PAID && props.order.payment_status !== PaymentStatus.PAID;
+  const paidButNoProof = form.payment_status === PaymentStatus.PAID && !props.order.payment_proof_url;
   return changingToPaid || paidButNoProof;
 });
 
@@ -195,40 +200,32 @@ const formatCurrency = (value?: number | null) => currencyFormatter.format(value
 
 const statusConfig = computed(() => {
   const configs: Record<string, { class: string; bgClass: string; label: string; icon: any }> = {
-    pending_payment: {
-      class: 'text-amber-700',
-      bgClass: 'bg-amber-100',
-      label: 'Menunggu Pembayaran',
+    [OrderStatus.PENDING_PAYMENT]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.PENDING_PAYMENT],
       icon: Clock,
     },
-    processing: {
-      class: 'text-blue-700',
-      bgClass: 'bg-blue-100',
-      label: 'Sedang Diproses',
+    [OrderStatus.PROCESSING]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.PROCESSING],
       icon: Package,
     },
-    shipped: {
-      class: 'text-indigo-700',
-      bgClass: 'bg-indigo-100',
-      label: 'Dalam Pengiriman',
+    [OrderStatus.READY_FOR_PICKUP]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.READY_FOR_PICKUP],
+      icon: ShoppingBag,
+    },
+    [OrderStatus.SHIPPED]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.SHIPPED],
       icon: Truck,
     },
-    delivered: {
-      class: 'text-emerald-700',
-      bgClass: 'bg-emerald-100',
-      label: 'Sudah Diterima',
+    [OrderStatus.DELIVERED]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.DELIVERED],
       icon: CheckCircle2,
     },
-    completed: {
-      class: 'text-emerald-700',
-      bgClass: 'bg-emerald-100',
-      label: 'Selesai',
+    [OrderStatus.COMPLETED]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.COMPLETED],
       icon: CheckCircle2,
     },
-    cancelled: {
-      class: 'text-slate-600',
-      bgClass: 'bg-slate-100',
-      label: 'Dibatalkan',
+    [OrderStatus.CANCELLED]: {
+      ...ORDER_STATUS_CONFIG[OrderStatus.CANCELLED],
       icon: XCircle,
     },
   };
@@ -241,13 +238,7 @@ const statusConfig = computed(() => {
 });
 
 const paymentConfig = computed(() => {
-  const configs: Record<string, { class: string; bgClass: string; label: string }> = {
-    paid: { class: 'text-emerald-700', bgClass: 'bg-emerald-100', label: 'Lunas' },
-    pending: { class: 'text-amber-700', bgClass: 'bg-amber-100', label: 'Menunggu Pembayaran' },
-    expired: { class: 'text-slate-600', bgClass: 'bg-slate-100', label: 'Kedaluwarsa' },
-    failed: { class: 'text-rose-700', bgClass: 'bg-rose-100', label: 'Gagal' },
-  };
-  return configs[props.order.payment_status] || {
+  return PAYMENT_STATUS_CONFIG[props.order.payment_status as PaymentStatus] || {
     class: 'text-slate-600',
     bgClass: 'bg-slate-100',
     label: props.order.payment_status,
@@ -260,6 +251,32 @@ const shippingServiceLabel = computed(() => {
   if (service === 'pickup') return 'Ambil di Toko';
   if (service === 'delivery') return 'Diantar ke Alamat';
   return service;
+});
+
+const isPickupOrder = computed(() => props.order.shipping_service === 'pickup');
+
+// Filter status options based on shipping method
+const filteredStatusOptions = computed(() => {
+  if (isPickupOrder.value) {
+    // For pickup orders: exclude shipped and delivered
+    return props.statusOptions.filter(
+      (option) => !['shipped', 'delivered'].includes(option.value)
+    );
+  }
+  // For delivery orders: exclude ready_for_pickup
+  return props.statusOptions.filter(
+    (option) => option.value !== 'ready_for_pickup'
+  );
+});
+
+// Show warning if trying to complete order without payment proof
+const showCompletionWarning = computed(() => {
+  return form.status === 'completed' && !props.order.payment_proof_url;
+});
+
+// Check if status should be locked (completed or cancelled)
+const isStatusLocked = computed(() => {
+  return ['completed', 'cancelled'].includes(props.order.status);
 });
 
 const fullAddress = computed(() => {
@@ -281,6 +298,15 @@ const fullAddress = computed(() => {
 
     <Head :title="`Pesanan #${order.order_number}`" />
 
+    <!-- Floating Success Alert -->
+    <Teleport to="body">
+      <div v-if="showSuccess && flashSuccess"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+          @close="showSuccess = false" />
+      </div>
+    </Teleport>
+
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
@@ -288,11 +314,17 @@ const fullAddress = computed(() => {
         <p class="text-sm text-slate-500">Dibuat pada {{ order.created_at ?? '-' }}</p>
       </div>
       <div class="flex items-center gap-2">
+        <Button variant="outline" as-child>
+          <Link :href="`/seller/chats?order=${order.id}`">
+            <MessageCircle class="h-4 w-4" />
+            Chat Customer
+          </Link>
+        </Button>
         <Button v-if="order.customer_whatsapp_link" variant="outline" class="text-green-600 hover:text-green-700"
           as-child>
           <a :href="order.customer_whatsapp_link" target="_blank">
-            <MessageCircle class="h-4 w-4" />
-            Chat Customer
+            <Phone class="h-4 w-4" />
+            Hubungi Whatsapp
           </a>
         </Button>
         <Button v-if="order.invoice_url" variant="outline" as-child>
@@ -310,12 +342,7 @@ const fullAddress = computed(() => {
       </div>
     </div>
 
-    <!-- Success Alert -->
-    <Alert v-if="successVisible && flashSuccess" variant="default"
-      class="flex items-center gap-2 border-green-200 bg-green-50 text-sm font-medium text-green-700">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <span>{{ flashSuccess }}</span>
-    </Alert>
+    <!-- Floating alert moved to top -->
 
     <div class="grid gap-6 lg:grid-cols-3">
       <!-- Main Content -->
@@ -328,10 +355,7 @@ const fullAddress = computed(() => {
                 <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
                   <ShoppingBag class="h-4 w-4 text-blue-600" />
                 </div>
-                <div>
-                  <CardTitle class="text-base">Produk Dipesan</CardTitle>
-                  <CardDescription>{{ order.items.length }} item</CardDescription>
-                </div>
+                <CardTitle class="text-base">Produk Dipesan</CardTitle>
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <span
@@ -348,6 +372,9 @@ const fullAddress = computed(() => {
             </div>
           </CardHeader>
           <CardContent class="space-y-4">
+            <!-- Item Count -->
+            <p class="text-sm text-slate-500">{{ order.items.length }} item</p>
+
             <div v-for="item in order.items" :key="item.id"
               class="flex items-start gap-4 rounded-lg border border-slate-100 bg-slate-50/50 p-4">
               <!-- Product Image -->
@@ -400,8 +427,8 @@ const fullAddress = computed(() => {
         <Card v-if="order.note">
           <CardHeader class="pb-3">
             <div class="flex items-center gap-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-                <FileText class="h-4 w-4 text-amber-600" />
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <FileText class="h-4 w-4 text-blue-600" />
               </div>
               <CardTitle class="text-base">Catatan Pembeli</CardTitle>
             </div>
@@ -415,8 +442,8 @@ const fullAddress = computed(() => {
         <Card>
           <CardHeader class="pb-4">
             <div class="flex items-center gap-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100">
-                <Truck class="h-4 w-4 text-indigo-600" />
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <Truck class="h-4 w-4 text-blue-600" />
               </div>
               <CardTitle class="text-base">Informasi Pengiriman</CardTitle>
             </div>
@@ -463,17 +490,40 @@ const fullAddress = computed(() => {
         <Card v-if="order.payment_proof_url">
           <CardHeader class="pb-4">
             <div class="flex items-center gap-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-                <Image class="h-4 w-4 text-emerald-600" />
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <Image class="h-4 w-4 text-blue-600" />
               </div>
               <CardTitle class="text-base">Bukti Pembayaran</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <a :href="order.payment_proof_url" target="_blank" class="block">
-              <img :src="order.payment_proof_url" alt="Bukti Pembayaran"
-                class="max-w-sm rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition" />
-            </a>
+            <Dialog>
+              <DialogTrigger as-child>
+                <div class="cursor-pointer">
+                  <img :src="order.payment_proof_url" alt="Bukti Pembayaran"
+                    class="max-w-sm rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition" />
+                </div>
+              </DialogTrigger>
+              <DialogContent class="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Bukti Pembayaran</DialogTitle>
+                  <DialogDescription>
+                    Preview bukti pembayaran pesanan #{{ order.order_number }}
+                  </DialogDescription>
+                </DialogHeader>
+                <div class="flex items-center justify-center p-4">
+                  <img :src="order.payment_proof_url" alt="Bukti Pembayaran Full"
+                    class="rounded-lg border border-slate-200 shadow-sm max-h-[70vh] w-auto object-contain" />
+                </div>
+                <DialogFooter>
+                  <DialogClose as-child>
+                    <Button type="button" variant="secondary">
+                      Tutup
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </div>
@@ -484,8 +534,8 @@ const fullAddress = computed(() => {
         <Card>
           <CardHeader class="pb-4">
             <div class="flex items-center gap-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
-                <User class="h-4 w-4 text-slate-600" />
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <User class="h-4 w-4 text-blue-600" />
               </div>
               <CardTitle class="text-base">Informasi Pelanggan</CardTitle>
             </div>
@@ -515,8 +565,8 @@ const fullAddress = computed(() => {
         <Card v-if="order.payment_method">
           <CardHeader class="pb-4">
             <div class="flex items-center gap-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-                <Wallet class="h-4 w-4 text-emerald-600" />
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <Wallet class="h-4 w-4 text-blue-600" />
               </div>
               <CardTitle class="text-base">Metode Pembayaran</CardTitle>
             </div>
@@ -530,8 +580,8 @@ const fullAddress = computed(() => {
         <Card>
           <CardHeader class="pb-4">
             <div class="flex items-center gap-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
-                <Calendar class="h-4 w-4 text-purple-600" />
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <Calendar class="h-4 w-4 text-blue-600" />
               </div>
               <CardTitle class="text-base">Waktu Pesanan</CardTitle>
             </div>
@@ -551,31 +601,21 @@ const fullAddress = computed(() => {
         <!-- Update Status -->
         <Card>
           <CardHeader class="pb-4">
-            <CardTitle class="text-base">Update Status</CardTitle>
-            <CardDescription>Ubah status pesanan atau pembayaran.</CardDescription>
+            <div class="flex items-center gap-2">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                <Package class="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle class="text-base">Update Status</CardTitle>
+                <CardDescription>Ubah status pesanan atau pembayaran.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <form @submit.prevent="submit" class="space-y-4">
               <div class="space-y-2">
-                <Label class="text-xs font-semibold text-slate-500">Status Pesanan</Label>
-                <Select v-model="form.status">
-                  <SelectTrigger class="w-full" :class="form.errors.status ? 'border-red-500' : ''">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="option in statusOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p v-if="form.errors.status" class="text-xs text-red-600">
-                  {{ form.errors.status }}
-                </p>
-              </div>
-
-              <div class="space-y-2">
                 <Label class="text-xs font-semibold text-slate-500">Status Pembayaran</Label>
-                <Select v-model="form.payment_status">
+                <Select v-model="form.payment_status" :disabled="isStatusLocked">
                   <SelectTrigger class="w-full" :class="form.errors.payment_status ? 'border-red-500' : ''">
                     <SelectValue />
                   </SelectTrigger>
@@ -590,6 +630,37 @@ const fullAddress = computed(() => {
                 </p>
               </div>
 
+              <div class="space-y-2">
+                <Label class="text-xs font-semibold text-slate-500">Status Pesanan</Label>
+                <Select v-model="form.status" :disabled="isStatusLocked">
+                  <SelectTrigger class="w-full" :class="form.errors.status ? 'border-red-500' : ''">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="option in filteredStatusOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p v-if="form.errors.status" class="text-xs text-red-600">
+                  {{ form.errors.status }}
+                </p>
+                <p v-if="isStatusLocked" class="text-xs text-slate-500 mt-1">
+                  Status pesanan yang sudah selesai atau dibatalkan tidak dapat diubah.
+                </p>
+
+                <Alert v-if="showCompletionWarning" variant="destructive" class="mt-2 py-2">
+                  <AlertCircle class="h-4 w-4" />
+                  <div class="ml-2">
+                    <AlertTitle class="text-xs font-semibold mb-0">Perhatian</AlertTitle>
+                    <AlertDescription class="text-xs mt-0.5">
+                      Pesanan ini belum memiliki bukti pembayaran. Pastikan pembayaran sudah diterima sebelum menandai
+                      selesai.
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              </div>
+
               <!-- Payment Proof Upload -->
               <div v-if="requiresPaymentProof" class="space-y-2">
                 <Label class="text-xs font-semibold text-slate-500">
@@ -600,13 +671,14 @@ const fullAddress = computed(() => {
                   @change="handlePaymentProofChange" />
                 <div v-if="paymentProofPreview" class="relative">
                   <img :src="paymentProofPreview" alt="Preview" class="w-full rounded-lg border border-slate-200" />
-                  <button type="button"
+                  <button v-if="!isStatusLocked" type="button"
                     class="absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600"
                     @click="removePaymentProof">
                     <XCircle class="h-4 w-4" />
                   </button>
                 </div>
-                <Button v-else type="button" variant="outline" class="w-full" @click="triggerPaymentProofPicker">
+                <Button v-else type="button" variant="outline" class="w-full" @click="triggerPaymentProofPicker"
+                  :disabled="isStatusLocked">
                   <Upload class="h-4 w-4" />
                   Upload Bukti Pembayaran
                 </Button>
@@ -614,7 +686,7 @@ const fullAddress = computed(() => {
                   {{ form.errors.payment_proof }}
                 </p>
                 <p class="text-xs text-slate-500">
-                  Wajib upload bukti pembayaran saat mengubah status ke "Dibayar"
+                  Wajib upload bukti pembayaran saat mengubah status ke "Lunas"
                 </p>
               </div>
 
@@ -623,7 +695,7 @@ const fullAddress = computed(() => {
                 : 'Verifikasi dokumen toko Anda untuk memproses pesanan.'">
                 <div class="w-full">
                   <Button type="submit" class="w-full"
-                    :disabled="form.processing || !($page.props.auth as any).seller_document?.is_approved">
+                    :disabled="form.processing || !($page.props.auth as any).seller_document?.is_approved || isStatusLocked">
                     {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
                   </Button>
                 </div>
