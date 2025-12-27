@@ -86,9 +86,16 @@ jobs:
             docker exec onlineshop-app php artisan config:clear && \
             docker exec onlineshop-app php artisan cache:clear && \
             docker exec onlineshop-app php artisan view:clear && \
-            docker exec onlineshop-postgres psql -U \\\$POSTGRES_USER -d \\\$POSTGRES_DB -c \\\"SELECT setval('migrations_id_seq', COALESCE((SELECT MAX(id) FROM migrations), 0) + 1, false);\\\" && \
-            docker exec onlineshop-app php artisan migrate --force && \
             echo 'Deployment complete!'"
+
+      - name: Fix PostgreSQL sequence and run migrations
+        run: |
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+          cd ${{ secrets.DEPLOY_PATH }}
+          docker exec onlineshop-postgres psql -U postgres -d onlineshop -c "SELECT setval('migrations_id_seq', COALESCE((SELECT MAX(id) FROM migrations), 0) + 1, false);"
+          docker exec onlineshop-app php artisan migrate --force
+          ENDSSH
 
       - name: Verify deployment
         run: |
