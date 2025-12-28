@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Upload, X } from 'lucide-vue-next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,7 +28,7 @@ const form = useForm({
   title: '',
   description: '',
   color_theme: colorThemes[0].value,
-  is_active: true,
+  is_active: '1',
   display_mode: 'slider',
   home_image: null as File | null,
   cover_image: null as File | null,
@@ -200,9 +199,18 @@ const submit = () => {
             <p v-if="form.errors.description" class="text-xs text-red-600">{{ form.errors.description }}</p>
           </div>
 
-          <div class="flex items-center gap-2">
-            <Switch id="is_active" :checked="form.is_active" @update:checked="(val) => (form.is_active = val)" />
-            <Label for="is_active" class="font-normal cursor-pointer">Aktif</Label>
+          <div class="space-y-2 pt-2">
+            <Label for="is_active">Status Koleksi <span class="text-red-500">*</span></Label>
+            <Select v-model="form.is_active">
+              <SelectTrigger id="is_active">
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Aktif</SelectItem>
+                <SelectItem value="0">Nonaktif</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="form.errors.is_active" class="text-sm text-red-500">{{ form.errors.is_active }}</p>
           </div>
 
           <div class="flex gap-3">

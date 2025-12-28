@@ -41,7 +41,7 @@ const form = useForm({
   url: props.banner.url ?? '',
   type: props.banner.type,
   position: props.banner.position,
-  is_active: props.banner.is_active,
+  is_active: props.banner.is_active ? '1' : '0',
   starts_at: props.banner.starts_at ?? '',
   ends_at: props.banner.ends_at ?? '',
   image: null as File | null,
@@ -80,6 +80,7 @@ const submit = () => {
     },
   });
 };
+
 </script>
 
 <template>
@@ -188,9 +189,18 @@ const submit = () => {
               </div>
             </div>
 
-            <div class="flex items-center gap-3 pt-2">
-              <Switch id="is_active" :checked="form.is_active" @update:checked="(val) => (form.is_active = val)" />
-              <Label for="is_active">Aktif</Label>
+            <div class="space-y-2 pt-2">
+              <Label for="is_active">Status Banner <span class="text-red-500">*</span></Label>
+              <Select v-model="form.is_active">
+                <SelectTrigger id="is_active">
+                  <SelectValue placeholder="Pilih status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Aktif</SelectItem>
+                  <SelectItem value="0">Nonaktif</SelectItem>
+                </SelectContent>
+              </Select>
+              <p v-if="form.errors.is_active" class="text-sm text-red-500">{{ form.errors.is_active }}</p>
             </div>
           </CardContent>
         </Card>

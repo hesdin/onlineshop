@@ -377,7 +377,7 @@ const isCustomer = computed(() => {
 
 <template>
   <div class="w-full bg-white/95 backdrop-blur">
-    <div class="container relative mx-auto flex flex-wrap items-center gap-4 px-4 py-3 lg:flex-nowrap"
+    <div class="container relative mx-auto flex flex-wrap items-center gap-4 px-0 py-2 lg:flex-nowrap"
       @mouseenter="closeMenuWithDelay">
 
       <!-- Mobile Menu Button & Logo -->
@@ -389,12 +389,12 @@ const isCustomer = computed(() => {
           </svg>
         </button>
         <Link href="/" aria-label="Kembali ke halaman utama"
-          class="hidden h-14 w-24 items-center justify-center text-xs font-bold text-sky-600 sm:flex">
+          class="hidden h-10 w-auto items-center justify-center text-xs font-bold text-sky-600 sm:flex">
           <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
             draggable="false" />
         </Link>
         <Link href="/" aria-label="Kembali ke halaman utama"
-          class="flex h-12 w-24 items-center justify-center text-xs font-bold text-sky-600 sm:hidden">
+          class="flex h-8 w-auto items-center justify-center text-xs font-bold text-sky-600 sm:hidden">
           <img :src="logoUrl" alt="TP-PKK Marketplace" class="h-full w-full object-contain" decoding="async"
             draggable="false" />
         </Link>

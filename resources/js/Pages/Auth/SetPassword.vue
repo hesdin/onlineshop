@@ -40,10 +40,10 @@ const submit = () => {
 
   <Head title="Setel Password Baru" />
 
-  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+  <section class="min-h-screen bg-[#E5E5E5] flex items-center justify-center p-4">
     <div class="w-full max-w-md">
       <!-- Card -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-8 sm:p-10">
+      <div class="bg-white rounded-md shadow-sm p-8 sm:p-10">
         <!-- Icon -->
         <div class="flex justify-center mb-6">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-sky-50">

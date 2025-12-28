@@ -170,10 +170,10 @@ const submit = async () => {
 
   <Head title="Daftar Pembeli" />
 
-  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-8">
+  <section class="min-h-screen bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center p-4 py-8">
     <div class="w-full max-w-lg">
       <!-- Card -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-8 sm:p-10">
+      <div class="bg-white rounded-md shadow-sm p-8 sm:p-10">
 
         <!-- Success View (After Registration) -->
         <template v-if="registrationSuccess">

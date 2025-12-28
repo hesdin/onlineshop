@@ -43,9 +43,9 @@ const closeAlert = () => {
 
   <Head title="Login Pembeli" />
 
-  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4 lg:p-8">
+  <section class="min-h-screen bg-[#E5E5E5] flex items-center justify-center p-4 lg:p-8">
     <div class="w-full max-w-5xl">
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden lg:flex min-h-[600px]">
+      <div class="bg-white rounded-md shadow-sm overflow-hidden lg:flex min-h-[600px]">
 
         <!-- Left Side - Hero -->
         <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">

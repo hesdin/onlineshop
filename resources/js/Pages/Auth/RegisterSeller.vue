@@ -165,9 +165,9 @@ const submit = async () => {
 
   <Head title="Daftar Penjual" />
 
-  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4 lg:p-8">
+  <section class="min-h-screen bg-[#E5E5E5] flex items-center justify-center p-4 lg:p-8">
     <div :class="registrationSuccess ? 'max-w-md' : 'max-w-5xl'" class="w-full">
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden"
+      <div class="bg-white rounded-md shadow-sm overflow-hidden"
         :class="{ 'lg:flex min-h-[600px]': !registrationSuccess, 'p-8 sm:p-10': registrationSuccess }">
 
         <!-- Left Side - Hero (hidden on success) -->

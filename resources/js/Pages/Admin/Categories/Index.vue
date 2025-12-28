@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import {
   Card,
   CardContent,
@@ -42,6 +42,7 @@ import { ref, watch, computed, h, onUnmounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { Trash2, Edit2, Plus, SlidersHorizontal, CheckCircle2, Search } from 'lucide-vue-next';
 import type { ColumnDef } from '@tanstack/vue-table';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 const props = defineProps({
   categories: {
@@ -58,6 +59,11 @@ const props = defineProps({
   },
 });
 
+const page = usePage();
+const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>);
+const flashSuccess = computed(() => flash.value.success ?? '');
+const showSuccess = ref(false);
+
 const search = ref(props.filters.search ?? '');
 
 const createDialogOpen = ref(false);
@@ -65,9 +71,17 @@ const editDialogOpen = ref(false);
 const editingCategory = ref(null);
 const deleteDialogOpen = ref(false);
 const deletingCategory = ref<any | null>(null);
-const showSuccessAlert = ref(false);
-const successMessage = ref('');
-const successTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+// Watch flash object directly to detect new messages even if content is the same
+watch(() => page.props.flash, (newFlash) => {
+  const flashData = newFlash as Record<string, string> | undefined;
+  if (flashData?.success) {
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+    }, 5000);
+  }
+}, { deep: true, immediate: true });
 
 const createForm = useForm({
   name: '',
@@ -130,19 +144,6 @@ const resetCreateForm = () => {
   createForm.image = null;
 };
 
-const triggerSuccessAlert = (message: string) => {
-  successMessage.value = message;
-  showSuccessAlert.value = true;
-
-  if (successTimeout.value) {
-    clearTimeout(successTimeout.value);
-  }
-
-  successTimeout.value = window.setTimeout(() => {
-    showSuccessAlert.value = false;
-  }, 4000);
-};
-
 const submitCreate = () => {
   createForm.post('/admin/categories', {
     preserveScroll: true,
@@ -150,7 +151,6 @@ const submitCreate = () => {
     onSuccess: () => {
       createDialogOpen.value = false;
       resetCreateForm();
-      triggerSuccessAlert('Kategori baru berhasil disimpan.');
     },
   });
 };
@@ -180,7 +180,6 @@ const submitEdit = () => {
       onSuccess: () => {
         editDialogOpen.value = false;
         editingCategory.value = null;
-        triggerSuccessAlert('Perubahan kategori berhasil disimpan.');
       },
     });
 };
@@ -331,10 +330,7 @@ const paginateTo = (url?: string | null) => {
 };
 
 onUnmounted(() => {
-  if (successTimeout.value) {
-    clearTimeout(successTimeout.value);
-  }
-  showSuccessAlert.value = false;
+  showSuccess.value = false;
 });
 </script>
 
@@ -343,15 +339,14 @@ onUnmounted(() => {
 
     <Head title="Kategori" />
 
-    <Alert v-if="showSuccessAlert" variant="default" class="flex items-start gap-3 border-green-200 bg-green-50">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <div class="space-y-1">
-        <AlertTitle class="text-green-800">Berhasil</AlertTitle>
-        <AlertDescription class="text-green-700">
-          {{ successMessage }}
-        </AlertDescription>
+    <!-- Floating Success Alert -->
+    <Teleport to="body">
+      <div v-if="showSuccess && flashSuccess"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+          @close="showSuccess = false" />
       </div>
-    </Alert>
+    </Teleport>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>

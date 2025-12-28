@@ -28,7 +28,7 @@ class BannerController extends Controller
                 'type' => $banner->type,
                 'type_label' => $banner->type === 'hero_slider' ? 'Hero Slider' : 'Hero Promo',
                 'position' => $banner->position,
-                'is_active' => $banner->is_active,
+                'is_active' => (bool) $banner->is_active,
                 'image_url' => $banner->image_url,
                 'created_at' => $banner->created_at->toDateTimeString(),
             ]);
@@ -88,7 +88,7 @@ class BannerController extends Controller
                 'url' => $banner->url,
                 'type' => $banner->type,
                 'position' => $banner->position,
-                'is_active' => $banner->is_active,
+                'is_active' => (bool) $banner->is_active,
                 'starts_at' => $banner->starts_at?->format('Y-m-d\TH:i'),
                 'ends_at' => $banner->ends_at?->format('Y-m-d\TH:i'),
                 'image_url' => $banner->image_url,

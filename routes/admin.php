@@ -9,12 +9,14 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromoCodeController;
+use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SellerDocumentController;
 use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard', DashboardController::class)->name('dashboard');
+Route::get('search', [SearchController::class, 'search'])->name('search');
 Route::resource('users', UserController::class)->except(['show']);
 Route::resource('stores', StoreController::class)->except(['show']);
 Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);

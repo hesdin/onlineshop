@@ -19,6 +19,7 @@ import {
 import { DataTable } from '@/components/ui/data-table';
 import { Trash2, Edit2, Plus, CheckCircle2, Search } from 'lucide-vue-next';
 import type { ColumnDef } from '@tanstack/vue-table';
+import AlertBanner from '@/components/AlertBanner.vue';
 
 type BannerRow = {
   id: number;
@@ -49,10 +50,23 @@ defineOptions({
 });
 
 const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? '');
+const flash = computed(() => (page.props.flash ?? {}) as Record<string, string>);
+const flashSuccess = computed(() => flash.value.success ?? '');
+const showSuccess = ref(false);
 const search = ref(props.filters.search ?? '');
 const deleteDialogOpen = ref(false);
 const deletingBanner = ref<BannerRow | null>(null);
+
+// Watch flash object directly to detect new messages even if content is the same
+watch(() => page.props.flash, (newFlash) => {
+  const flashData = newFlash as Record<string, string> | undefined;
+  if (flashData?.success) {
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+    }, 5000);
+  }
+}, { deep: true, immediate: true });
 
 const debouncedSearch = useDebounceFn((value: string) => {
   router.get('/admin/banners', { search: value || undefined }, {
@@ -186,13 +200,14 @@ const columns = computed<ColumnDef<BannerRow>[]>(() => [
 
     <Head title="Banner" />
 
-    <Alert v-if="flashSuccess" variant="default" class="flex items-start gap-3 border-green-200 bg-green-50">
-      <CheckCircle2 class="h-5 w-5 text-green-600" />
-      <div class="space-y-1">
-        <AlertTitle class="text-green-800">Berhasil</AlertTitle>
-        <AlertDescription class="text-green-700">{{ flashSuccess }}</AlertDescription>
+    <!-- Floating Success Alert -->
+    <Teleport to="body">
+      <div v-if="showSuccess && flashSuccess"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+        <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
+          @close="showSuccess = false" />
       </div>
-    </Alert>
+    </Teleport>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold text-slate-900">Manajemen Banner</h1>

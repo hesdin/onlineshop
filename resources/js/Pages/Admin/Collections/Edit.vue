@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, X, Plus, Search } from 'lucide-vue-next';
@@ -54,7 +53,7 @@ const form = useForm({
   title: props.collection.title,
   description: props.collection.description ?? '',
   color_theme: props.collection.color_theme ?? 'none',
-  is_active: props.collection.is_active,
+  is_active: props.collection.is_active ? '1' : '0',
   display_mode: props.collection.display_mode ?? 'slider',
   home_image: null as File | null,
   cover_image: null as File | null,
@@ -338,9 +337,18 @@ const submit = () => {
             Mode <span class="font-semibold">Gambar saja</span>: koleksi ini tidak menampilkan slider produk di Home.
           </div>
 
-          <div class="flex items-center gap-2">
-            <Switch id="is_active" :checked="form.is_active" @update:checked="(val) => (form.is_active = val)" />
-            <Label for="is_active" class="font-normal cursor-pointer">Aktif</Label>
+          <div class="space-y-2 pt-2">
+            <Label for="is_active">Status Koleksi <span class="text-red-500">*</span></Label>
+            <Select v-model="form.is_active">
+              <SelectTrigger id="is_active">
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Aktif</SelectItem>
+                <SelectItem value="0">Nonaktif</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="form.errors.is_active" class="text-sm text-red-500">{{ form.errors.is_active }}</p>
           </div>
 
           <div class="flex gap-3">

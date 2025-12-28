@@ -6,10 +6,10 @@ import { Head, Link } from '@inertiajs/vue3';
 
   <Head title="Password Berhasil Diubah" />
 
-  <section class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+  <section class="min-h-screen bg-[#E5E5E5] flex items-center justify-center p-4">
     <div class="w-full max-w-md">
       <!-- Card -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-8 sm:p-10">
+      <div class="bg-white rounded-md shadow-sm p-8 sm:p-10">
 
         <!-- Success Icon -->
         <div class="flex justify-center mb-6">

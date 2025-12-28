@@ -283,8 +283,9 @@
     <table class="header">
       <tr>
         <td style="vertical-align: top;">
-          <!-- Logo / Brand Text -->
-          <div class="logo">{{ config('app.name', 'TP-PKK Marketplace') }}</div>
+          <!-- Logo -->
+          <img src="{{ public_path('images/logo-pkk.png') }}" alt="{{ config('app.name', 'TP-PKK Marketplace') }}"
+            style="height: 60px; width: auto;">
         </td>
         <td class="invoice-title-block">
           <div class="invoice-label">INVOICE</div>

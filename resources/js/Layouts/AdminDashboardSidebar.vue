@@ -1,6 +1,7 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import logoPkk from '/public/images/logo-pkk.png';
 import {
   Sidebar,
   SidebarContent,
@@ -94,15 +95,10 @@ const getUserInitials = () => {
 <template>
   <Sidebar collapsible="icon" variant="inset" class="border-r border-border/50 bg-card/50 backdrop-blur-sm">
     <!-- Header with Logo -->
-    <SidebarHeader class="border-b border-border/50 px-4 py-5">
-      <div class="flex items-center gap-3">
-        <div
-          class="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
-          <span class="text-primary-foreground font-bold text-sm">TP</span>
-        </div>
-        <div class="flex flex-col">
-          <span class="text-sm font-bold text-foreground tracking-tight">TP-PKK</span>
-          <span class="text-[10px] text-muted-foreground font-medium">Marketplace Admin</span>
+    <SidebarHeader class="border-b border-border/50 px-2 py-2">
+      <div class="flex">
+        <div class="h-10 w-auto flex">
+          <img :src="logoPkk" alt="Logo PKK" class="h-full w-full object-contain" />
         </div>
       </div>
     </SidebarHeader>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AdminDashboardLayout from '@/Layouts/AdminDashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -106,7 +106,7 @@ const toggleRole = (role: string) => {
             </Button>
             <Button variant="outline" type="button" as-child>
               <Link href="/admin/users">
-              Batal
+                Batal
               </Link>
             </Button>
           </div>
