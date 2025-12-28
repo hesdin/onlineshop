@@ -140,7 +140,7 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
 
 // Heartbeat route for online status tracking
-Route::post('/heartbeat', function () {
+Route::match(['get', 'post'], '/heartbeat', function () {
     return response()->json(['status' => 'ok']);
 })->middleware('auth')->name('heartbeat');
 
