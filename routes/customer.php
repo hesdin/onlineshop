@@ -18,6 +18,7 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('profile', [ProfileController::class, 'show'])->name('profile');
     Route::post('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+    Route::post('profile/logout-other-sessions', [ProfileController::class, 'logoutOtherSessions'])->name('profile.logout-other-sessions');
 
     Route::get('address', [AddressController::class, 'index'])->name('address');
     Route::post('address', [AddressController::class, 'store'])->name('address.store');

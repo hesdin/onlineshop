@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import LandingLayout from '@/Layouts/LandingLayout.vue';
 
 const props = defineProps({
@@ -31,6 +31,14 @@ const props = defineProps({
   sortOptions: {
     type: Array,
     default: () => [],
+  },
+  reviews: {
+    type: Object,
+    default: () => ({
+      summary: { average_rating: 0, total_reviews: 0, distribution: {} },
+      items: { data: [] },
+      filter: { rating: null },
+    }),
   },
 });
 
@@ -150,6 +158,42 @@ const statIconClass = (icon) => {
   if (icon === 'transactions') return 'bg-sky-50';
   if (icon === 'response') return 'bg-neutral-100';
   return 'bg-sky-50';
+};
+
+// Reviews section
+const reviewsSummary = computed(() => props.reviews?.summary ?? { average_rating: 0, total_reviews: 0, distribution: {} });
+const reviewsList = computed(() => props.reviews?.items?.data ?? []);
+const reviewsPagination = computed(() => props.reviews?.items ?? {});
+const activeRatingFilter = computed(() => props.reviews?.filter?.rating ?? null);
+
+const ratingTabs = [
+  { label: 'Semua', value: null },
+  { label: '⭐ 5', value: 5 },
+  { label: '⭐ 4', value: 4 },
+  { label: '⭐ 3', value: 3 },
+  { label: '⭐ 2', value: 2 },
+  { label: '⭐ 1', value: 1 },
+];
+
+const filterByRating = (rating) => {
+  const payload = { ...filterState, review_rating: rating || undefined };
+  router.get(`/store/${storeSlug.value}`, payload, {
+    preserveScroll: true,
+    preserveState: true,
+    replace: true,
+  });
+};
+
+const getDistributionPercentage = (rating) => {
+  const total = reviewsSummary.value.total_reviews;
+  if (!total) return 0;
+  const count = reviewsSummary.value.distribution?.[rating] ?? 0;
+  return Math.round((count / total) * 100);
+};
+
+const changeReviewPage = (url) => {
+  if (!url) return;
+  router.get(url, {}, { preserveScroll: true, preserveState: true });
 };
 </script>
 

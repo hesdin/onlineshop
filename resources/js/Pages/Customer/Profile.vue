@@ -62,6 +62,22 @@ const passwordForm = useForm({
   password_confirmation: '',
 });
 
+const logoutSessionsForm = useForm({
+  password: '',
+});
+
+const showLogoutModal = ref(false);
+
+const submitLogoutOtherSessions = () => {
+  logoutSessionsForm.post('/customer/dashboard/profile/logout-other-sessions', {
+    preserveScroll: true,
+    onSuccess: () => {
+      logoutSessionsForm.reset();
+      showLogoutModal.value = false;
+    },
+  });
+};
+
 const serverAvatarUrl = ref<string | null>(props.profile.avatar_url ?? null);
 const avatarPreview = ref<string | null>(serverAvatarUrl.value);
 let avatarObjectUrl: string | null = null;
@@ -290,6 +306,58 @@ defineOptions({
                 <p class="text-sm text-slate-500">Tidak ada data perangkat yang tersedia.</p>
               </div>
             </div>
+
+            <!-- Logout All Devices Button -->
+            <div v-if="sessions && sessions.length > 0" class="mt-4 flex justify-end">
+              <Button type="button" variant="destructive" size="sm"
+                class="gap-1.5 bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600"
+                @click="showLogoutModal = true">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout Semua Perangkat
+              </Button>
+            </div>
+
+            <!-- Logout Modal -->
+            <Teleport to="body">
+              <div v-if="showLogoutModal" class="fixed inset-0 z-[9999] flex items-center justify-center">
+                <!-- Backdrop -->
+                <div class="absolute inset-0 bg-black/50" @click="showLogoutModal = false"></div>
+
+                <!-- Modal Content -->
+                <div class="relative z-10 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                  <h3 class="text-lg font-semibold text-slate-900">Logout Semua Perangkat Lain</h3>
+                  <p class="mt-2 text-sm text-slate-600">
+                    Masukkan kata sandi Anda untuk konfirmasi. Semua perangkat lain yang sedang login akan di-logout.
+                  </p>
+
+                  <div class="mt-4 space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Kata Sandi</label>
+                    <Input v-model="logoutSessionsForm.password" type="password" placeholder="Masukkan kata sandi"
+                      class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100" />
+                    <p v-if="logoutSessionsForm.errors.password" class="text-xs text-red-500">
+                      {{ logoutSessionsForm.errors.password }}
+                    </p>
+                  </div>
+
+                  <div class="mt-6 flex justify-end gap-3">
+                    <Button type="button" variant="outline"
+                      @click="showLogoutModal = false; logoutSessionsForm.reset();"
+                      class="px-4 py-2 text-sm font-semibold text-slate-600">
+                      Batal
+                    </Button>
+                    <Button type="button" @click="submitLogoutOtherSessions"
+                      class="bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
+                      :disabled="logoutSessionsForm.processing">
+                      {{ logoutSessionsForm.processing ? 'Memproses...' : 'Logout Semua' }}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Teleport>
           </section>
 
           <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">

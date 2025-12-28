@@ -16,7 +16,11 @@ const unreadCount = ref(0);
 let notificationPollingInterval = null;
 
 const fetchNotifications = async () => {
-  if (!props.isAuthenticated) return;
+  if (props.isAuthenticated !== true) return;
+  // Only fetch for customers, not sellers or admins
+  const roles = props.authUser?.roles ?? [];
+  const hasCustomerRole = roles.includes('customer') || roles.includes('buyer');
+  if (!hasCustomerRole) return;
   try {
     const response = await axios.get('/customer/notifications');
     notifications.value = response.data.notifications;
@@ -103,7 +107,11 @@ const chatUnreadCount = ref(0);
 let chatPollingInterval = null;
 
 const fetchConversations = async () => {
-  if (!props.isAuthenticated) return;
+  if (props.isAuthenticated !== true) return;
+  // Only fetch for customers, not sellers or admins
+  const roles = props.authUser?.roles ?? [];
+  const hasCustomerRole = roles.includes('customer') || roles.includes('buyer');
+  if (!hasCustomerRole) return;
   try {
     const response = await axios.get('/customer/chats');
     conversations.value = response.data.conversations || [];
@@ -319,7 +327,7 @@ onMounted(() => {
   window.addEventListener('pageshow', handlePageShow);
 
   // Fetch notifications and chats if authenticated
-  if (props.isAuthenticated) {
+  if (props.isAuthenticated === true) {
     fetchNotifications();
     notificationPollingInterval = setInterval(fetchNotifications, 30000);
     fetchConversations();
@@ -359,6 +367,11 @@ const isAdmin = computed(() => {
   const roles = props.authUser?.roles ?? [];
   const lowerRoles = roles.map(r => String(r).toLowerCase());
   return lowerRoles.includes('admin') || lowerRoles.includes('super_admin') || lowerRoles.includes('superadmin') || lowerRoles.includes('super admin');
+});
+
+const isCustomer = computed(() => {
+  const roles = props.authUser?.roles ?? [];
+  return roles.includes('customer') || roles.includes('buyer');
 });
 </script>
 

@@ -147,6 +147,24 @@ class ProfileController extends Controller
         return Redirect::route('customer.dashboard.profile')->with('success', 'Kata sandi berhasil diperbarui.');
     }
 
+    public function logoutOtherSessions(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $currentSessionId = $request->session()->getId();
+
+        // Delete all sessions except the current one
+        DB::table('sessions')
+            ->where('user_id', $request->user()->id)
+            ->where('id', '!=', $currentSessionId)
+            ->delete();
+
+        return Redirect::route('customer.dashboard.profile')
+            ->with('success', 'Semua perangkat lain berhasil di-logout.');
+    }
+
     private function formatMediaUrl(?string $url): ?string
     {
         if (! $url) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Review;
 use App\Models\Store;
 use App\Support\CustomerLocationResolver;
 use Illuminate\Http\Request;
@@ -72,6 +73,7 @@ class StorePageController extends Controller
             'filterGroups' => $this->filterGroups(),
             'sortOptions' => $this->sortOptions(),
             'products' => $products,
+            'reviews' => $this->getStoreReviews($store, $request),
         ]);
     }
 
@@ -235,5 +237,69 @@ class StorePageController extends Controller
         }
 
         return strtoupper($status) === 'PKP' ? 'PKP' : 'Non PKP';
+    }
+
+    protected function getStoreReviews(Store $store, Request $request): array
+    {
+        $productIds = $store->products()->pluck('id');
+
+        // Get rating filter from request
+        $ratingFilter = $request->integer('review_rating');
+
+        // Calculate summary stats
+        $allReviews = Review::whereIn('product_id', $productIds);
+        $totalReviews = $allReviews->count();
+        $averageRating = $totalReviews > 0 ? round($allReviews->avg('rating'), 1) : 0;
+
+        // Get distribution
+        $distribution = Review::whereIn('product_id', $productIds)
+            ->selectRaw('rating, COUNT(*) as count')
+            ->groupBy('rating')
+            ->pluck('count', 'rating')
+            ->toArray();
+
+        // Fill missing ratings with 0
+        $fullDistribution = [];
+        for ($i = 5; $i >= 1; $i--) {
+            $fullDistribution[$i] = $distribution[$i] ?? 0;
+        }
+
+        // Get paginated reviews
+        $reviewsQuery = Review::whereIn('product_id', $productIds)
+            ->with(['user:id,name', 'product:id,name,slug'])
+            ->when($ratingFilter, fn ($q) => $q->where('rating', $ratingFilter))
+            ->orderByDesc('created_at');
+
+        $reviews = $reviewsQuery
+            ->paginate(10, ['*'], 'review_page')
+            ->withQueryString()
+            ->through(fn ($review) => [
+                'id' => $review->id,
+                'rating' => $review->rating,
+                'comment' => $review->comment,
+                'created_at' => $review->created_at?->toDateTimeString(),
+                'created_at_human' => $review->created_at?->diffForHumans(),
+                'user' => [
+                    'name' => $review->user?->name ?? 'Pembeli',
+                    'initial' => strtoupper(substr($review->user?->name ?? 'P', 0, 1)),
+                ],
+                'product' => [
+                    'id' => $review->product?->id,
+                    'name' => $review->product?->name,
+                    'slug' => $review->product?->slug,
+                ],
+            ]);
+
+        return [
+            'summary' => [
+                'average_rating' => $averageRating,
+                'total_reviews' => $totalReviews,
+                'distribution' => $fullDistribution,
+            ],
+            'items' => $reviews,
+            'filter' => [
+                'rating' => $ratingFilter ?: null,
+            ],
+        ];
     }
 }

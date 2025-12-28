@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Notifications\LowStockNotification;
 use App\Notifications\NewOrderNotification;
 use App\Notifications\OrderConfirmedNotification;
 use Illuminate\Http\Request;
@@ -101,7 +102,7 @@ class OrderController extends Controller
                     'note' => null,
                 ]);
 
-                // Create order items
+                // Create order items and reduce stock
                 foreach ($items as $item) {
                     $product = $item->product;
                     $price = $item->unit_price ?? $product->sale_price ?? $product->price;
@@ -118,6 +119,21 @@ class OrderController extends Controller
                         'weight' => $product->weight ?? 0,
                         'note' => $validated['notes'][$item->id] ?? null,
                     ]);
+
+                    // Reduce stock
+                    if ($product->stock !== null) {
+                        $product->decrement('stock', $item->quantity);
+                        $product->refresh();
+
+                        // Send low stock notification if stock <= 10
+                        if ($product->stock <= 10 && $product->stock >= 0 && $store && $store->user) {
+                            $store->user->notify(new LowStockNotification(
+                                $product->name,
+                                $product->stock,
+                                $product->id
+                            ));
+                        }
+                    }
                 }
 
                 $orderIds[] = $order->id;
@@ -200,6 +216,21 @@ class OrderController extends Controller
                 'weight' => $product->weight ?? 0,
                 'note' => null,
             ]);
+
+            // Reduce stock
+            if ($product->stock !== null) {
+                $product->decrement('stock', $quantity);
+                $product->refresh();
+
+                // Send low stock notification if stock <= 10
+                if ($product->stock <= 10 && $product->stock >= 0 && $store && $store->user) {
+                    $store->user->notify(new LowStockNotification(
+                        $product->name,
+                        $product->stock,
+                        $product->id
+                    ));
+                }
+            }
 
             $orderId = $order->id;
 

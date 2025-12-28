@@ -7,8 +7,8 @@ use App\Http\Controllers\Seller\NotificationController;
 use App\Http\Controllers\Seller\OrderController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\ProfileController;
+use App\Http\Controllers\Seller\ReviewController;
 use App\Http\Controllers\Seller\SearchController;
-
 use App\Http\Controllers\Seller\StoreController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +35,9 @@ Route::resource('orders', OrderController::class)->only(['index', 'show', 'updat
 Route::get('orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
 
 Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+
+// Reviews
+Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
 
 // Chat routes
 Route::get('chats', [ChatController::class, 'index'])->name('chats.index');

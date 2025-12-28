@@ -15,7 +15,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Box, CircleUserRound, LayoutDashboard, MessageCircle, Settings, ShoppingBag, Users } from 'lucide-vue-next';
+import { Box, CircleUserRound, LayoutDashboard, MessageCircle, Settings, ShoppingBag, Star, Users } from 'lucide-vue-next';
 import DocumentProgressTracker from '@/components/DocumentProgressTracker.vue';
 
 const page = usePage();
@@ -36,6 +36,7 @@ const navMain = [
   { title: 'Produk Saya', href: '/seller/products', icon: Box },
   { title: 'Pesanan', href: '/seller/orders', icon: ShoppingBag },
   { title: 'Customer', href: '/seller/customers', icon: Users },
+  { title: 'Ulasan', href: '/seller/reviews', icon: Star },
   { title: 'Chat', href: '/seller/chats', icon: MessageCircle },
   { title: 'Settings', href: '/seller/settings', icon: Settings },
 ];

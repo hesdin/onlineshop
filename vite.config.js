@@ -39,6 +39,10 @@ function resolveIndex() {
 }
 
 export default defineConfig({
+  server: {
+    host: '127.0.0.1',
+    cors: true,
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
