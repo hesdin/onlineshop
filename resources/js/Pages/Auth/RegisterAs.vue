@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 
+const registerAsImage = '/images/register-as.png';
+
 const options = [
   {
     label: 'Pembeli',
@@ -28,15 +30,7 @@ const options = [
         <!-- Left Side - Hero -->
         <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">
           <div class="space-y-4">
-            <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20">
-              <svg class="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="22" y1="11" x2="16" y2="11" />
-              </svg>
-            </div>
+            <img :src="registerAsImage" alt="Register" class="w-full max-w-sm object-contain mx-auto" />
             <h2 class="text-2xl font-bold text-white">Bersama TP-PKK Marketplace</h2>
             <p class="text-sky-100 leading-relaxed">
               Mari tingkatkan pertumbuhan ekonomi UMKM untuk Indonesia yang lebih maju.

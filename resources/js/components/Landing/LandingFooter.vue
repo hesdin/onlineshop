@@ -7,7 +7,7 @@ const logoImage = '/images/logo-pkk.png';
     <div class="container mx-auto grid gap-6 px-4 py-10 text-sm text-slate-500 md:grid-cols-4">
       <div>
         <img :src="logoImage" alt="PKK Logo" class="h-10 w-auto mb-2" />
-        <p class="font-medium text-slate-700">PKK Sulsel Mart</p>
+        <p class="font-medium text-slate-700">Bersama PKK, UMKM Sulsel Berdaya</p>
         <p class="mt-3 text-xs text-slate-400">2020-2025 © PKK Sulsel Mart</p>
       </div>
       <div>

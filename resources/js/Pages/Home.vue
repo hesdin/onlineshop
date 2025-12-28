@@ -622,7 +622,7 @@ const scrollCollection = (index, direction) => {
       </div>
     </section>
 
-    <section class="space-y-4">
+    <section class="space-y-4" id="faq">
       <header>
         <h3 class="text-2xl font-bold text-slate-900">Pertanyaan umum</h3>
       </header>

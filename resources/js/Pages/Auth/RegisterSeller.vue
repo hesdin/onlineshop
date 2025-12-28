@@ -2,6 +2,8 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
 import { computed, ref, watch, onUnmounted } from 'vue';
 
+const registerSellerImage = '/images/register-seller.png';
+
 const form = useForm({
   owner_name: '',
   email: '',
@@ -174,6 +176,7 @@ const submit = async () => {
         <div v-if="!registrationSuccess"
           class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">
           <div class="space-y-4">
+            <img :src="registerSellerImage" alt="Register Seller" class="w-full max-w-sm object-contain mx-auto" />
             <h2 class="text-2xl font-bold text-white">4 Langkah Mudah Berjualan</h2>
             <p class="text-sky-100 leading-relaxed">
               Mulai jual produkmu di TP-PKK Marketplace dengan proses registrasi yang cepat dan mudah.

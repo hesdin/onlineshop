@@ -414,7 +414,7 @@ const isCustomer = computed(() => {
 
       <!-- Search Bar -->
       <div class="order-last w-full flex-none lg:order-none lg:w-auto lg:flex-1">
-        <form class="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2"
+        <form class="flex items-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-2"
           @submit.prevent="submitSearch">
           <button type="submit" aria-label="Cari"
             class="cursor-pointer text-slate-400 transition hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white">
@@ -425,7 +425,7 @@ const isCustomer = computed(() => {
           </button>
           <input v-model="searchQuery"
             class="w-full bg-transparent text-[15px] text-slate-700 placeholder:text-slate-500 outline-none"
-            placeholder="Cari produk, jasa, atau vendor" type="text" />
+            placeholder="Cari di TP-PKK Marketplace" type="text" />
           <button type="button" @click="searchQuery = ''"
             class="text-slate-400 transition hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white">
             <svg v-if="searchQuery" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -894,11 +894,11 @@ const isCustomer = computed(() => {
       <!-- Guest Actions -->
       <div class="flex items-center gap-3" v-else>
         <button type="button" @click="goToLogin"
-          class="rounded-lg border border-sky-500 bg-white px-5 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50">
+          class="rounded-md border border-sky-500 bg-white px-5 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50">
           Masuk
         </button>
         <a href="/register-as"
-          class="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-600">
+          class="rounded-md bg-sky-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-600">
           Daftar
         </a>
       </div>
@@ -912,7 +912,7 @@ const isCustomer = computed(() => {
             <div class="col-span-3 border-r border-slate-100 px-5 py-6">
               <div class="flex items-center justify-between text-[13px] font-semibold text-slate-600">
                 <span>Kategori Produk & Jasa</span>
-                <Link :href="megaMenuData[state.activeIndex]?.url || '#'" class="text-sky-600 hover:text-sky-700">
+                <Link href="/c" class="text-sky-600 hover:text-sky-700">
                   Lihat Semua
                 </Link>
               </div>
@@ -937,7 +937,7 @@ const isCustomer = computed(() => {
                 <p class="text-base font-semibold text-slate-900">
                   {{ megaMenuData[state.activeIndex].label ?? megaMenuData[state.activeIndex] }}
                 </p>
-                <Link :href="megaMenuData[state.activeIndex].url || '#'"
+                <Link :href="megaMenuData[state.activeIndex]?.url || '/c'"
                   class="text-sm font-semibold text-sky-600 hover:text-sky-700">Lihat Semua</Link>
               </div>
               <div class="mt-4 grid grid-cols-4 gap-x-8 gap-y-3 text-sm text-slate-700">
