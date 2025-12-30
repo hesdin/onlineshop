@@ -58,8 +58,20 @@ COPY public ./public
 COPY --from=composer /app/vendor ./vendor
 
 # Create storage directory structure for Tailwind @source directives
+# Create storage directory structure for Tailwind @source directives
 # CSS references ../../storage/framework/views from resources/css/
 RUN mkdir -p storage/framework/views
+
+# Pass VITE env vars during build
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
+
+ENV VITE_REVERB_APP_KEY=$VITE_REVERB_APP_KEY
+ENV VITE_REVERB_HOST=$VITE_REVERB_HOST
+ENV VITE_REVERB_PORT=$VITE_REVERB_PORT
+ENV VITE_REVERB_SCHEME=$VITE_REVERB_SCHEME
 
 RUN npm run build
 
