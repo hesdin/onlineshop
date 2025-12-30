@@ -45,8 +45,9 @@ const notifications = ref<Notification[]>([]);
 const unreadCount = ref(0);
 const unreadChatCount = ref(0);
 const isLoadingNotifications = ref(false);
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
-let chatPollingInterval: ReturnType<typeof setInterval> | null = null;
+
+const userId = computed(() => user.value?.id);
+const storeId = computed(() => user.value?.store?.id);
 
 const fetchNotifications = async () => {
   try {
@@ -167,21 +168,40 @@ const fetchChatUnreadCount = async () => {
   }
 };
 
-// Start polling on mount
+// Subscribe to real-time updates
 onMounted(() => {
   fetchNotifications();
   fetchChatUnreadCount();
-  pollingInterval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
-  chatPollingInterval = setInterval(fetchChatUnreadCount, 30000); // Poll every 30 seconds
+
+  // Subscribe to notifications
+  if (userId.value) {
+    (window as any).Echo.private(`user.${userId.value}.notifications`)
+      .listen('NotificationReceived', (e: any) => {
+        notifications.value.unshift(e.notification);
+        unreadCount.value++;
+      });
+  }
+
+  // Subscribe to conversation updates for chat badge
+  if (storeId.value) {
+    (window as any).Echo.private(`store.${storeId.value}.conversations`)
+      .listen('ConversationUpdated', (e: any) => {
+        // Only update badge if user is NOT viewing this conversation
+        const activeConvId = (window as any).activeConversationId;
+        if (!activeConvId || activeConvId !== e.conversation?.id) {
+          fetchChatUnreadCount();
+        }
+      });
+  }
 });
 
 // Clean up on unmount
 onUnmounted(() => {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
+  if (userId.value) {
+    (window as any).Echo.leave(`user.${userId.value}.notifications`);
   }
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
+  if (storeId.value) {
+    (window as any).Echo.leave(`store.${storeId.value}.conversations`);
   }
 });
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import SellerDashboardLayout from '@/Layouts/SellerDashboardLayout.vue';
 import { MessageCircle, User, Clock } from 'lucide-vue-next';
 
@@ -43,19 +43,23 @@ const props = defineProps<{
   conversations: PaginatedConversations;
 }>();
 
-// Polling interval for auto-refresh (30 seconds)
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
+const page = usePage();
+const storeId = computed(() => (page.props as any).auth?.user?.store?.id);
 
+// Subscribe to real-time conversation updates
 onMounted(() => {
-  // Start polling for online status updates
-  pollingInterval = setInterval(() => {
-    router.reload({ only: ['conversations'] });
-  }, 30000); // 30 seconds
+  if (storeId.value) {
+    (window as any).Echo.private(`store.${storeId.value}.conversations`)
+      .listen('ConversationUpdated', (e: any) => {
+        // Reload conversations to get updated data
+        router.reload({ only: ['conversations'] });
+      });
+  }
 });
 
 onUnmounted(() => {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
+  if (storeId.value) {
+    (window as any).Echo.leave(`store.${storeId.value}.conversations`);
   }
 });
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Events\ConversationUpdated;
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -99,6 +101,12 @@ class ChatController extends Controller
 
         $message->load('sender:id,name');
 
+        // Broadcast message to other participants
+        broadcast(new MessageSent($message, $conversation))->toOthers();
+
+        // Notify seller's conversation list
+        broadcast(new ConversationUpdated($conversation, $message));
+
         return response()->json([
             'conversation_id' => $conversation->id,
             'message' => $message,
@@ -170,6 +178,12 @@ class ChatController extends Controller
 
         $message->load('sender:id,name');
 
+        // Broadcast message to other participants
+        broadcast(new MessageSent($message, $conversation))->toOthers();
+
+        // Notify seller's conversation list
+        broadcast(new ConversationUpdated($conversation, $message));
+
         return response()->json([
             'message' => $message,
         ]);
@@ -218,7 +232,7 @@ class ChatController extends Controller
             ->orderByDesc('last_message_at')
             ->get()
             ->map(function ($conv) {
-                $conv->last_message = $conv->messages()->latest()->first();
+                $conv->last_message = $conv->messages()->orderByDesc('created_at')->first();
                 return $conv;
             });
 
@@ -242,5 +256,23 @@ class ChatController extends Controller
             ->count();
 
         return response()->json(['unread_count' => $count]);
+    }
+
+    /**
+     * Mark all messages in a conversation as read by customer.
+     */
+    public function markAsRead(Request $request, Conversation $conversation): JsonResponse
+    {
+        $user = $request->user();
+
+        // Ensure customer owns this conversation
+        if ($conversation->customer_id !== $user->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Mark all unread seller messages as read
+        $conversation->unreadMessagesForCustomer()->update(['read_at' => now()]);
+
+        return response()->json(['success' => true]);
     }
 }

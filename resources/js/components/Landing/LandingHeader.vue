@@ -13,7 +13,6 @@ const props = defineProps({
 // Notification state (API-based)
 const notifications = ref([]);
 const unreadCount = ref(0);
-let notificationPollingInterval = null;
 
 const fetchNotifications = async () => {
   if (props.isAuthenticated !== true) return;
@@ -104,7 +103,6 @@ const getIconBgColor = (icon) => {
 // Chat state (API-based)
 const conversations = ref([]);
 const chatUnreadCount = ref(0);
-let chatPollingInterval = null;
 
 const fetchConversations = async () => {
   if (props.isAuthenticated !== true) return;
@@ -329,19 +327,50 @@ onMounted(() => {
   // Fetch notifications and chats if authenticated
   if (props.isAuthenticated === true) {
     fetchNotifications();
-    notificationPollingInterval = setInterval(fetchNotifications, 30000);
     fetchConversations();
-    chatPollingInterval = setInterval(fetchConversations, 30000);
+
+    const userId = props.authUser?.id;
+    if (userId) {
+      // Subscribe to real-time notifications
+      (window).Echo.private(`user.${userId}.notifications`)
+        .listen('NotificationReceived', (e) => {
+          notifications.value.unshift(e.notification);
+          unreadCount.value++;
+        })
+        // Also listen for new chat messages to update chat badge
+        .listen('CustomerConversationUpdated', (e) => {
+          // Only update if not viewing this conversation
+          const activeConvId = (window).activeConversationId;
+          if (!activeConvId || activeConvId !== e.conversation?.id) {
+            // Find and update the conversation in the list
+            const convIndex = conversations.value.findIndex(c => c.id === e.conversation?.id);
+            if (convIndex !== -1) {
+              // Create a new conversation object with updated data (for Vue reactivity)
+              const updatedConv = {
+                ...conversations.value[convIndex],
+                last_message: e.last_message,
+                last_message_at: e.conversation?.last_message_at,
+                unread_count: (conversations.value[convIndex].unread_count || 0) + 1
+              };
+              // Remove from current position and add to top
+              conversations.value.splice(convIndex, 1);
+              conversations.value = [updatedConv, ...conversations.value];
+            }
+            // Increment badge count
+            chatUnreadCount.value++;
+          }
+        });
+    }
   }
 });
 
 onBeforeUnmount(() => {
   Object.keys(timers).forEach((key) => clearTimer(key));
-  if (notificationPollingInterval) {
-    clearInterval(notificationPollingInterval);
-  }
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
+
+  // Leave Echo channels
+  const userId = props.authUser?.id;
+  if (userId && props.isAuthenticated === true) {
+    (window).Echo.leave(`user.${userId}.notifications`);
   }
 });
 
@@ -642,7 +671,7 @@ const isCustomer = computed(() => {
                   </svg>
                   <p class="mt-2 text-sm text-slate-500">Belum ada percakapan</p>
                 </div>
-                <div v-else v-for="conv in conversations" :key="conv.id"
+                <div v-else v-for="conv in conversations" :key="`${conv.id}-${conv.last_message?.id || 0}`"
                   class="flex items-center gap-3 px-5 py-3 cursor-pointer transition hover:bg-slate-50"
                   :class="{ 'bg-blue-50/50': conv.unread_count > 0 }"
                   @click="state.chatOpen = false; router.visit(`/customer/dashboard/chat/${conv.id}`)">

@@ -47,7 +47,6 @@ const messages = ref<Message[]>([]);
 const conversationId = ref<number | null>(null);
 const newMessage = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
 const lastMessageId = computed(() => {
   if (messages.value.length === 0) return 0;
@@ -127,32 +126,34 @@ const sendMessage = async () => {
   }
 };
 
-const fetchNewMessages = async () => {
+const startPolling = () => {
   if (!conversationId.value) return;
 
-  try {
-    const response = await axios.get(`/customer/chats/${conversationId.value}/messages`, {
-      params: { after_id: lastMessageId.value },
+  // Track that we're viewing this conversation (prevents header badge update)
+  (window as any).activeConversationId = conversationId.value;
+
+  // Subscribe to real-time messages via WebSocket
+  (window as any).Echo.private(`conversation.${conversationId.value}`)
+    .listen('MessageSent', (e: { message: Message }) => {
+      // Only add if not already in the list (avoid duplicates)
+      if (!messages.value.some(m => m.id === e.message.id)) {
+        messages.value.push(e.message);
+        scrollToBottom();
+
+        // Mark message as read if it's from seller (we're viewing)
+        if (e.message.sender_type === 'seller' && conversationId.value) {
+          axios.post(`/customer/chats/${conversationId.value}/read`).catch(() => { });
+        }
+      }
     });
-
-    if (response.data.messages.length > 0) {
-      messages.value.push(...response.data.messages);
-      scrollToBottom();
-    }
-  } catch (error) {
-    console.error('Failed to fetch messages:', error);
-  }
-};
-
-const startPolling = () => {
-  if (pollingInterval) return;
-  pollingInterval = setInterval(fetchNewMessages, 5000);
 };
 
 const stopPolling = () => {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
-    pollingInterval = null;
+  // Clear active conversation tracking
+  (window as any).activeConversationId = null;
+
+  if (conversationId.value) {
+    (window as any).Echo.leave(`conversation.${conversationId.value}`);
   }
 };
 

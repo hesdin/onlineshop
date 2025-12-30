@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Bell, ShoppingBag, Truck, CreditCard, CheckCircle, XCircle, Star, Package, Check, Trash2 } from 'lucide-vue-next';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
 import CustomerDashboardSidebar from './CustomerDashboardSidebar.vue';
 
@@ -28,7 +28,9 @@ type Notification = {
 
 const notifications = ref<Notification[]>([]);
 const unreadCount = ref(0);
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+const page = usePage();
+const userId = computed(() => (page.props as any).auth?.user?.id);
 
 const fetchNotifications = async () => {
   try {
@@ -124,14 +126,23 @@ const getIconColor = (icon: string) => {
   }
 };
 
+// Subscribe to real-time notification updates
 onMounted(() => {
   fetchNotifications();
-  pollingInterval = setInterval(fetchNotifications, 30000);
+
+  if (userId.value) {
+    (window as any).Echo.private(`user.${userId.value}.notifications`)
+      .listen('NotificationReceived', (e: any) => {
+        // Add new notification to the top of the list
+        notifications.value.unshift(e.notification);
+        unreadCount.value++;
+      });
+  }
 });
 
 onUnmounted(() => {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
+  if (userId.value) {
+    (window as any).Echo.leave(`user.${userId.value}.notifications`);
   }
 });
 </script>

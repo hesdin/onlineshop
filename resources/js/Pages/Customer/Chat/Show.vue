@@ -44,7 +44,6 @@ const messages = ref<Message[]>(props.conversation.messages || []);
 const newMessage = ref('');
 const isSending = ref(false);
 const messagesContainer = ref<HTMLElement | null>(null);
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
 const lastMessageId = computed(() => {
   if (messages.value.length === 0) return 0;
@@ -77,21 +76,6 @@ const sendMessage = async () => {
     newMessage.value = content;
   } finally {
     isSending.value = false;
-  }
-};
-
-const fetchNewMessages = async () => {
-  try {
-    const response = await axios.get(`/customer/chats/${props.conversation.id}/messages`, {
-      params: { after_id: lastMessageId.value },
-    });
-
-    if (response.data.messages.length > 0) {
-      messages.value.push(...response.data.messages);
-      scrollToBottom();
-    }
-  } catch (error) {
-    console.error('Failed to fetch messages:', error);
   }
 };
 
@@ -132,15 +116,35 @@ const groupedMessages = computed(() => {
   return groups;
 });
 
+// Subscribe to real-time messages via WebSocket
 onMounted(() => {
   scrollToBottom();
-  pollingInterval = setInterval(fetchNewMessages, 5000);
+
+  // Track that we're viewing this conversation (prevents header badge update)
+  (window as any).activeConversationId = props.conversation.id;
+
+  // Listen for new messages on this conversation's private channel
+  (window as any).Echo.private(`conversation.${props.conversation.id}`)
+    .listen('MessageSent', (e: { message: Message }) => {
+      // Only add if not already in the list (avoid duplicates)
+      if (!messages.value.some(m => m.id === e.message.id)) {
+        messages.value.push(e.message);
+        scrollToBottom();
+
+        // Mark message as read if it's from seller (we're viewing)
+        if (e.message.sender_type === 'seller') {
+          axios.post(`/customer/chats/${props.conversation.id}/read`).catch(() => { });
+        }
+      }
+    });
 });
 
 onUnmounted(() => {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
-  }
+  // Clear active conversation tracking
+  (window as any).activeConversationId = null;
+
+  // Leave the channel when component is destroyed
+  (window as any).Echo.leave(`conversation.${props.conversation.id}`);
 });
 </script>
 

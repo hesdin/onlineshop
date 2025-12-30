@@ -45,6 +45,7 @@ Route::get('chats/unread-count', [ChatController::class, 'unreadCount'])->name('
 Route::get('chats/{conversation}', [ChatController::class, 'show'])->name('chats.show');
 Route::post('chats/{conversation}/messages', [ChatController::class, 'storeMessage'])->name('chats.messages.store');
 Route::get('chats/{conversation}/messages', [ChatController::class, 'getMessages'])->name('chats.messages.index');
+Route::post('chats/{conversation}/read', [ChatController::class, 'markAsRead'])->name('chats.mark-read');
 
 
 

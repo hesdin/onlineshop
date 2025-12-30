@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Events\CustomerConversationUpdated;
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -108,6 +110,15 @@ class ChatController extends Controller
 
         $message->load('sender:id,name');
 
+        // Broadcast message to other participants
+        broadcast(new MessageSent($message, $conversation))->toOthers();
+
+        // Refresh conversation to get updated last_message_at
+        $conversation->refresh();
+
+        // Notify customer's chat list (for LandingHeader badge)
+        broadcast(new CustomerConversationUpdated($conversation, $message));
+
         return response()->json([
             'message' => $message,
         ]);
@@ -162,5 +173,23 @@ class ChatController extends Controller
             ->count();
 
         return response()->json(['unread_count' => $count]);
+    }
+
+    /**
+     * Mark all messages in a conversation as read by seller.
+     */
+    public function markAsRead(Request $request, Conversation $conversation): JsonResponse
+    {
+        $store = $request->user()->store;
+
+        // Ensure seller owns this conversation
+        if (!$store || $conversation->store_id !== $store->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Mark all unread customer messages as read
+        $conversation->unreadMessagesForSeller()->update(['read_at' => now()]);
+
+        return response()->json(['success' => true]);
     }
 }

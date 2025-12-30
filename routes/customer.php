@@ -53,3 +53,4 @@ Route::post('chats/start', [ChatController::class, 'startChat'])->name('chats.st
 Route::get('chats/store/{store}', [ChatController::class, 'getConversation'])->name('chats.store');
 Route::post('chats/{conversation}/messages', [ChatController::class, 'sendMessage'])->name('chats.messages.store');
 Route::get('chats/{conversation}/messages', [ChatController::class, 'getMessages'])->name('chats.messages.index');
+Route::post('chats/{conversation}/read', [ChatController::class, 'markAsRead'])->name('chats.mark-read');

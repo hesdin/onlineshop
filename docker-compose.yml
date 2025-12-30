@@ -110,6 +110,39 @@ services:
     networks:
       - onlineshop
 
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: onlineshop:latest
+    container_name: onlineshop-reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-onlineshop}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REVERB_HOST=0.0.0.0
+      - REVERB_PORT=8080
+    depends_on:
+      - postgres
+      - redis
+      - app
+    networks:
+      - onlineshop
+
 networks:
   onlineshop:
     driver: bridge

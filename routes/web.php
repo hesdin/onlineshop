@@ -20,8 +20,12 @@ use App\Http\Controllers\RegionController;
 use App\Http\Controllers\SearchPageController;
 use App\Http\Controllers\StorePageController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// Enable broadcasting routes for WebSocket authentication
+Broadcast::routes(['middleware' => ['web', 'auth']]);
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/c', CategoryIndexPageController::class)->name('category.index');

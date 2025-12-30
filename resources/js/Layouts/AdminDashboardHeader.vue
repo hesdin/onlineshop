@@ -116,7 +116,8 @@ type Notification = {
 
 const notifications = ref<Notification[]>([]);
 const unreadCount = ref(0);
-let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+const userId = computed(() => user.value?.id);
 
 const fetchNotifications = async () => {
   try {
@@ -200,14 +201,22 @@ const getIconColor = (icon: string) => {
   }
 };
 
+// Subscribe to real-time notification updates
 onMounted(() => {
   fetchNotifications();
-  pollingInterval = setInterval(fetchNotifications, 30000);
+
+  if (userId.value) {
+    (window as any).Echo.private(`user.${userId.value}.notifications`)
+      .listen('NotificationReceived', (e: any) => {
+        notifications.value.unshift(e.notification);
+        unreadCount.value++;
+      });
+  }
 });
 
 onUnmounted(() => {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
+  if (userId.value) {
+    (window as any).Echo.leave(`user.${userId.value}.notifications`);
   }
 });
 </script>
@@ -245,7 +254,7 @@ onUnmounted(() => {
           <div v-for="(category, key) in searchResults" :key="key" class="border-b border-border last:border-0">
             <div class="px-3 py-2 bg-muted/50">
               <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ category.label
-                }}</span>
+              }}</span>
             </div>
             <div v-for="item in category.items" :key="item.id" @click="handleResultClick(item.url)"
               class="flex items-center justify-between px-3 py-2 hover:bg-muted cursor-pointer transition-colors">
