@@ -100,11 +100,20 @@ createInertiaApp({
     }
   };
 
-  // Only start heartbeat if there's a CSRF token (meaning we're in Laravel app)
-  if (document.querySelector('meta[name="csrf-token"]')) {
-    // Send initial heartbeat
-    sendHeartbeat();
-    // Then send every 3 minutes
-    setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+  // Check if user is authenticated via Inertia page props
+  const appElement = document.getElementById('app');
+  if (appElement && appElement.dataset.page) {
+    try {
+      const page = JSON.parse(appElement.dataset.page);
+      // Only start heartbeat if auth.user exists
+      if (page.props?.auth?.user) {
+        // Send initial heartbeat
+        sendHeartbeat();
+        // Then send every 3 minutes
+        setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+      }
+    } catch (e) {
+      console.error('Error parsing Inertia page data:', e);
+    }
   }
 })();
