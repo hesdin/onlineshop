@@ -467,7 +467,7 @@ watch(
 
     <Head title="Kelola Toko" />
 
-    <div class="px-4 py-8 sm:px-6 lg:px-8">
+    <div class="px-2 lg:px-0">
       <!-- Header -->
       <div class="mb-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

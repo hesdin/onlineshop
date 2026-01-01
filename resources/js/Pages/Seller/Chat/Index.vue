@@ -105,7 +105,7 @@ const getMessagePrefix = (senderType: string | undefined) => {
 
     <Head title="Chat" />
 
-    <div class="mx-auto max-w-4xl">
+    <div class="mx-auto max-w-full">
       <!-- Header -->
       <div class="mb-6 flex items-center justify-between">
         <div>
@@ -115,7 +115,7 @@ const getMessagePrefix = (senderType: string | undefined) => {
       </div>
 
       <!-- Conversation List -->
-      <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div class="rounded-md border border-slate-200 bg-white shadow-sm">
         <div v-if="conversations.data.length === 0" class="py-16 text-center">
           <MessageCircle class="mx-auto h-12 w-12 text-slate-300" />
           <p class="mt-4 text-slate-500">Belum ada percakapan</p>

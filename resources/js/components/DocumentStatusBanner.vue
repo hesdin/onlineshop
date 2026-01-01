@@ -36,7 +36,7 @@ const config = computed(() => {
     default:
       return {
         icon: AlertCircle,
-        bg: 'bg-indigo-600',
+        bg: 'bg-blue-600',
         title: 'Lengkapi Data Toko',
         message: 'Verifikasi toko untuk mulai berjualan',
         ctaText: 'Lengkapi',
@@ -60,7 +60,7 @@ const config = computed(() => {
         </div>
 
         <Link v-if="config.showCta" href="/seller/settings"
-          class="flex items-center gap-1 rounded-sm bg-white px-4 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-white/90 flex-shrink-0">
+          class="flex items-center gap-1 rounded-sm bg-white px-4 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-white/90 flex-shrink-0">
           {{ config.ctaText }}
           <ChevronRight class="h-3 w-3" />
         </Link>

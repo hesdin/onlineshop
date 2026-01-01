@@ -59,20 +59,20 @@ const statusConfig = computed(() => {
 
 <template>
   <Link href="/seller/documents"
-    class="block rounded-lg border border-slate-200 bg-white p-2.5 transition hover:bg-slate-50">
+    class="block rounded-sm border border-slate-200 bg-white p-2.5 transition hover:bg-slate-50">
     <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-1.5">
         <component :is="statusConfig.icon" :class="['h-3.5 w-3.5', statusConfig.color]" />
         <span class="text-xs font-medium text-slate-900">Verifikasi Toko</span>
       </div>
-      <span :class="['rounded-full px-2 py-0.5 text-[10px] font-medium', statusConfig.bgColor, statusConfig.color]">
+      <span :class="['rounded-sm px-2 py-0.5 text-[10px] font-medium', statusConfig.bgColor, statusConfig.color]">
         {{ statusConfig.label }}
       </span>
     </div>
 
     <!-- Progress Bar -->
     <div class="mb-1.5">
-      <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+      <div class="h-1.5 w-full overflow-hidden rounded-sm bg-slate-100">
         <div :class="['h-full transition-all duration-300', statusConfig.progressColor]"
           :style="{ width: `${percentage}%` }" />
       </div>

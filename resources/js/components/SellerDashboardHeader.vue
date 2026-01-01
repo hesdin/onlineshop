@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Bell, LogOut, User, Settings, Search, ShoppingBag, CheckCircle, AlertTriangle, Package, Check, Trash2, MessageCircle } from 'lucide-vue-next';
+import ConfirmationModal from '@/components/ConfirmationModal.vue';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
@@ -382,33 +383,8 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
   </header>
 
   <!-- Logout Confirmation Modal -->
-  <div v-if="showLogoutModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-    @click.self="cancelLogout">
-    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-      <div class="mb-4 flex items-center gap-3">
-        <div class="grid h-12 w-12 place-items-center rounded-full bg-red-100">
-          <LogOut class="h-6 w-6 text-red-600" />
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-slate-900">Konfirmasi Keluar</h3>
-          <p class="text-sm text-slate-500">Apakah Anda yakin ingin keluar?</p>
-        </div>
-      </div>
-
-      <p class="mb-6 text-sm text-slate-600">
-        Anda akan keluar dari akun dan perlu login kembali untuk mengakses dashboard.
-      </p>
-
-      <div class="flex gap-3">
-        <Button variant="outline" class="flex-1" @click="cancelLogout">
-          Batal
-        </Button>
-        <Button variant="destructive" class="flex-1" @click="confirmLogout">
-          Ya, Keluar
-        </Button>
-      </div>
-    </div>
-  </div>
+  <ConfirmationModal :show="showLogoutModal" title="Konfirmasi Keluar" message="Anda yakin ingin keluar dari akun ini?"
+    confirm-text="Ya, Keluar" cancel-text="Batal" variant="danger" @confirm="confirmLogout" @cancel="cancelLogout" />
 
   <!-- Delete All Notifications Confirmation Modal -->
   <div v-if="showDeleteAllModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"

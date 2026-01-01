@@ -30,7 +30,7 @@ const options = [
         <!-- Left Side - Hero -->
         <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">
           <div class="space-y-4">
-            <img :src="registerAsImage" alt="Register" class="w-full max-w-sm object-contain mx-auto" />
+            <img :src="registerAsImage" alt="Register" class="w-full max-w-[220px] object-contain mx-auto" />
             <h2 class="text-2xl font-bold text-white">Bersama TP-PKK Marketplace</h2>
             <p class="text-sky-100 leading-relaxed">
               Mari tingkatkan pertumbuhan ekonomi UMKM untuk Indonesia yang lebih maju.

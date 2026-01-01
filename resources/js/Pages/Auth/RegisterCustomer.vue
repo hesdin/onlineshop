@@ -2,6 +2,8 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
 import { computed, ref, watch, onUnmounted } from 'vue';
 
+const registerCustomerImage = '/images/register-customer.png';
+
 const form = useForm({
   name: '',
   email: '',
@@ -249,15 +251,7 @@ const submit = async () => {
 
           <!-- Icon -->
           <div class="flex justify-center mb-6">
-            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-sky-50">
-              <svg class="h-8 w-8 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="22" y1="11" x2="16" y2="11" />
-              </svg>
-            </div>
+            <img :src="registerCustomerImage" alt="Register Customer" class="w-full max-w-[80px] object-contain" />
           </div>
 
           <!-- Title -->

@@ -161,7 +161,7 @@ defineOptions({
   <div class="bg-slate-50">
 
     <Head title="Profil" />
-    <div class="mx-auto flex max-w-screen-2xl flex-col gap-6 px-6 py-10">
+    <div class="mx-auto flex max-w-screen-2xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <nav class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
         <a href="/" class="text-sky-600 hover:underline">Beranda</a>
         <span>/</span>
@@ -176,7 +176,7 @@ defineOptions({
         <!-- Floating Success Alert -->
         <Teleport to="body">
           <div v-if="showSuccess && flashSuccess"
-            class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
+            class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] w-[90%] sm:w-auto sm:min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
             <AlertBanner type="success" :message="flashSuccess" :show="showSuccess" :dismissible="true"
               @close="showSuccess = false" />
           </div>

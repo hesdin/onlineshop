@@ -8,6 +8,8 @@ const form = useForm({
   password: '',
 });
 
+const loginCustomerImage = '/images/login-customer.png';
+
 const showPassword = ref(false);
 const localSuccess = ref('');
 
@@ -50,6 +52,7 @@ const closeAlert = () => {
         <!-- Left Side - Hero -->
         <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-sky-500 to-sky-600 p-10 flex-col justify-center">
           <div class="space-y-4">
+            <img :src="loginCustomerImage" alt="Login Customer" class="w-full max-w-[220px] object-contain mx-auto" />
             <h2 class="text-2xl font-bold text-white">Selamat Datang Kembali</h2>
             <p class="text-sky-100 leading-relaxed">
               Masuk ke akun Anda untuk melanjutkan berbelanja produk UMKM terbaik dari seluruh Indonesia.
