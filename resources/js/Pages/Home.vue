@@ -24,6 +24,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  featuredProducts: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const heroBanners = computed(() => props.heroBanners ?? []);
@@ -433,6 +437,54 @@ const scrollCollection = (index, direction) => {
             <span v-else>{{ category.initial }}</span>
           </div>
           <p class="text-xs font-semibold text-slate-900">{{ category.name }}</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section class="space-y-4" v-if="props.featuredProducts?.length">
+      <header class="flex items-center justify-between">
+        <h3 class="text-2xl font-bold text-slate-900">Produk Terbaru</h3>
+        <a href="/search" class="inline-flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-700">
+          Lihat Semua
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </a>
+      </header>
+      <div class="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <a v-for="product in props.featuredProducts.slice(0, 6)" :key="product.id" :href="productUrl(product)"
+          class="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <div class="relative aspect-square overflow-hidden bg-slate-100">
+            <img v-if="productImageUrl(product)" :src="productImageUrl(product)" :alt="product.name" loading="lazy"
+              class="h-full w-full object-cover transition group-hover:scale-105" />
+            <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+              <svg class="h-12 w-12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
+            </div>
+            <div v-if="product.sale_price"
+              class="absolute left-2 top-2 rounded-md bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              SALE
+            </div>
+          </div>
+          <div class="flex flex-1 flex-col p-3">
+            <p class="text-xs text-slate-500 truncate">{{ product.store?.name || 'Toko' }}</p>
+            <h4 class="mt-1 text-sm font-medium text-slate-900 line-clamp-2">{{ product.name }}</h4>
+            <div class="mt-auto pt-2">
+              <p v-if="product.sale_price" class="text-xs text-slate-400 line-through">{{ formatPrice(product.price) }}
+              </p>
+              <p class="text-sm font-bold text-slate-900">{{ formatPrice(product.sale_price || product.price) }}</p>
+            </div>
+            <div v-if="product.store?.city" class="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  d="M10 2a6 6 0 0 0-6 6c0 4.418 6 10 6 10s6-5.582 6-10a6 6 0 0 0-6-6Zm0 8.25a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5Z" />
+              </svg>
+              <span class="truncate">{{ product.store.city }}</span>
+            </div>
+          </div>
         </a>
       </div>
     </section>

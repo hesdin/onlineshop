@@ -4,11 +4,13 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class NewOrderNotification extends Notification implements ShouldQueue
+class NewOrderNotification extends Notification implements ShouldQueue, ShouldBroadcastNow
 {
     use Queueable;
 
@@ -18,7 +20,7 @@ class NewOrderNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'broadcast'];
     }
 
     public function toDatabase(object $notifiable): array
@@ -30,6 +32,48 @@ class NewOrderNotification extends Notification implements ShouldQueue
             'action_url' => "/seller/orders/{$this->order->id}",
             'order_id' => $this->order->id,
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage([
+            'notification' => [
+                'id' => null,
+                'title' => 'Pesanan Baru',
+                'message' => "Pesanan #{$this->order->order_number} senilai Rp " . number_format($this->order->grand_total, 0, ',', '.'),
+                'icon' => 'shopping-bag',
+                'action_url' => "/seller/orders/{$this->order->id}",
+                'order_id' => $this->order->id,
+                'created_at' => now()->toISOString(),
+                'read_at' => null,
+            ],
+        ]);
+    }
+
+    /**
+     * Get the channels the notification should broadcast on.
+     */
+    public function broadcastOn(): array
+    {
+        // Load store relation to get seller user ID
+        $this->order->loadMissing('store');
+        $sellerId = $this->order->store?->user_id;
+
+        if (!$sellerId) {
+            return [];
+        }
+
+        return [
+            new \Illuminate\Broadcasting\PrivateChannel('user.' . $sellerId . '.notifications'),
+        ];
+    }
+
+    /**
+     * Get the broadcast event name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'NotificationReceived';
     }
 
     public function toMail(object $notifiable): MailMessage

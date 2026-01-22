@@ -73,12 +73,38 @@ class HomeController extends Controller
             ])
             ->values();
 
+        // Featured products - 6 latest active products
+        $featuredProducts = \App\Models\Product::with([
+                'store:id,name,slug,city_id',
+                'store.cityRegion:id,name',
+            ])
+            ->where('status', '!=', \App\Models\Product::STATUS_INACTIVE)
+            ->visibleForCity($cityId)
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get()
+            ->map(fn ($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'price' => $product->price,
+                'sale_price' => $product->sale_price,
+                'image_url' => $this->resolveProductImage($product),
+                'store' => $product->store ? [
+                    'name' => $product->store->name,
+                    'slug' => $product->store->slug,
+                    'city' => $product->store->cityRegion?->name,
+                ] : null,
+            ])
+            ->values();
+
         return Inertia::render('Home', [
             'appName' => config('app.name', 'TP-PKK Marketplace'),
             'categories' => $categories,
             'collections' => $collections,
             'heroBanners' => $heroBanners,
             'heroPromos' => $heroPromos,
+            'featuredProducts' => $featuredProducts,
         ]);
     }
 

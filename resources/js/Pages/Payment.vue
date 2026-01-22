@@ -41,9 +41,25 @@ const state = reactive({
   showPromo: false,
   promoCode: '',
   submitting: false,
+  showAgreement: false,
+  agreementAccepted: false,
 });
 const PAYMENT_SUBMIT_LOADING_MS = 2000;
 let submitRequestTimer = null;
+
+const agreementText = `Dengan melanjutkan transaksi ini, saya menyatakan bahwa:
+
+1. Saya memahami bahwa segala bentuk transaksi antara Pembeli dan Toko/Penjual merupakan kesepakatan langsung antara kedua belah pihak.
+
+2. Aplikasi pkksulselmart.store hanya bertindak sebagai platform penghubung dan TIDAK BERTANGGUNG JAWAB atas:
+   • Kualitas, kondisi, atau kesesuaian produk yang dibeli
+   • Keterlambatan atau kegagalan pengiriman oleh penjual
+   • Perselisihan yang terjadi antara pembeli dan penjual
+   • Kerugian finansial atau non-finansial yang timbul dari transaksi
+
+3. Pembeli bertanggung jawab untuk memverifikasi informasi produk dan berkomunikasi langsung dengan penjual sebelum melakukan pembelian.
+
+4. Persetujuan ini berlaku untuk setiap transaksi yang dilakukan melalui platform ini.`;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
@@ -59,7 +75,7 @@ const applyPromo = () => {
   state.showPromo = false;
 };
 
-const submitPayment = () => {
+const handlePayClick = () => {
   if (state.submitting) {
     return;
   }
@@ -73,6 +89,25 @@ const submitPayment = () => {
     return;
   }
 
+  // Show agreement modal
+  state.showAgreement = true;
+  state.agreementAccepted = false;
+};
+
+const closeAgreement = () => {
+  state.showAgreement = false;
+  state.agreementAccepted = false;
+};
+
+const confirmAgreement = () => {
+  if (!state.agreementAccepted) {
+    return;
+  }
+  state.showAgreement = false;
+  submitPayment();
+};
+
+const submitPayment = () => {
   state.submitting = true;
 
   if (submitRequestTimer) {
@@ -86,6 +121,8 @@ const submitPayment = () => {
       address_id: props.addressId,
       shipping_selections: props.shippingSelections,
       notes: {},
+      agreement_accepted: true,
+      agreement_accepted_at: new Date().toISOString(),
     }, {
       preserveScroll: true,
       onFinish: () => {
@@ -270,7 +307,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <button type="button" @click="submitPayment" :disabled="!state.selectedMethod || state.submitting"
+            <button type="button" @click="handlePayClick" :disabled="!state.selectedMethod || state.submitting"
               class="w-full rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2"
               :class="state.selectedMethod && !state.submitting
                 ? 'bg-sky-600 text-white hover:bg-sky-700 cursor-pointer'
@@ -339,6 +376,71 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
+
+      <!-- Agreement Modal (Buy Now Mode) -->
+      <div v-if="state.showAgreement"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-10 backdrop-blur-sm"
+        role="dialog" aria-modal="true" @click.self="closeAgreement" @keydown.escape="closeAgreement">
+        <div class="relative w-full max-w-lg rounded-xl bg-white shadow-xl ring-1 ring-slate-200" @click.stop>
+          <!-- Header -->
+          <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                <svg class="h-5 w-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path
+                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+              <p class="text-lg font-bold text-slate-900">Syarat & Ketentuan Transaksi</p>
+            </div>
+            <button type="button" class="text-slate-400 transition hover:text-slate-600" @click="closeAgreement">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="max-h-[60vh] overflow-y-auto px-6 py-5">
+            <div class="rounded-lg bg-slate-50 p-4">
+              <pre
+                class="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-sans">{{ agreementText }}</pre>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="border-t border-slate-100 px-6 py-4 space-y-4">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" v-model="state.agreementAccepted"
+                class="mt-0.5 h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+              <span class="text-sm text-slate-700">
+                Saya telah membaca dan <strong>menyetujui</strong> syarat & ketentuan transaksi di atas.
+              </span>
+            </label>
+
+            <div class="flex gap-3">
+              <button type="button" @click="closeAgreement"
+                class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                Batal
+              </button>
+              <button type="button" @click="confirmAgreement" :disabled="!state.agreementAccepted || state.submitting"
+                class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2"
+                :class="state.agreementAccepted && !state.submitting
+                  ? 'bg-sky-600 text-white hover:bg-sky-700'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'">
+                <svg v-if="state.submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" />
+                  <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round" />
+                </svg>
+                {{ state.submitting ? 'Memproses...' : 'Setuju & Lanjutkan' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -482,7 +584,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <button type="button" @click="submitPayment" :disabled="!state.selectedMethod || state.submitting"
+          <button type="button" @click="handlePayClick" :disabled="!state.selectedMethod || state.submitting"
             class="w-full rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2"
             :class="state.selectedMethod && !state.submitting
               ? 'bg-sky-600 text-white hover:bg-sky-700 cursor-pointer'
@@ -539,5 +641,69 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </section>
+
+    <!-- Agreement Modal -->
+    <div v-if="state.showAgreement"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-10 backdrop-blur-sm"
+      role="dialog" aria-modal="true" @click.self="closeAgreement" @keydown.escape="closeAgreement">
+      <div class="relative w-full max-w-lg rounded-xl bg-white shadow-xl ring-1 ring-slate-200" @click.stop>
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+              <svg class="h-5 w-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <p class="text-lg font-bold text-slate-900">Syarat & Ketentuan Transaksi</p>
+          </div>
+          <button type="button" class="text-slate-400 transition hover:text-slate-600" @click="closeAgreement">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="max-h-[60vh] overflow-y-auto px-6 py-5">
+          <div class="rounded-lg bg-slate-50 p-4">
+            <pre class="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-sans">{{ agreementText }}</pre>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-slate-100 px-6 py-4 space-y-4">
+          <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" v-model="state.agreementAccepted"
+              class="mt-0.5 h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+            <span class="text-sm text-slate-700">
+              Saya telah membaca dan <strong>menyetujui</strong> syarat & ketentuan transaksi di atas.
+            </span>
+          </label>
+
+          <div class="flex gap-3">
+            <button type="button" @click="closeAgreement"
+              class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              Batal
+            </button>
+            <button type="button" @click="confirmAgreement" :disabled="!state.agreementAccepted || state.submitting"
+              class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2"
+              :class="state.agreementAccepted && !state.submitting
+                ? 'bg-sky-600 text-white hover:bg-sky-700'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'">
+              <svg v-if="state.submitting" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <circle class="opacity-25" cx="12" cy="12" r="10" />
+                <path class="opacity-75" d="M4 12a8 8 0 0 1 8-8" stroke-linecap="round" />
+              </svg>
+              {{ state.submitting ? 'Memproses...' : 'Setuju & Lanjutkan' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </LandingLayout>
 </template>

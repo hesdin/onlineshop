@@ -14,6 +14,7 @@ use App\Notifications\OrderConfirmedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 
 class OrderController extends Controller
@@ -38,6 +39,8 @@ class OrderController extends Controller
             'address_id' => 'required|integer|exists:addresses,id',
             'shipping_selections' => 'nullable|array',
             'notes' => 'nullable|array',
+            'agreement_accepted' => 'required|accepted',
+            'agreement_accepted_at' => 'nullable|date',
         ]);
 
         $paymentMethod = PaymentMethod::where('code', $validated['payment_method_code'])->firstOrFail();
@@ -61,8 +64,10 @@ class OrderController extends Controller
         }
 
         $orderIds = [];
+        $ordersForNotification = [];
+        $agreementAcceptedAt = $validated['agreement_accepted_at'] ?? now();
 
-        DB::transaction(function () use ($cart, $user, $paymentMethod, $address, $validated, &$orderIds) {
+        DB::transaction(function () use ($cart, $user, $paymentMethod, $address, $validated, &$orderIds, &$ordersForNotification, $agreementAcceptedAt) {
             // Group items by store
             $itemsByStore = $cart->items->groupBy('store_id');
 
@@ -100,6 +105,7 @@ class OrderController extends Controller
                     'ordered_at' => now(),
                     'expires_at' => now()->addDays(1), // 24 hours to complete payment
                     'note' => null,
+                    'agreement_accepted_at' => $agreementAcceptedAt,
                 ]);
 
                 // Create order items and reduce stock
@@ -138,13 +144,11 @@ class OrderController extends Controller
 
                 $orderIds[] = $order->id;
 
-                // Send notification to seller
-                if ($store && $store->user) {
-                    $store->user->notify(new NewOrderNotification($order));
-                }
-
-                // Send notification to customer
-                $user->notify(new OrderConfirmedNotification($order));
+                // Collect orders for notification (will be sent after transaction)
+                $ordersForNotification[] = [
+                    'order' => $order,
+                    'store' => $store,
+                ];
 
                 // Delete cart items
                 foreach ($items as $item) {
@@ -152,6 +156,23 @@ class OrderController extends Controller
                 }
             }
         });
+
+        // Send notifications AFTER transaction commits (for realtime to work)
+        foreach ($ordersForNotification as $data) {
+            $order = $data['order'];
+            $store = $data['store'];
+
+            // Reload order to get fresh data after commit
+            $order->refresh();
+
+            // Send notification to seller
+            if ($store && $store->user) {
+                Notification::sendNow($store->user, new NewOrderNotification($order));
+            }
+
+            // Send notification to customer
+            Notification::sendNow($user, new OrderConfirmedNotification($order));
+        }
 
         return redirect()->route('orders.confirmation', ['order_ids' => implode(',', $orderIds)])
             ->with('success', 'Pesanan berhasil dibuat!');
@@ -163,6 +184,8 @@ class OrderController extends Controller
             'payment_method_code' => 'required|string|exists:payment_methods,code',
             'address_id' => 'required|integer|exists:addresses,id',
             'shipping_selections' => 'nullable|array',
+            'agreement_accepted' => 'required|accepted',
+            'agreement_accepted_at' => 'nullable|date',
         ]);
 
         $product = Product::with('store')->findOrFail($buyNowData['product_id']);
@@ -178,8 +201,10 @@ class OrderController extends Controller
         $store = $product->store;
 
         $orderId = null;
+        $orderForNotification = null;
+        $agreementAcceptedAt = $validated['agreement_accepted_at'] ?? now();
 
-        DB::transaction(function () use ($user, $product, $store, $paymentMethod, $address, $validated, $price, $quantity, $subtotal, $weightTotal, &$orderId) {
+        DB::transaction(function () use ($user, $product, $store, $paymentMethod, $address, $validated, $price, $quantity, $subtotal, $weightTotal, &$orderId, &$orderForNotification, $agreementAcceptedAt) {
             // Create order
             $order = Order::create([
                 'user_id' => $user->id,
@@ -200,6 +225,7 @@ class OrderController extends Controller
                 'ordered_at' => now(),
                 'expires_at' => now()->addDays(1),
                 'note' => null,
+                'agreement_accepted_at' => $agreementAcceptedAt,
             ]);
 
             // Create order item
@@ -233,15 +259,21 @@ class OrderController extends Controller
             }
 
             $orderId = $order->id;
+            $orderForNotification = $order;
+        });
+
+        // Send notifications AFTER transaction commits (for realtime to work)
+        if ($orderForNotification) {
+            $orderForNotification->refresh();
 
             // Send notification to seller
             if ($store && $store->user) {
-                $store->user->notify(new NewOrderNotification($order));
+                Notification::sendNow($store->user, new NewOrderNotification($orderForNotification));
             }
 
             // Send notification to customer
-            $user->notify(new OrderConfirmedNotification($order));
-        });
+            Notification::sendNow($user, new OrderConfirmedNotification($orderForNotification));
+        }
 
         // Clear buy-now session data
         session()->forget('buy_now');

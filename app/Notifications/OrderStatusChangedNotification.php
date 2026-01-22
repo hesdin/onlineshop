@@ -4,11 +4,13 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class OrderStatusChangedNotification extends Notification implements ShouldQueue
+class OrderStatusChangedNotification extends Notification implements ShouldQueue, ShouldBroadcastNow
 {
     use Queueable;
 
@@ -20,7 +22,7 @@ class OrderStatusChangedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'broadcast'];
     }
 
     public function toDatabase(object $notifiable): array
@@ -83,6 +85,42 @@ class OrderStatusChangedNotification extends Notification implements ShouldQueue
             'status' => $this->newStatus,
             'payment_status' => $this->newPaymentStatus,
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        $data = $this->toDatabase($notifiable);
+
+        return new BroadcastMessage([
+            'notification' => [
+                'id' => null,
+                'title' => $data['title'],
+                'message' => $data['message'],
+                'icon' => $data['icon'],
+                'action_url' => $data['action_url'],
+                'order_id' => $data['order_id'],
+                'created_at' => now()->toISOString(),
+                'read_at' => null,
+            ],
+        ]);
+    }
+
+    /**
+     * Get the channels the notification should broadcast on.
+     */
+    public function broadcastOn(): array
+    {
+        return [
+            new \Illuminate\Broadcasting\PrivateChannel('user.' . $this->order->user_id . '.notifications'),
+        ];
+    }
+
+    /**
+     * Get the broadcast event name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'NotificationReceived';
     }
 
     public function toMail(object $notifiable): MailMessage

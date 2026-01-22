@@ -8,15 +8,39 @@ const form = useForm({
   password: '',
 });
 
+const resendForm = useForm({});
+
 const loginCustomerImage = '/images/login-customer.png';
 
 const showPassword = ref(false);
 const localSuccess = ref('');
+const resendSuccess = ref('');
+
+// Detect if error is about email verification
+const isVerificationError = computed(() => {
+  const emailError = form.errors.email || '';
+  return emailError.includes('verifikasi') || emailError.includes('terverifikasi');
+});
 
 const submit = () => {
+  resendSuccess.value = '';
   form.post('/customer/login', {
     replace: true,
     onFinish: () => form.reset('password'),
+  });
+};
+
+const resendVerification = () => {
+  if (!form.email) return;
+
+  resendForm.transform(() => ({
+    email: form.email,
+  })).post('/register/customer/resend', {
+    preserveScroll: true,
+    onSuccess: () => {
+      resendSuccess.value = 'Email verifikasi telah dikirim ulang. Silakan cek inbox atau folder spam Anda.';
+      form.clearErrors('email');
+    },
   });
 };
 
@@ -38,6 +62,10 @@ watch(
 
 const closeAlert = () => {
   localSuccess.value = '';
+};
+
+const closeResendAlert = () => {
+  resendSuccess.value = '';
 };
 </script>
 
@@ -105,6 +133,10 @@ const closeAlert = () => {
           <AlertBanner type="success" :message="localSuccess" :show="!!localSuccess" :dismissible="true" class="mt-6"
             @close="closeAlert" />
 
+          <!-- Resend Success Alert -->
+          <AlertBanner type="success" :message="resendSuccess" :show="!!resendSuccess" :dismissible="true" class="mt-6"
+            @close="closeResendAlert" />
+
           <form class="mt-6 space-y-4" @submit.prevent="submit">
             <!-- Email -->
             <div class="space-y-1.5">
@@ -114,6 +146,25 @@ const closeAlert = () => {
                 class="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
                 :class="{ 'border-red-400': form.errors.email }" :disabled="form.processing" />
               <p v-if="form.errors.email" class="text-xs text-red-500">{{ form.errors.email }}</p>
+
+              <!-- Resend Verification Button -->
+              <div v-if="isVerificationError && form.email" class="mt-2">
+                <button type="button" @click="resendVerification" :disabled="resendForm.processing"
+                  class="inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 hover:underline disabled:opacity-50">
+                  <svg v-if="resendForm.processing" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg"
+                    fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                  </svg>
+                  <svg v-else class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {{ resendForm.processing ? 'Mengirim...' : 'Kirim Ulang Email Verifikasi' }}
+                </button>
+              </div>
             </div>
 
             <!-- Password -->

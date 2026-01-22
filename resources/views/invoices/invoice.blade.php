@@ -9,18 +9,25 @@
     body {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 10px;
-      /* Smaller font as per reference */
       color: #333;
       line-height: 1.4;
       margin: 0;
       padding: 0;
     }
 
+    @page {
+      margin: 15mm 15mm 15mm 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     .container {
       width: 100%;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 30px 40px;
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
       background: #fff;
     }
 
@@ -152,7 +159,7 @@
     }
 
     .totals-table {
-      width: 45%;
+      width: 55%;
       float: right;
     }
 
@@ -292,9 +299,9 @@
           <div class="invoice-number">{{ $order->order_number }}</div>
           <div style="margin-top: 8px;">
             @if ($order->payment_status == 'paid')
-              <span class="payment-status-badge payment-status-paid">✓ LUNAS</span>
+              <span class="payment-status-badge payment-status-paid">LUNAS</span>
             @else
-              <span class="payment-status-badge payment-status-unpaid">! BELUM LUNAS</span>
+              <span class="payment-status-badge payment-status-unpaid">BELUM LUNAS</span>
             @endif
           </div>
         </td>
@@ -407,9 +414,9 @@
         <div class="payment-method-label">Status Pembayaran</div>
         <div style="margin-top: 5px;">
           @if ($order->payment_status == 'paid')
-            <span class="payment-status-badge payment-status-paid">✓ LUNAS</span>
+            <span class="payment-status-badge payment-status-paid">LUNAS</span>
           @else
-            <span class="payment-status-badge payment-status-unpaid">! BELUM LUNAS</span>
+            <span class="payment-status-badge payment-status-unpaid">BELUM LUNAS</span>
           @endif
         </div>
       </div>
@@ -419,6 +426,27 @@
         <span>Asuransi Pengiriman {{ config('app.name') }}</span>
       </div>
     </div>
+
+    @if ($order->agreement_accepted_at)
+      <div style="margin-top: 25px; padding: 15px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px;">
+        <div style="font-size: 10px; font-weight: bold; color: #92400e; margin-bottom: 8px; text-transform: uppercase;">
+          PERSETUJUAN TRANSAKSI
+        </div>
+        <div style="font-size: 9px; color: #78350f; line-height: 1.5;">
+          <p style="margin: 0 0 8px 0;">
+            Pembeli telah menyetujui Syarat & Ketentuan Transaksi pada tanggal&nbsp;
+            <strong>{{ $order->agreement_accepted_at->translatedFormat('d F Y, H:i') }} WIB</strong>
+          </p>
+          <p style="margin: 0; padding-top: 8px; border-top: 1px dashed #fcd34d;">
+            <strong>Catatan:</strong> Segala bentuk transaksi antara Pembeli dan Toko/Penjual merupakan kesepakatan
+            langsung
+            antara kedua belah pihak. {{ config('app.name') }} hanya bertindak sebagai platform penghubung dan tidak
+            bertanggung
+            jawab atas kualitas produk, pengiriman, maupun perselisihan yang terjadi antara pembeli dan penjual.
+          </p>
+        </div>
+      </div>
+    @endif
 
     <div class="footer">
       <p>Invoice ini sah dan diproses oleh komputer</p>

@@ -37,11 +37,13 @@ class Order extends Model implements HasMedia
         'ordered_at',
         'expires_at',
         'note',
+        'agreement_accepted_at',
     ];
 
     protected $casts = [
         'ordered_at' => 'datetime',
         'expires_at' => 'datetime',
+        'agreement_accepted_at' => 'datetime',
     ];
 
     public function registerMediaCollections(): void

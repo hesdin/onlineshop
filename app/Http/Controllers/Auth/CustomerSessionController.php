@@ -44,7 +44,7 @@ class CustomerSessionController extends Controller
             Auth::logout();
 
             throw ValidationException::withMessages([
-                'email' => __('Email belum terverifikasi. Cek email untuk verifikasi & setel password.'),
+                'email' => __('Email belum terverifikasi. Kami telah mengirim ulang email verifikasi ke alamat email Anda. Silakan cek inbox atau folder spam.'),
             ]);
         }
 

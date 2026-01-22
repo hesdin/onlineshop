@@ -4,11 +4,13 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class OrderConfirmedNotification extends Notification implements ShouldQueue
+class OrderConfirmedNotification extends Notification implements ShouldBroadcastNow, ShouldQueue
 {
     use Queueable;
 
@@ -18,7 +20,7 @@ class OrderConfirmedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'broadcast'];
     }
 
     public function toDatabase(object $notifiable): array
@@ -30,6 +32,40 @@ class OrderConfirmedNotification extends Notification implements ShouldQueue
             'action_url' => '/customer/dashboard/transactions',
             'order_id' => $this->order->id,
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage([
+            'notification' => [
+                'id' => null,
+                'title' => 'Pesanan Dikonfirmasi',
+                'message' => "Pesanan #{$this->order->order_number} berhasil dibuat. Silakan lakukan pembayaran.",
+                'icon' => 'shopping-bag',
+                'action_url' => '/customer/dashboard/transactions',
+                'order_id' => $this->order->id,
+                'created_at' => now()->toISOString(),
+                'read_at' => null,
+            ],
+        ]);
+    }
+
+    /**
+     * Get the channels the notification should broadcast on.
+     */
+    public function broadcastOn(): array
+    {
+        return [
+            new \Illuminate\Broadcasting\PrivateChannel('user.'.$this->order->user_id.'.notifications'),
+        ];
+    }
+
+    /**
+     * Get the broadcast event name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'NotificationReceived';
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -45,6 +81,7 @@ class OrderConfirmedNotification extends Notification implements ShouldQueue
         // Build items list
         $itemsList = $this->order->items->map(function ($item) {
             $subtotal = number_format($item->subtotal, 0, ',', '.');
+
             return "• {$item->name} (x{$item->quantity}) - Rp {$subtotal}";
         })->join("\n");
 
@@ -60,22 +97,21 @@ class OrderConfirmedNotification extends Notification implements ShouldQueue
             ->subject("🛒 Pesanan #{$orderNumber} Berhasil Dibuat")
             ->greeting("Halo, {$notifiable->name}!")
             ->line("Terima kasih! Pesanan Anda di **{$storeName}** telah berhasil dibuat.")
-            ->line("---")
-            ->line("**Detail Pesanan:**")
+            ->line('---')
+            ->line('**Detail Pesanan:**')
             ->line("📦 **No. Pesanan:** {$orderNumber}")
             ->line("🏪 **Toko:** {$storeName}")
             ->line("📅 **Waktu Pesan:** {$orderedAt}")
             ->line("💳 **Metode Pembayaran:** {$paymentMethod}")
-            ->line("---")
-            ->line("**Produk yang Dipesan:**")
+            ->line('---')
+            ->line('**Produk yang Dipesan:**')
             ->line($itemsList)
-            ->line("---")
+            ->line('---')
             ->line("💰 **Total Pembayaran:** Rp {$grandTotal}")
-            ->line("---")
-            ->line("**Instruksi Pembayaran:**")
+            ->line('---')
+            ->line('**Instruksi Pembayaran:**')
             ->line($instructions)
             ->action('Lihat Pesanan Saya', url('/customer/dashboard/transactions'))
             ->line('Terima kasih telah berbelanja!');
     }
 }
-
