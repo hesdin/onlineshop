@@ -24,7 +24,7 @@ class StoreVerifiedNotification extends Notification implements ShouldQueue
     {
         return [
             'title' => 'Toko Terverifikasi',
-            'message' => 'Selamat! Toko Anda telah berhasil diverifikasi dan siap menerima pesanan.',
+            'message' => 'Selamat! Toko Anda telah diverifikasi dan siap berjualan.',
             'icon' => 'check-circle',
             'action_url' => '/seller/dashboard',
         ];

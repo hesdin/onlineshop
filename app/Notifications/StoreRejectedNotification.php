@@ -25,7 +25,7 @@ class StoreRejectedNotification extends Notification implements ShouldQueue
     {
         return [
             'title' => 'Verifikasi Toko Ditolak',
-            'message' => 'Dokumen toko Anda tidak dapat diverifikasi. Silakan periksa catatan admin.',
+            'message' => 'Verifikasi dokumen toko ditolak. Silakan periksa catatan admin.',
             'icon' => 'x-circle',
             'action_url' => '/seller/documents',
         ];

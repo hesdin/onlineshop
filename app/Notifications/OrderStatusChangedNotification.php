@@ -50,27 +50,31 @@ class OrderStatusChangedNotification extends Notification implements ShouldQueue
         // Determine message based on status change
         if ($this->newPaymentStatus === 'paid') {
             $title = 'Pembayaran Diterima';
-            $message .= 'pembayaran telah dikonfirmasi. Pesanan akan segera diproses.';
+            $message .= 'pembayaran dikonfirmasi.';
             $icon = 'credit-card';
         } elseif ($this->newStatus === 'processing') {
             $title = 'Pesanan Diproses';
             $message .= 'sedang diproses oleh seller.';
             $icon = 'package';
+        } elseif ($this->newStatus === 'ready_for_pickup') {
+            $title = 'Pesanan Siap Diambil';
+            $message .= 'siap diambil di toko.';
+            $icon = 'shopping-bag';
         } elseif ($this->newStatus === 'shipped') {
             $title = 'Pesanan Dikirim';
-            $message .= 'sedang dalam perjalanan ke tujuan.';
+            $message .= 'dalam perjalanan.';
             $icon = 'truck';
         } elseif ($this->newStatus === 'delivered') {
             $title = 'Pesanan Sampai';
-            $message .= 'sudah sampai di tujuan.';
+            $message .= 'sudah sampai.';
             $icon = 'check-circle';
         } elseif ($this->newStatus === 'completed') {
             $title = 'Pesanan Selesai';
-            $message .= 'sudah selesai. Terima kasih telah berbelanja!';
+            $message .= 'selesai. Terima kasih!';
             $icon = 'check-circle';
         } elseif ($this->newStatus === 'cancelled') {
             $title = 'Pesanan Dibatalkan';
-            $message .= 'telah dibatalkan.';
+            $message .= 'dibatalkan.';
             $icon = 'x-circle';
         } else {
             $message .= $statusMessages[$this->newStatus] ?? 'status diperbarui.';
@@ -161,8 +165,21 @@ class OrderStatusChangedNotification extends Notification implements ShouldQueue
                 ->line("**Produk:**")
                 ->line($itemsList)
                 ->line("---")
-                ->line("Seller sedang menyiapkan pesanan Anda. Kami akan mengirimkan notifikasi saat pesanan sudah dikirim.")
+                ->line("Seller sedang menyiapkan pesanan Anda. Kami akan mengirimkan notifikasi saat pesanan sudah siap.")
                 ->action('Lihat Status Pesanan', url('/customer/dashboard/transactions'));
+
+        } elseif ($this->newStatus === 'ready_for_pickup') {
+            $mail->subject("🛍️ Pesanan Siap Diambil - #{$orderNumber}")
+                ->greeting("Halo, {$notifiable->name}!")
+                ->line("Kabar baik! Pesanan Anda dari **{$storeName}** sudah siap untuk diambil.")
+                ->line("---")
+                ->line("📦 **No. Pesanan:** {$orderNumber}")
+                ->line("🏪 **Toko:** {$storeName}")
+                ->line("**Produk:**")
+                ->line($itemsList)
+                ->line("---")
+                ->line("Silakan datang ke toko untuk mengambil pesanan Anda. Jangan lupa membawa bukti pesanan atau tunjukkan nomor pesanan saat pengambilan.")
+                ->action('Lihat Detail Pesanan', url('/customer/dashboard/transactions'));
 
         } elseif ($this->newStatus === 'shipped') {
             $mail->subject("🚚 Pesanan Dalam Pengiriman - #{$orderNumber}")

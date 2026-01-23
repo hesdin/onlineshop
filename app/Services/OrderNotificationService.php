@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Events\NotificationReceived;
 use App\Mail\OrderStatusChangedMail;
 use App\Models\Order;
 use App\Notifications\OrderStatusChangedNotification;
 use App\Notifications\ReviewRequestNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class OrderNotificationService
 {
@@ -31,15 +33,20 @@ class OrderNotificationService
 
         // Send database notification to customer bell icon
         if ($order->user) {
-            $order->user->notify(new OrderStatusChangedNotification(
+            Notification::sendNow($order->user, new OrderStatusChangedNotification(
                 $order,
                 $newStatus,
                 $newPaymentStatus
             ));
 
+            // Dispatch realtime event for customer
+            $this->dispatchRealtimeNotification($order->user);
+
             // Send review request if order completed
             if ($newStatus === 'completed' && $previousStatus !== 'completed') {
-                $order->user->notify(new ReviewRequestNotification($order));
+                Notification::sendNow($order->user, new ReviewRequestNotification($order));
+                // Dispatch realtime event for review request
+                $this->dispatchRealtimeNotification($order->user);
             }
         }
 
@@ -76,4 +83,25 @@ class OrderNotificationService
             ]);
         }
     }
+
+    /**
+     * Dispatch realtime notification event for the given user.
+     */
+    private function dispatchRealtimeNotification($user): void
+    {
+        $notification = $user->notifications()->latest()->first();
+        if ($notification) {
+            event(new NotificationReceived($user, [
+                'id' => $notification->id,
+                'type' => class_basename($notification->type),
+                'title' => $notification->data['title'] ?? 'Notifikasi',
+                'message' => $notification->data['message'] ?? '',
+                'icon' => $notification->data['icon'] ?? 'bell',
+                'action_url' => $notification->data['action_url'] ?? null,
+                'read_at' => null,
+                'created_at' => $notification->created_at->diffForHumans(),
+            ]));
+        }
+    }
 }
+

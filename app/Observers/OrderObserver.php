@@ -2,9 +2,11 @@
 
 namespace App\Observers;
 
+use App\Events\NotificationReceived;
 use App\Models\Order;
 use App\Models\Store;
 use App\Notifications\LowStockNotification;
+use Illuminate\Support\Facades\Notification;
 
 class OrderObserver
 {
@@ -105,11 +107,27 @@ class OrderObserver
     protected function notifyLowStock($product): void
     {
         if ($product->store && $product->store->user) {
-            $product->store->user->notify(new LowStockNotification(
+            $user = $product->store->user;
+            Notification::sendNow($user, new LowStockNotification(
                 $product->name,
                 $product->stock,
                 $product->id
             ));
+
+            // Dispatch realtime event
+            $notification = $user->notifications()->latest()->first();
+            if ($notification) {
+                event(new NotificationReceived($user, [
+                    'id' => $notification->id,
+                    'type' => class_basename($notification->type),
+                    'title' => $notification->data['title'] ?? 'Notifikasi',
+                    'message' => $notification->data['message'] ?? '',
+                    'icon' => $notification->data['icon'] ?? 'bell',
+                    'action_url' => $notification->data['action_url'] ?? null,
+                    'read_at' => null,
+                    'created_at' => $notification->created_at->diffForHumans(),
+                ]));
+            }
         }
     }
 

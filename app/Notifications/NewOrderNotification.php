@@ -27,7 +27,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
     {
         return [
             'title' => 'Pesanan Baru',
-            'message' => "Pesanan #{$this->order->order_number} senilai Rp " . number_format($this->order->grand_total, 0, ',', '.'),
+            'message' => "Pesanan #{$this->order->order_number} sebesar Rp " . number_format($this->order->grand_total, 0, ',', '.'),
             'icon' => 'shopping-bag',
             'action_url' => "/seller/orders/{$this->order->id}",
             'order_id' => $this->order->id,
@@ -40,7 +40,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
             'notification' => [
                 'id' => null,
                 'title' => 'Pesanan Baru',
-                'message' => "Pesanan #{$this->order->order_number} senilai Rp " . number_format($this->order->grand_total, 0, ',', '.'),
+                'message' => "Pesanan #{$this->order->order_number} sebesar Rp " . number_format($this->order->grand_total, 0, ',', '.'),
                 'icon' => 'shopping-bag',
                 'action_url' => "/seller/orders/{$this->order->id}",
                 'order_id' => $this->order->id,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\NotificationReceived;
 use App\Http\Controllers\Controller;
 use App\Models\SellerDocument;
 use App\Notifications\StoreVerifiedNotification;
@@ -9,6 +10,7 @@ use App\Notifications\StoreRejectedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -185,7 +187,8 @@ class SellerDocumentController extends Controller
 
             // Notify seller about store verification (database + email)
             if ($store->user) {
-                $store->user->notify(new StoreVerifiedNotification($store->name));
+                Notification::sendNow($store->user, new StoreVerifiedNotification($store->name));
+                $this->dispatchRealtimeNotification($store->user);
             }
         }
 
@@ -194,7 +197,8 @@ class SellerDocumentController extends Controller
 
             // Notify seller about rejection (database + email)
             if ($store->user) {
-                $store->user->notify(new StoreRejectedNotification($store->name, $data['admin_notes']));
+                Notification::sendNow($store->user, new StoreRejectedNotification($store->name, $data['admin_notes']));
+                $this->dispatchRealtimeNotification($store->user);
             }
         }
 
@@ -212,6 +216,24 @@ class SellerDocumentController extends Controller
 
         return back()->with('success', $message);
     }
+
+    /**
+     * Dispatch realtime notification event for the given user.
+     */
+    private function dispatchRealtimeNotification($user): void
+    {
+        $notification = $user->notifications()->latest()->first();
+        if ($notification) {
+            event(new NotificationReceived($user, [
+                'id' => $notification->id,
+                'type' => class_basename($notification->type),
+                'title' => $notification->data['title'] ?? 'Notifikasi',
+                'message' => $notification->data['message'] ?? '',
+                'icon' => $notification->data['icon'] ?? 'bell',
+                'action_url' => $notification->data['action_url'] ?? null,
+                'read_at' => null,
+                'created_at' => $notification->created_at->diffForHumans(),
+            ]));
+        }
+    }
 }
-
-

@@ -23,11 +23,49 @@ class OrderConfirmedNotification extends Notification implements ShouldBroadcast
         return ['database', 'mail', 'broadcast'];
     }
 
+    /**
+     * Get contextual notification message based on payment and shipping method.
+     */
+    protected function getNotificationMessage(): string
+    {
+        $this->order->loadMissing(['paymentMethod']);
+
+        $orderNumber = $this->order->order_number;
+        $paymentCode = $this->order->paymentMethod?->code ?? '';
+        $shippingService = $this->order->shipping_service ?? '';
+
+        // Check for "Ambil di Toko" (pickup at store)
+        $isPickup = str_contains(strtolower($shippingService), 'ambil') ||
+                    str_contains(strtolower($shippingService), 'pickup');
+
+        // Build contextual message (shortened for notification dropdown)
+        if ($paymentCode === 'manual_transfer' || $paymentCode === 'bank_transfer') {
+            if ($isPickup) {
+                return "Pesanan #{$orderNumber} dibuat. Transfer ke rekening toko.";
+            }
+
+            return "Pesanan #{$orderNumber} dibuat. Transfer ke rekening toko.";
+        } elseif ($paymentCode === 'cod') {
+            if ($isPickup) {
+                return "Pesanan #{$orderNumber} dibuat. Bayar saat ambil di toko.";
+            }
+
+            return "Pesanan #{$orderNumber} dibuat. Bayar saat terima.";
+        }
+
+        // Default message
+        if ($isPickup) {
+            return "Pesanan #{$orderNumber} dibuat. Ambil di toko.";
+        }
+
+        return "Pesanan #{$orderNumber} dibuat. Silakan bayar.";
+    }
+
     public function toDatabase(object $notifiable): array
     {
         return [
             'title' => 'Pesanan Dikonfirmasi',
-            'message' => "Pesanan #{$this->order->order_number} berhasil dibuat. Silakan lakukan pembayaran.",
+            'message' => $this->getNotificationMessage(),
             'icon' => 'shopping-bag',
             'action_url' => '/customer/dashboard/transactions',
             'order_id' => $this->order->id,
@@ -40,7 +78,7 @@ class OrderConfirmedNotification extends Notification implements ShouldBroadcast
             'notification' => [
                 'id' => null,
                 'title' => 'Pesanan Dikonfirmasi',
-                'message' => "Pesanan #{$this->order->order_number} berhasil dibuat. Silakan lakukan pembayaran.",
+                'message' => $this->getNotificationMessage(),
                 'icon' => 'shopping-bag',
                 'action_url' => '/customer/dashboard/transactions',
                 'order_id' => $this->order->id,

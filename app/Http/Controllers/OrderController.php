@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Events\NotificationReceived;
 use App\Notifications\LowStockNotification;
 use App\Notifications\NewOrderNotification;
 use App\Notifications\OrderConfirmedNotification;
@@ -65,9 +66,10 @@ class OrderController extends Controller
 
         $orderIds = [];
         $ordersForNotification = [];
+        $lowStockNotifications = [];
         $agreementAcceptedAt = $validated['agreement_accepted_at'] ?? now();
 
-        DB::transaction(function () use ($cart, $user, $paymentMethod, $address, $validated, &$orderIds, &$ordersForNotification, $agreementAcceptedAt) {
+        DB::transaction(function () use ($cart, $user, $paymentMethod, $address, $validated, &$orderIds, &$ordersForNotification, &$lowStockNotifications, $agreementAcceptedAt) {
             // Group items by store
             $itemsByStore = $cart->items->groupBy('store_id');
 
@@ -133,11 +135,12 @@ class OrderController extends Controller
 
                         // Send low stock notification if stock <= 10
                         if ($product->stock <= 10 && $product->stock >= 0 && $store && $store->user) {
-                            $store->user->notify(new LowStockNotification(
-                                $product->name,
-                                $product->stock,
-                                $product->id
-                            ));
+                            $lowStockNotifications[] = [
+                                'user' => $store->user,
+                                'product_name' => $product->name,
+                                'stock' => $product->stock,
+                                'product_id' => $product->id,
+                            ];
                         }
                     }
                 }
@@ -168,10 +171,63 @@ class OrderController extends Controller
             // Send notification to seller
             if ($store && $store->user) {
                 Notification::sendNow($store->user, new NewOrderNotification($order));
+                // Dispatch realtime event for seller
+                $sellerNotification = $store->user->notifications()->latest()->first();
+                if ($sellerNotification) {
+                    event(new NotificationReceived($store->user, [
+                        'id' => $sellerNotification->id,
+                        'type' => class_basename($sellerNotification->type),
+                        'title' => $sellerNotification->data['title'] ?? 'Notifikasi',
+                        'message' => $sellerNotification->data['message'] ?? '',
+                        'icon' => $sellerNotification->data['icon'] ?? 'bell',
+                        'action_url' => $sellerNotification->data['action_url'] ?? null,
+                        'read_at' => null,
+                        'created_at' => $sellerNotification->created_at->diffForHumans(),
+                    ]));
+                }
             }
 
             // Send notification to customer
             Notification::sendNow($user, new OrderConfirmedNotification($order));
+            // Dispatch realtime event for customer
+            $customerNotification = $user->notifications()->latest()->first();
+            if ($customerNotification) {
+                event(new NotificationReceived($user, [
+                    'id' => $customerNotification->id,
+                    'type' => class_basename($customerNotification->type),
+                    'title' => $customerNotification->data['title'] ?? 'Notifikasi',
+                    'message' => $customerNotification->data['message'] ?? '',
+                    'icon' => $customerNotification->data['icon'] ?? 'bell',
+                    'action_url' => $customerNotification->data['action_url'] ?? null,
+                    'read_at' => null,
+                    'created_at' => $customerNotification->created_at->diffForHumans(),
+                ]));
+            }
+        }
+
+        // Send low stock notifications AFTER transaction commits
+        foreach ($lowStockNotifications as $data) {
+            $sellerUser = $data['user'];
+            Notification::sendNow($sellerUser, new LowStockNotification(
+                $data['product_name'],
+                $data['stock'],
+                $data['product_id']
+            ));
+
+            // Dispatch realtime event for seller
+            $latestNotification = $sellerUser->notifications()->latest()->first();
+            if ($latestNotification) {
+                event(new NotificationReceived($sellerUser, [
+                    'id' => $latestNotification->id,
+                    'type' => class_basename($latestNotification->type),
+                    'title' => $latestNotification->data['title'] ?? 'Notifikasi',
+                    'message' => $latestNotification->data['message'] ?? '',
+                    'icon' => $latestNotification->data['icon'] ?? 'bell',
+                    'action_url' => $latestNotification->data['action_url'] ?? null,
+                    'read_at' => null,
+                    'created_at' => $latestNotification->created_at->diffForHumans(),
+                ]));
+            }
         }
 
         return redirect()->route('orders.confirmation', ['order_ids' => implode(',', $orderIds)])
@@ -202,9 +258,10 @@ class OrderController extends Controller
 
         $orderId = null;
         $orderForNotification = null;
+        $lowStockData = null;
         $agreementAcceptedAt = $validated['agreement_accepted_at'] ?? now();
 
-        DB::transaction(function () use ($user, $product, $store, $paymentMethod, $address, $validated, $price, $quantity, $subtotal, $weightTotal, &$orderId, &$orderForNotification, $agreementAcceptedAt) {
+        DB::transaction(function () use ($user, $product, $store, $paymentMethod, $address, $validated, $price, $quantity, $subtotal, $weightTotal, &$orderId, &$orderForNotification, &$lowStockData, $agreementAcceptedAt) {
             // Create order
             $order = Order::create([
                 'user_id' => $user->id,
@@ -248,13 +305,14 @@ class OrderController extends Controller
                 $product->decrement('stock', $quantity);
                 $product->refresh();
 
-                // Send low stock notification if stock <= 10
+                // Collect low stock notification data if stock <= 10
                 if ($product->stock <= 10 && $product->stock >= 0 && $store && $store->user) {
-                    $store->user->notify(new LowStockNotification(
-                        $product->name,
-                        $product->stock,
-                        $product->id
-                    ));
+                    $lowStockData = [
+                        'user' => $store->user,
+                        'product_name' => $product->name,
+                        'stock' => $product->stock,
+                        'product_id' => $product->id,
+                    ];
                 }
             }
 
@@ -269,10 +327,63 @@ class OrderController extends Controller
             // Send notification to seller
             if ($store && $store->user) {
                 Notification::sendNow($store->user, new NewOrderNotification($orderForNotification));
+                // Dispatch realtime event for seller
+                $sellerNotification = $store->user->notifications()->latest()->first();
+                if ($sellerNotification) {
+                    event(new NotificationReceived($store->user, [
+                        'id' => $sellerNotification->id,
+                        'type' => class_basename($sellerNotification->type),
+                        'title' => $sellerNotification->data['title'] ?? 'Notifikasi',
+                        'message' => $sellerNotification->data['message'] ?? '',
+                        'icon' => $sellerNotification->data['icon'] ?? 'bell',
+                        'action_url' => $sellerNotification->data['action_url'] ?? null,
+                        'read_at' => null,
+                        'created_at' => $sellerNotification->created_at->diffForHumans(),
+                    ]));
+                }
             }
 
             // Send notification to customer
             Notification::sendNow($user, new OrderConfirmedNotification($orderForNotification));
+            // Dispatch realtime event for customer
+            $customerNotification = $user->notifications()->latest()->first();
+            if ($customerNotification) {
+                event(new NotificationReceived($user, [
+                    'id' => $customerNotification->id,
+                    'type' => class_basename($customerNotification->type),
+                    'title' => $customerNotification->data['title'] ?? 'Notifikasi',
+                    'message' => $customerNotification->data['message'] ?? '',
+                    'icon' => $customerNotification->data['icon'] ?? 'bell',
+                    'action_url' => $customerNotification->data['action_url'] ?? null,
+                    'read_at' => null,
+                    'created_at' => $customerNotification->created_at->diffForHumans(),
+                ]));
+            }
+        }
+
+        // Send low stock notification AFTER transaction commits
+        if ($lowStockData) {
+            $sellerUser = $lowStockData['user'];
+            Notification::sendNow($sellerUser, new LowStockNotification(
+                $lowStockData['product_name'],
+                $lowStockData['stock'],
+                $lowStockData['product_id']
+            ));
+
+            // Dispatch realtime event for seller
+            $latestNotification = $sellerUser->notifications()->latest()->first();
+            if ($latestNotification) {
+                event(new NotificationReceived($sellerUser, [
+                    'id' => $latestNotification->id,
+                    'type' => class_basename($latestNotification->type),
+                    'title' => $latestNotification->data['title'] ?? 'Notifikasi',
+                    'message' => $latestNotification->data['message'] ?? '',
+                    'icon' => $latestNotification->data['icon'] ?? 'bell',
+                    'action_url' => $latestNotification->data['action_url'] ?? null,
+                    'read_at' => null,
+                    'created_at' => $latestNotification->created_at->diffForHumans(),
+                ]));
+            }
         }
 
         // Clear buy-now session data

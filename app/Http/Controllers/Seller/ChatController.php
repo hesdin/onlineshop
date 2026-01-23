@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Seller;
 
 use App\Events\CustomerConversationUpdated;
 use App\Events\MessageSent;
+use App\Events\NotificationReceived;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Notifications\NewChatMessageNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -101,11 +104,26 @@ class ChatController extends Controller
         $customer = $conversation->customer;
         if ($customer && !$customer->isOnline()) {
             $messagePreview = \Illuminate\Support\Str::limit($validated['content'], 100);
-            $customer->notify(new \App\Notifications\NewChatMessageNotification(
+            Notification::sendNow($customer, new NewChatMessageNotification(
                 $store,
                 $messagePreview,
                 $conversation
             ));
+
+            // Dispatch realtime event for customer
+            $latestNotification = $customer->notifications()->latest()->first();
+            if ($latestNotification) {
+                event(new NotificationReceived($customer, [
+                    'id' => $latestNotification->id,
+                    'type' => class_basename($latestNotification->type),
+                    'title' => $latestNotification->data['title'] ?? 'Notifikasi',
+                    'message' => $latestNotification->data['message'] ?? '',
+                    'icon' => $latestNotification->data['icon'] ?? 'bell',
+                    'action_url' => $latestNotification->data['action_url'] ?? null,
+                    'read_at' => null,
+                    'created_at' => $latestNotification->created_at->diffForHumans(),
+                ]));
+            }
         }
 
         $message->load('sender:id,name');

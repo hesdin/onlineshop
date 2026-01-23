@@ -26,7 +26,7 @@ class LowStockNotification extends Notification implements ShouldQueue
     {
         return [
             'title' => 'Stok Menipis',
-            'message' => "Produk \"{$this->productName}\" tersisa {$this->currentStock} unit.",
+            'message' => "Stok \"{$this->productName}\" sisa {$this->currentStock} unit.",
             'icon' => 'alert-triangle',
             'action_url' => "/seller/products/{$this->productId}/edit",
             'product_id' => $this->productId,
