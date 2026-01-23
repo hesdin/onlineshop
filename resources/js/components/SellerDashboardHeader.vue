@@ -45,6 +45,7 @@ type Notification = {
 const notifications = ref<Notification[]>([]);
 const unreadCount = ref(0);
 const unreadChatCount = ref(0);
+const notificationDropdownOpen = ref(false);
 const isLoadingNotifications = ref(false);
 
 const userId = computed(() => user.value?.id);
@@ -113,6 +114,9 @@ const deleteNotification = async (id: string, event: Event) => {
 };
 
 const deleteAllNotifications = async () => {
+  notificationDropdownOpen.value = false; // Close dropdown first
+  // Use nextTick to ensure dropdown is fully closed before showing modal
+  await new Promise(resolve => setTimeout(resolve, 100));
   showDeleteAllModal.value = true;
 };
 
@@ -122,6 +126,7 @@ const confirmDeleteAll = async () => {
     notifications.value = [];
     unreadCount.value = 0;
     showDeleteAllModal.value = false;
+    notificationDropdownOpen.value = false; // Close dropdown after delete all
   } catch (error) {
     console.error('Failed to delete all notifications:', error);
   }
@@ -266,7 +271,7 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
         </Button>
 
         <!-- Notifications -->
-        <DropdownMenu>
+        <DropdownMenu v-model:open="notificationDropdownOpen">
           <DropdownMenuTrigger as-child>
             <Button variant="ghost" size="icon" class="relative hover:bg-slate-100 transition-colors">
               <Bell class="h-5 w-5 text-slate-600" />
@@ -387,31 +392,7 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
     confirm-text="Ya, Keluar" cancel-text="Batal" variant="danger" @confirm="confirmLogout" @cancel="cancelLogout" />
 
   <!-- Delete All Notifications Confirmation Modal -->
-  <div v-if="showDeleteAllModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-    @click.self="cancelDeleteAll">
-    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-      <div class="mb-4 flex items-center gap-3">
-        <div class="grid h-12 w-12 place-items-center rounded-full bg-red-100">
-          <Trash2 class="h-6 w-6 text-red-600" />
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-slate-900">Hapus Semua Notifikasi</h3>
-          <p class="text-sm text-slate-500">Tindakan ini tidak dapat dibatalkan</p>
-        </div>
-      </div>
-
-      <p class="mb-6 text-sm text-slate-600">
-        Semua notifikasi akan dihapus secara permanen dari daftar Anda.
-      </p>
-
-      <div class="flex gap-3">
-        <Button variant="outline" class="flex-1" @click="cancelDeleteAll">
-          Batal
-        </Button>
-        <Button variant="destructive" class="flex-1" @click="confirmDeleteAll">
-          Ya, Hapus Semua
-        </Button>
-      </div>
-    </div>
-  </div>
+  <ConfirmationModal :show="showDeleteAllModal" title="Hapus Semua Notifikasi"
+    message="Semua notifikasi akan dihapus secara permanen dari daftar Anda. Tindakan ini tidak dapat dibatalkan."
+    confirm-text="Ya, Hapus Semua" cancel-text="Batal" variant="danger" position="top" @confirm="confirmDeleteAll" @cancel="cancelDeleteAll" />
 </template>

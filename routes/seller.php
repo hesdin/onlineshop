@@ -7,6 +7,7 @@ use App\Http\Controllers\Seller\NotificationController;
 use App\Http\Controllers\Seller\OrderController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\ProfileController;
+use App\Http\Controllers\Seller\PromoCodeController;
 use App\Http\Controllers\Seller\ReviewController;
 use App\Http\Controllers\Seller\SearchController;
 use App\Http\Controllers\Seller\StoreController;
@@ -30,6 +31,7 @@ Route::post('settings/submit', [StoreController::class, 'submit'])->name('settin
 Route::delete('settings/documents/supporting/{mediaId}', [StoreController::class, 'deleteSupportingDocument'])->name('settings.documents.supporting.destroy');
 
 Route::resource('products', ProductController::class)->except(['show']);
+Route::resource('promo-codes', PromoCodeController::class);
 
 Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
 Route::get('orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PromoCode extends Model
 {
     protected $fillable = [
+        'store_id',
         'code',
         'description',
         'discount_type', // percent, fixed
@@ -25,4 +26,9 @@ class PromoCode extends Model
         'ends_at' => 'datetime',
         'is_active' => 'boolean',
     ];
+
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
+    }
 }

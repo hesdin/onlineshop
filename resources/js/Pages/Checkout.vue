@@ -48,6 +48,7 @@ const state = reactive({
   },
   validationTriggered: false,
   paymentProcessing: false,
+  showAddressRequiredModal: false,
 });
 
 const addressForm = useForm({
@@ -502,6 +503,18 @@ const stopPaymentProcessing = () => {
 const proceedToPayment = () => {
   if (!hasSelection.value) return;
 
+  // Validate that user has selected an address
+  if (!addresses.value.length) {
+    state.showAddressRequiredModal = true;
+    return;
+  }
+
+  const currentAddress = addresses.value[state.selectedAddressIndex];
+  if (!currentAddress || !currentAddress.id) {
+    state.showAddressRequiredModal = true;
+    return;
+  }
+
   // Validate that all selected items have shipping method
   let hasError = false;
   let missingCount = 0;
@@ -887,6 +900,43 @@ onBeforeUnmount(() => {
             :show="state.notification.show" :dismissible="true" @close="state.notification.show = false" />
         </div>
       </Teleport>
+
+      <!-- Address Required Modal -->
+      <Teleport to="body">
+        <div v-if="state.showAddressRequiredModal"
+          class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
+          @click.self="state.showAddressRequiredModal = false">
+          <div class="relative w-full max-w-md rounded-md bg-white p-6 shadow-2xl">
+            <!-- Icon -->
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <svg class="h-8 w-8 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
+                <circle cx="12" cy="9.5" r="2.3" />
+              </svg>
+            </div>
+
+            <!-- Content -->
+            <div class="mb-6 text-center">
+              <h3 class="text-xl font-bold text-slate-900">Alamat Pengiriman Diperlukan</h3>
+              <p class="mt-2 text-sm text-slate-600">
+                Anda belum memiliki alamat pengiriman. Silakan tambahkan alamat terlebih dahulu untuk melanjutkan pembelian.
+              </p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+              <button type="button" @click="state.showAddressRequiredModal = false"
+                class="flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                Nanti Saja
+              </button>
+              <button type="button" @click="state.showAddressRequiredModal = false; state.addressFormOpen = true"
+                class="flex-1 rounded-md bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
+                Tambah Alamat
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </main>
   </div>
 
@@ -1186,6 +1236,43 @@ onBeforeUnmount(() => {
         class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] min-w-[600px] max-w-2xl shadow-lg rounded-lg overflow-hidden">
         <AlertBanner type="error" :message="`Metode Pengiriman Diperlukan: ${state.notification.message}`"
           :show="state.notification.show" :dismissible="true" @close="state.notification.show = false" />
+      </div>
+    </Teleport>
+
+    <!-- Address Required Modal -->
+    <Teleport to="body">
+      <div v-if="state.showAddressRequiredModal"
+        class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/50 px-4"
+        @click.self="state.showAddressRequiredModal = false">
+        <div class="relative w-full max-w-md rounded-md bg-white p-6 shadow-2xl">
+          <!-- Icon -->
+          <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+            <svg class="h-8 w-8 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 21s7-6.2 7-11.2A7 7 0 0 0 5 9.8C5 14.8 12 21 12 21z" />
+              <circle cx="12" cy="9.5" r="2.3" />
+            </svg>
+          </div>
+
+          <!-- Content -->
+          <div class="mb-6 text-center">
+            <h3 class="text-xl font-bold text-slate-900">Alamat Pengiriman Diperlukan</h3>
+            <p class="mt-2 text-sm text-slate-600">
+              Anda belum memiliki alamat pengiriman. Silakan tambahkan alamat terlebih dahulu untuk melanjutkan pembelian.
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button type="button" @click="state.showAddressRequiredModal = false"
+              class="flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              Nanti Saja
+            </button>
+            <button type="button" @click="state.showAddressRequiredModal = false; state.addressFormOpen = true"
+              class="flex-1 rounded-md bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700">
+              Tambah Alamat
+            </button>
+          </div>
+        </div>
       </div>
     </Teleport>
   </LandingLayout>

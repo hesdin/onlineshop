@@ -16,6 +16,8 @@ const form = useForm({
 
 const registrationSuccess = ref(false);
 const sentEmail = ref('');
+const showSellerAgreementModal = ref(false);
+const showPrivacyPolicyModal = ref(false);
 const page = usePage();
 const siteKey = computed(() => (page.props.recaptcha as any)?.siteKey ?? '');
 const loadingRecaptcha = ref(false);
@@ -137,6 +139,15 @@ const handleRecaptcha = async () => {
   } finally {
     loadingRecaptcha.value = false;
   }
+};
+
+const handleCheckboxClick = (e: MouseEvent) => {
+  if (!form.agree) {
+    // Jika belum dicentang, cegah centang otomatis dan munculkan modal
+    e.preventDefault();
+    showSellerAgreementModal.value = true;
+  }
+  // Jika sudah dicentang, biarkan perilaku default (uncheck) terjadi
 };
 
 const submit = async () => {
@@ -267,7 +278,7 @@ const submit = async () => {
                   Mengirim ulang...
                 </span>
                 <span v-else>Kirim ulang dalam <span class="font-medium text-slate-500">{{ formatCooldown
-                    }}</span></span>
+                }}</span></span>
               </p>
             </div>
 
@@ -341,16 +352,18 @@ const submit = async () => {
 
               <!-- Terms Checkbox -->
               <div class="pt-2">
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" v-model="form.agree"
-                    class="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-500" />
+                <div class="flex items-start gap-3">
+                  <input type="checkbox" v-model="form.agree" @click="handleCheckboxClick"
+                    class="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-500 cursor-pointer" />
                   <span class="text-xs text-slate-600 leading-relaxed">
                     Saya menyetujui
-                    <a href="#" class="font-medium text-sky-600 hover:underline">Syarat dan Ketentuan</a>
+                    <a href="#" @click.prevent.stop="showSellerAgreementModal = true"
+                      class="font-medium text-sky-600 hover:underline">Syarat dan Ketentuan</a>
                     serta
-                    <a href="#" class="font-medium text-sky-600 hover:underline">Kebijakan Privasi</a>
+                    <a href="#" @click.prevent.stop="showPrivacyPolicyModal = true"
+                      class="font-medium text-sky-600 hover:underline">Kebijakan Privasi</a>
                   </span>
-                </label>
+                </div>
                 <p v-if="form.errors.agree" class="mt-1 text-xs text-red-500">{{ form.errors.agree }}</p>
               </div>
 
@@ -419,6 +432,141 @@ const submit = async () => {
         </div>
       </div>
     </div>
+
+    <!-- Seller Agreement Modal -->
+    <Teleport to="body">
+      <div v-if="showSellerAgreementModal"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+        @click.self="showSellerAgreementModal = false">
+        <div class="relative w-full max-w-2xl transform rounded-lg bg-white p-8 shadow-2xl">
+          <button @click="showSellerAgreementModal = false"
+            class="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+            </svg>
+          </button>
+
+          <h2 class="text-2xl font-bold text-slate-900 mb-4">Perjanjian Penjual</h2>
+
+          <div class="max-h-96 overflow-y-auto pr-2 space-y-4 text-sm text-slate-700">
+            <p class="font-semibold text-slate-900">Dengan mendaftar sebagai penjual di PKK Sulsel Mart, Anda menyetujui
+              hal-hal berikut:</p>
+
+            <div class="space-y-4">
+              <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <h3 class="font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  1. Tanggung Jawab Transaksi
+                </h3>
+                <p class="text-amber-900"><strong>Segala bentuk transaksi antara pembeli dan toko merupakan tanggung
+                    jawab
+                    penuh kedua belah pihak.</strong> Platform pkksulselmart.com <strong>tidak bertanggung
+                    jawab</strong>
+                  atas sengketa, kerugian, atau masalah yang timbul dari transaksi tersebut.</p>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">2. Kewajiban Penjual</h3>
+                <ul class="list-disc list-inside space-y-1.5 ml-2 text-slate-700">
+                  <li>Memberikan informasi produk yang akurat dan jujur</li>
+                  <li>Memenuhi pesanan sesuai dengan deskripsi produk</li>
+                  <li>Berkomunikasi dengan pembeli secara profesional</li>
+                  <li>Mematuhi semua peraturan yang berlaku</li>
+                  <li>Menjaga reputasi platform dengan layanan terbaik</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">3. Penyelesaian Sengketa</h3>
+                <p>Penjual dan pembeli bertanggung jawab untuk menyelesaikan sengketa secara langsung. Platform hanya
+                  menyediakan sarana komunikasi dan tidak ikut serta dalam penyelesaian perselisihan.</p>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">4. Ketentuan Lainnya</h3>
+                <p>Penjual wajib mematuhi semua kebijakan platform dan undang-undang yang berlaku. Pelanggaran dapat
+                  mengakibatkan penangguhan atau penutupan akun.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-end gap-3">
+            <button @click="showSellerAgreementModal = false"
+              class="rounded-lg border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Tutup
+            </button>
+            <button @click="showSellerAgreementModal = false; form.agree = true"
+              class="rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-sky-700">
+              Saya Mengerti & Setuju
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Privacy Policy Modal -->
+    <Teleport to="body">
+      <div v-if="showPrivacyPolicyModal"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+        @click.self="showPrivacyPolicyModal = false">
+        <div class="relative w-full max-w-2xl transform rounded-lg bg-white p-8 shadow-2xl">
+          <button @click="showPrivacyPolicyModal = false"
+            class="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+            </svg>
+          </button>
+
+          <h2 class="text-2xl font-bold text-slate-900 mb-4">Kebijakan Privasi</h2>
+
+          <div class="max-h-96 overflow-y-auto pr-2 space-y-4 text-sm text-slate-700">
+            <p>Di PKK Sulsel Mart, kami sangat menjaga privasi dan data pribadi pengguna kami. Kebijakan Privasi ini
+              menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi informasi Anda.</p>
+
+            <div class="space-y-4">
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">1. Informasi yang Kami Kumpulkan</h3>
+                <p>Kami mengumpulkan data yang Anda berikan langsung saat mendaftar, seperti nama, email, nomor
+                  telepon,
+                  dan data usaha lainnya yang diperlukan untuk operasional toko.</p>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">2. Penggunaan Informasi</h3>
+                <p>Data Anda digunakan untuk memproses pendaftaran, memverifikasi akun, memudahkan komunikasi antara
+                  penjual dan pembeli, serta meningkatkan kualitas layanan platform kami.</p>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">3. Keamanan Data</h3>
+                <p>Kami menerapkan standar keamanan teknis dan organisasi untuk melindungi data Anda dari akses yang
+                  tidak
+                  sah, kehilangan, atau penyalahgunaan.</p>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-slate-900 mb-2">4. Berbagi Informasi</h3>
+                <p>Kami tidak akan menjual atau menyewakan data pribadi Anda kepada pihak ketiga. Informasi hanya
+                  dibagikan untuk tujuan transaksi atau jika diwajibkan oleh hukum.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-end">
+            <button @click="showPrivacyPolicyModal = false"
+              class="rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-sky-700">
+              Saya Mengerti
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 

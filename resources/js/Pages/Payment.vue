@@ -40,6 +40,8 @@ const state = reactive({
   selectedMethod: props.paymentMethods?.[0]?.methods?.[0]?.id ?? null,
   showPromo: false,
   promoCode: '',
+  appliedPromo: null,
+  promoError: '',
   submitting: false,
   showAgreement: false,
   agreementAccepted: false,
@@ -70,9 +72,44 @@ const selectMethod = (id) => {
   state.selectedMethod = id;
 };
 
-const applyPromo = () => {
+const applyPromo = async () => {
   if (!state.promoCode.trim()) return;
-  state.showPromo = false;
+
+  try {
+    const payload = {
+      code: state.promoCode,
+    };
+
+    if (props.isBuyNow && props.selectedItems?.[0]) {
+      // In buy-now, selectedItems[0] is 'buy-now-{id}'
+      const productId = props.selectedItems[0].replace('buy-now-', '');
+      payload.product_id = productId;
+      // We need quantity too, but building orders already calculated it.
+      // However, for simplicity let's just use the checkout data if possible or assume 1 if not passed.
+      // Looking at PaymentPageController, buy-now data is in session.
+      // But we can extract it from props.orders[0].items[0].quantity
+      payload.quantity = props.orders?.[0]?.items?.[0]?.quantity ?? 1;
+    } else {
+      payload.items = props.selectedItems;
+    }
+
+    const response = await axios.post('/cart/promo/apply', payload);
+
+    if (response.data.success) {
+      state.appliedPromo = response.data.promo;
+      state.promoError = '';
+      state.showPromo = false;
+    }
+  } catch (error) {
+    state.promoError = error.response?.data?.message || 'Gagal menerapkan promo.';
+    state.appliedPromo = null;
+  }
+};
+
+const removePromo = () => {
+  state.appliedPromo = null;
+  state.promoCode = '';
+  state.promoError = '';
 };
 
 const handlePayClick = () => {
@@ -120,6 +157,7 @@ const submitPayment = () => {
       items: props.selectedItems,
       address_id: props.addressId,
       shipping_selections: props.shippingSelections,
+      promo_code: state.appliedPromo?.code,
       notes: {},
       agreement_accepted: true,
       agreement_accepted_at: new Date().toISOString(),
@@ -136,8 +174,10 @@ const submitPayment = () => {
 const totals = computed(() => {
   const items = (props.orders ?? []).reduce((sum, order) => sum + (order.total ?? 0), 0);
   const shipping = (props.orders ?? []).reduce((sum, order) => sum + (order.shipping ?? 0), 0);
+  const discount = state.appliedPromo?.discount_amount ?? 0;
   const fee = 0;
-  return { items, shipping, fee };
+  const grandTotal = Math.max(0, items + shipping + fee - discount);
+  return { items, shipping, discount, fee, grandTotal };
 });
 
 onBeforeUnmount(() => {
@@ -231,30 +271,33 @@ onBeforeUnmount(() => {
             <div class="rounded-lg bg-white shadow-sm ring-1 ring-slate-100">
               <div class="p-5">
                 <button type="button" @click="state.showPromo = true"
-                  class="flex w-full items-center justify-between gap-3 rounded-md bg-amber-100 px-5 py-4 text-left text-base font-semibold text-slate-800 transition hover:bg-amber-200">
+                  class="flex w-full items-center justify-between gap-3 rounded-md px-5 py-4 text-left text-base font-semibold transition"
+                  :class="state.appliedPromo ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' : 'bg-amber-100 text-slate-800 hover:bg-amber-200'">
                   <span class="inline-flex items-center gap-2">
                     <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path opacity="0.4"
                         d="M21.8 10.8401C22.19 10.8401 22.5 10.5301 22.5 10.1401V9.21011C22.5 5.11011 21.25 3.86011 17.15 3.86011H7.85C3.75 3.86011 2.5 5.11011 2.5 9.21011V9.68011C2.5 10.0701 2.81 10.3801 3.2 10.3801C4.1 10.3801 4.83 11.1101 4.83 12.0101C4.83 12.9101 4.1 13.6301 3.2 13.6301C2.81 13.6301 2.5 13.9401 2.5 14.3301V14.8001C2.5 18.9001 3.75 20.1501 7.85 20.1501H17.15C21.25 20.1501 22.5 18.9001 22.5 14.8001C22.5 14.4101 22.19 14.1001 21.8 14.1001C20.9 14.1001 20.17 13.3701 20.17 12.4701C20.17 11.5701 20.9 10.8401 21.8 10.8401Z"
-                        fill="#F7931E" />
+                        :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                       <path
                         d="M15.5 15.8799C14.94 15.8799 14.49 15.4299 14.49 14.8799C14.49 14.3299 14.94 13.8799 15.49 13.8799C16.04 13.8799 16.49 14.3299 16.49 14.8799C16.49 15.4299 16.06 15.8799 15.5 15.8799Z"
-                        fill="#F7931E" />
+                        :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                       <path
                         d="M9.49999 10.8799C8.93999 10.8799 8.48999 10.4299 8.48999 9.87988C8.48999 9.32988 8.93999 8.87988 9.48999 8.87988C10.04 8.87988 10.49 9.32988 10.49 9.87988C10.49 10.4299 10.06 10.8799 9.49999 10.8799Z"
-                        fill="#F7931E" />
+                        :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                       <path
                         d="M9.13007 16.4299C8.94007 16.4299 8.75007 16.3599 8.60007 16.2099C8.31007 15.9199 8.31007 15.4399 8.60007 15.1499L15.3301 8.41989C15.6201 8.12989 16.1001 8.12989 16.3901 8.41989C16.6801 8.70989 16.6801 9.18989 16.3901 9.47989L9.66007 16.2099C9.52007 16.3599 9.32007 16.4299 9.13007 16.4299Z"
-                        fill="#F7931E" />
+                        :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                     </svg>
 
-                    Gunakan Promo?
+                    <span v-if="state.appliedPromo">Promo Applied: {{ state.appliedPromo.code }}</span>
+                    <span v-else>Gunakan Promo?</span>
                   </span>
-                  <svg class="h-4 w-4 text-amber-500" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-                    stroke-width="1.6">
+                  <svg class="h-4 w-4" :class="state.appliedPromo ? 'text-sky-500' : 'text-amber-500'"
+                    viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
                     <path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </button>
+
               </div>
 
               <div class="space-y-4 px-5 py-4">
@@ -298,9 +341,13 @@ onBeforeUnmount(() => {
                   </div>
 
                   <div class="space-y-2 border-t border-slate-200 pt-3 text-sm font-semibold text-slate-800">
+                    <div v-if="state.appliedPromo" class="flex items-center justify-between text-sky-600">
+                      <span>Diskon ({{ state.appliedPromo.code }})</span>
+                      <span>-{{ formatCurrency(totals.discount) }}</span>
+                    </div>
                     <div class="flex items-center justify-between text-base font-bold text-slate-900">
                       <span>Total Semua Pesanan</span>
-                      <span>{{ formatCurrency(totals.items + totals.shipping) }}</span>
+                      <span>{{ formatCurrency(totals.grandTotal) }}</span>
                     </div>
                   </div>
                 </div>
@@ -342,13 +389,33 @@ onBeforeUnmount(() => {
               <div class="space-y-2">
                 <p class="text-sm font-semibold text-slate-800">Kode Promo</p>
                 <div class="flex flex-col gap-3 sm:flex-row">
-                  <input type="text" v-model="state.promoCode" placeholder="Contoh: QWE123"
-                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                    autocomplete="off" />
-                  <button type="button" @click="applyPromo"
-                    class="whitespace-nowrap rounded-lg bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">
+                  <div class="relative flex-1">
+                    <input type="text" v-model="state.promoCode" placeholder="Contoh: QWE123"
+                      class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 placeholder:uppercase uppercase"
+                      autocomplete="off" :disabled="!!state.appliedPromo" />
+                    <button v-if="state.appliedPromo" @click="removePromo"
+                      class="absolute right-2 top-1.5 text-slate-400 hover:text-red-500">
+                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button type="button" @click="applyPromo" :disabled="!!state.appliedPromo"
+                    class="whitespace-nowrap rounded-lg bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed">
                     Pakai Promo
                   </button>
+                </div>
+                <p v-if="state.promoError" class="text-xs font-medium text-red-600">{{ state.promoError }}</p>
+                <div v-if="state.appliedPromo" class="mt-2 rounded-lg bg-sky-50 p-3 ring-1 ring-sky-100">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm font-bold text-sky-800">{{ state.appliedPromo.code }}</p>
+                      <p class="text-xs text-sky-600">Terpasang: Hemat {{
+                        formatCurrency(state.appliedPromo.discount_amount) }}</p>
+                    </div>
+                    <button @click="removePromo"
+                      class="text-xs font-bold text-sky-700 hover:text-red-600 underline">Lepas</button>
+                  </div>
                 </div>
               </div>
 
@@ -508,27 +575,29 @@ onBeforeUnmount(() => {
           <div class="rounded-lg bg-white shadow-sm ring-1 ring-slate-100">
             <div class="p-5">
               <button type="button" @click="state.showPromo = true"
-                class="flex w-full items-center justify-between gap-3 rounded-md bg-amber-100 px-5 py-4 text-left text-base font-semibold text-slate-800 transition hover:bg-amber-200">
+                class="flex w-full items-center justify-between gap-3 rounded-md px-5 py-4 text-left text-base font-semibold transition"
+                :class="state.appliedPromo ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' : 'bg-amber-100 text-slate-800 hover:bg-amber-200'">
                 <span class="inline-flex items-center gap-2">
                   <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path opacity="0.4"
                       d="M21.8 10.8401C22.19 10.8401 22.5 10.5301 22.5 10.1401V9.21011C22.5 5.11011 21.25 3.86011 17.15 3.86011H7.85C3.75 3.86011 2.5 5.11011 2.5 9.21011V9.68011C2.5 10.0701 2.81 10.3801 3.2 10.3801C4.1 10.3801 4.83 11.1101 4.83 12.0101C4.83 12.9101 4.1 13.6301 3.2 13.6301C2.81 13.6301 2.5 13.9401 2.5 14.3301V14.8001C2.5 18.9001 3.75 20.1501 7.85 20.1501H17.15C21.25 20.1501 22.5 18.9001 22.5 14.8001C22.5 14.4101 22.19 14.1001 21.8 14.1001C20.9 14.1001 20.17 13.3701 20.17 12.4701C20.17 11.5701 20.9 10.8401 21.8 10.8401Z"
-                      fill="#F7931E" />
+                      :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                     <path
                       d="M15.5 15.8799C14.94 15.8799 14.49 15.4299 14.49 14.8799C14.49 14.3299 14.94 13.8799 15.49 13.8799C16.04 13.8799 16.49 14.3299 16.49 14.8799C16.49 15.4299 16.06 15.8799 15.5 15.8799Z"
-                      fill="#F7931E" />
+                      :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                     <path
                       d="M9.49999 10.8799C8.93999 10.8799 8.48999 10.4299 8.48999 9.87988C8.48999 9.32988 8.93999 8.87988 9.48999 8.87988C10.04 8.87988 10.49 9.32988 10.49 9.87988C10.49 10.4299 10.06 10.8799 9.49999 10.8799Z"
-                      fill="#F7931E" />
+                      :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                     <path
                       d="M9.13007 16.4299C8.94007 16.4299 8.75007 16.3599 8.60007 16.2099C8.31007 15.9199 8.31007 15.4399 8.60007 15.1499L15.3301 8.41989C15.6201 8.12989 16.1001 8.12989 16.3901 8.41989C16.6801 8.70989 16.6801 9.18989 16.3901 9.47989L9.66007 16.2099C9.52007 16.3599 9.32007 16.4299 9.13007 16.4299Z"
-                      fill="#F7931E" />
+                      :fill="state.appliedPromo ? '#0284c7' : '#F7931E'" />
                   </svg>
 
-                  Gunakan Promo?
+                  <span v-if="state.appliedPromo">Promo Applied: {{ state.appliedPromo.code }}</span>
+                  <span v-else>Gunakan Promo?</span>
                 </span>
-                <svg class="h-4 w-4 text-amber-500" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-                  stroke-width="1.6">
+                <svg class="h-4 w-4" :class="state.appliedPromo ? 'text-sky-500' : 'text-amber-500'" viewBox="0 0 20 20"
+                  fill="none" stroke="currentColor" stroke-width="1.6">
                   <path d="m8 5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </button>
@@ -575,9 +644,13 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="space-y-2 border-t border-slate-200 pt-3 text-sm font-semibold text-slate-800">
+                  <div v-if="state.appliedPromo" class="flex items-center justify-between text-sky-600">
+                    <span>Diskon ({{ state.appliedPromo.code }})</span>
+                    <span>-{{ formatCurrency(totals.discount) }}</span>
+                  </div>
                   <div class="flex items-center justify-between text-base font-bold text-slate-900">
                     <span>Total Semua Pesanan</span>
-                    <span>{{ formatCurrency(totals.items + totals.shipping) }}</span>
+                    <span>{{ formatCurrency(totals.grandTotal) }}</span>
                   </div>
                 </div>
               </div>
@@ -619,13 +692,33 @@ onBeforeUnmount(() => {
             <div class="space-y-2">
               <p class="text-sm font-semibold text-slate-800">Kode Promo</p>
               <div class="flex flex-col gap-3 sm:flex-row">
-                <input type="text" v-model="state.promoCode" placeholder="Contoh: QWE123"
-                  class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                  autocomplete="off" />
-                <button type="button" @click="applyPromo"
-                  class="whitespace-nowrap rounded-lg bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">
+                <div class="relative flex-1">
+                  <input type="text" v-model="state.promoCode" placeholder="Contoh: QWE123"
+                    class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 placeholder:uppercase uppercase"
+                    autocomplete="off" :disabled="!!state.appliedPromo" />
+                  <button v-if="state.appliedPromo" @click="removePromo"
+                    class="absolute right-2 top-1.5 text-slate-400 hover:text-red-500">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+                <button type="button" @click="applyPromo" :disabled="!!state.appliedPromo"
+                  class="whitespace-nowrap rounded-lg bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed">
                   Pakai Promo
                 </button>
+              </div>
+              <p v-if="state.promoError" class="text-xs font-medium text-red-600">{{ state.promoError }}</p>
+              <div v-if="state.appliedPromo" class="mt-2 rounded-lg bg-sky-50 p-3 ring-1 ring-sky-100">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-bold text-sky-800">{{ state.appliedPromo.code }}</p>
+                    <p class="text-xs text-sky-600">Terpasang: Hemat {{
+                      formatCurrency(state.appliedPromo.discount_amount) }}</p>
+                  </div>
+                  <button @click="removePromo"
+                    class="text-xs font-bold text-sky-700 hover:text-red-600 underline">Lepas</button>
+                </div>
               </div>
             </div>
 

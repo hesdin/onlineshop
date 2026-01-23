@@ -38,6 +38,7 @@ const navMain = [
   { title: 'Customer', href: '/seller/customers', icon: Users },
   { title: 'Ulasan', href: '/seller/reviews', icon: Star },
   { title: 'Chat', href: '/seller/chats', icon: MessageCircle },
+  { title: 'Promo Saya', href: '/seller/promo-codes', icon: ShoppingBag },
   { title: 'Settings', href: '/seller/settings', icon: Settings },
 ];
 

@@ -102,6 +102,7 @@ class RegisterController extends Controller
                 'user_id' => $user->id,
                 'name' => $tempName,
                 'slug' => $slug,
+                'phone' => $data['phone'],
                 'is_verified' => false,
                 'is_umkm' => true,
             ]);

@@ -39,6 +39,7 @@ class OrderController extends Controller
             'items.*' => 'integer|exists:cart_items,id',
             'address_id' => 'required|integer|exists:addresses,id',
             'shipping_selections' => 'nullable|array',
+            'promo_code' => 'nullable|string|exists:promo_codes,code',
             'notes' => 'nullable|array',
             'agreement_accepted' => 'required|accepted',
             'agreement_accepted_at' => 'nullable|date',
@@ -69,7 +70,23 @@ class OrderController extends Controller
         $lowStockNotifications = [];
         $agreementAcceptedAt = $validated['agreement_accepted_at'] ?? now();
 
-        DB::transaction(function () use ($cart, $user, $paymentMethod, $address, $validated, &$orderIds, &$ordersForNotification, &$lowStockNotifications, $agreementAcceptedAt) {
+        $promo = null;
+        if (!empty($validated['promo_code'])) {
+            $promo = \App\Models\PromoCode::where('code', $validated['promo_code'])
+                ->where('is_active', true)
+                ->first();
+
+            // Basic validation again
+            if ($promo) {
+                if (($promo->starts_at && $promo->starts_at->isFuture()) ||
+                    ($promo->ends_at && $promo->ends_at->isPast()) ||
+                    ($promo->quota !== null && $promo->used >= $promo->quota)) {
+                    $promo = null;
+                }
+            }
+        }
+
+        DB::transaction(function () use ($cart, $user, $paymentMethod, $address, $validated, $promo, &$orderIds, &$ordersForNotification, &$lowStockNotifications, $agreementAcceptedAt) {
             // Group items by store
             $itemsByStore = $cart->items->groupBy('store_id');
 
@@ -87,6 +104,37 @@ class OrderController extends Controller
                     $weightTotal += ($product->weight ?? 0) * $item->quantity;
                 }
 
+                // Calculate discount for this order
+                $orderDiscount = 0;
+                if ($promo && ($promo->store_id === null || $promo->store_id == $storeId)) {
+                    // Check min order for this store's subtotal
+                    if (!$promo->min_order_amount || $subtotal >= $promo->min_order_amount) {
+                        if ($promo->discount_type === 'percent') {
+                            $orderDiscount = ($promo->discount_value / 100) * $subtotal;
+                            if ($promo->max_discount && $orderDiscount > $promo->max_discount) {
+                                $orderDiscount = $promo->max_discount;
+                            }
+                        } else {
+                            $orderDiscount = $promo->discount_value;
+                        }
+                        $orderDiscount = (int) $orderDiscount;
+
+                        // Ensure discount doesn't exceed subtotal
+                        $orderDiscount = min($orderDiscount, $subtotal);
+
+                        // Increment promo usage once per checkout session if it's broad?
+                        // Or once per order? Let's say once per checkout session.
+                        // We'll increment below, but we only apply discount to qualifying orders.
+                        // IMPORTANT: We only apply the promo to ONE order if it's platform wide to avoid double discounting?
+                        // Actually, if it's platform wide, it should probably apply to the total.
+                        // For simplicity in this multi-order setup, we'll apply it to the first qualifying order found
+                        // then null out $promo so it doesn't apply to subsequent stores.
+                        if ($promo->store_id !== null || true) {
+                            $promoUsedInThisTransaction = true;
+                        }
+                    }
+                }
+
                 // Create order
                 $order = Order::create([
                     'user_id' => $user->id,
@@ -99,16 +147,31 @@ class OrderController extends Controller
                     'payment_status' => 'pending',
                     'payment_term' => 'immediate',
                     'subtotal' => $subtotal,
-                    'discount_total' => 0,
+                    'discount_total' => $orderDiscount,
                     'shipping_cost' => 0, // Will be calculated based on shipping selection
                     'weight_total' => $weightTotal,
-                    'grand_total' => $subtotal,
+                    'grand_total' => $subtotal - $orderDiscount,
                     'shipping_service' => $validated['shipping_selections'][$storeId] ?? null,
                     'ordered_at' => now(),
                     'expires_at' => now()->addDays(1), // 24 hours to complete payment
                     'note' => null,
                     'agreement_accepted_at' => $agreementAcceptedAt,
                 ]);
+
+                // Record promo usage
+                if ($orderDiscount > 0 && $promo) {
+                    \App\Models\OrderPromo::create([
+                        'order_id' => $order->id,
+                        'promo_code_id' => $promo->id,
+                        'discount_amount' => $orderDiscount,
+                    ]);
+
+                    $promo->increment('used');
+
+                    // If it was a platform promo, we might want to only apply it once.
+                    // If it was store-specific, it only matched this store anyway.
+                    $promo = null; // Don't apply same promo code to other stores in the same checkout
+                }
 
                 // Create order items and reduce stock
                 foreach ($items as $item) {
@@ -240,6 +303,7 @@ class OrderController extends Controller
             'payment_method_code' => 'required|string|exists:payment_methods,code',
             'address_id' => 'required|integer|exists:addresses,id',
             'shipping_selections' => 'nullable|array',
+            'promo_code' => 'nullable|string|exists:promo_codes,code',
             'agreement_accepted' => 'required|accepted',
             'agreement_accepted_at' => 'nullable|date',
         ]);
@@ -261,7 +325,40 @@ class OrderController extends Controller
         $lowStockData = null;
         $agreementAcceptedAt = $validated['agreement_accepted_at'] ?? now();
 
-        DB::transaction(function () use ($user, $product, $store, $paymentMethod, $address, $validated, $price, $quantity, $subtotal, $weightTotal, &$orderId, &$orderForNotification, &$lowStockData, $agreementAcceptedAt) {
+        $promo = null;
+        if (!empty($validated['promo_code'])) {
+            $promo = \App\Models\PromoCode::where('code', $validated['promo_code'])
+                ->where('is_active', true)
+                ->first();
+
+            // Basic validation
+            if ($promo) {
+                if (($promo->starts_at && $promo->starts_at->isFuture()) ||
+                    ($promo->ends_at && $promo->ends_at->isPast()) ||
+                    ($promo->quota !== null && $promo->used >= $promo->quota)) {
+                    $promo = null;
+                }
+            }
+        }
+
+        DB::transaction(function () use ($user, $product, $store, $paymentMethod, $address, $validated, $price, $quantity, $subtotal, $weightTotal, $promo, &$orderId, &$orderForNotification, &$lowStockData, $agreementAcceptedAt) {
+
+            $orderDiscount = 0;
+            if ($promo && ($promo->store_id === null || $promo->store_id == $store?->id)) {
+                if (!$promo->min_order_amount || $subtotal >= $promo->min_order_amount) {
+                    if ($promo->discount_type === 'percent') {
+                        $orderDiscount = ($promo->discount_value / 100) * $subtotal;
+                        if ($promo->max_discount && $orderDiscount > $promo->max_discount) {
+                            $orderDiscount = $promo->max_discount;
+                        }
+                    } else {
+                        $orderDiscount = $promo->discount_value;
+                    }
+                    $orderDiscount = (int) $orderDiscount;
+                    $orderDiscount = min($orderDiscount, $subtotal);
+                }
+            }
+
             // Create order
             $order = Order::create([
                 'user_id' => $user->id,
@@ -274,16 +371,25 @@ class OrderController extends Controller
                 'payment_status' => 'pending',
                 'payment_term' => 'immediate',
                 'subtotal' => $subtotal,
-                'discount_total' => 0,
+                'discount_total' => $orderDiscount,
                 'shipping_cost' => 0,
                 'weight_total' => $weightTotal,
-                'grand_total' => $subtotal,
+                'grand_total' => $subtotal - $orderDiscount,
                 'shipping_service' => $validated['shipping_selections'][$store?->id] ?? null,
                 'ordered_at' => now(),
                 'expires_at' => now()->addDays(1),
                 'note' => null,
                 'agreement_accepted_at' => $agreementAcceptedAt,
             ]);
+
+            if ($orderDiscount > 0 && $promo) {
+                \App\Models\OrderPromo::create([
+                    'order_id' => $order->id,
+                    'promo_code_id' => $promo->id,
+                    'discount_amount' => $orderDiscount,
+                ]);
+                $promo->increment('used');
+            }
 
             // Create order item
             $itemType = $product->item_type === Product::ITEM_TYPE_SERVICE ? 'service' : 'product';

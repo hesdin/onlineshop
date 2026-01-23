@@ -46,6 +46,7 @@ Route::middleware(['auth', 'role:customer'])
         Route::delete('/items/{item}', [CartController::class, 'destroy'])->name('items.destroy');
         Route::get('/checkout', CheckoutPageController::class)->name('checkout');
         Route::get('/payment', PaymentPageController::class)->name('payment');
+        Route::post('/promo/apply', [App\Http\Controllers\CartPromoController::class, 'apply'])->name('promo.apply');
         Route::post('/payment/process', [App\Http\Controllers\OrderController::class, 'createOrder'])->name('payment.process');
     });
 

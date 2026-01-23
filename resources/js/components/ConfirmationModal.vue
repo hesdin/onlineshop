@@ -26,6 +26,10 @@ defineProps({
     type: String,
     default: 'danger', // 'danger' | 'warning'
   },
+  position: {
+    type: String,
+    default: 'center', // 'center' | 'top'
+  },
 });
 
 const emit = defineEmits(['confirm', 'cancel']);
@@ -34,7 +38,8 @@ const emit = defineEmits(['confirm', 'cancel']);
 <template>
   <Teleport to="body">
     <div v-if="show"
-      class="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      class="fixed inset-0 z-[9999] flex min-h-screen bg-black/60 px-4 backdrop-blur-sm"
+      :class="position === 'top' ? 'items-start justify-center pt-20' : 'items-center justify-center'"
       @click.self="emit('cancel')">
       <div class="relative w-full max-w-md transform rounded-md bg-white p-8 shadow-2xl transition-all">
         <div class="flex flex-col items-center text-center">
