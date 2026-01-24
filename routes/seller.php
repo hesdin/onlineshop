@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Seller\AgreementController;
 use App\Http\Controllers\Seller\ChatController;
 use App\Http\Controllers\Seller\CustomerController;
 use App\Http\Controllers\Seller\DashboardController;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => redirect()->route('seller.dashboard.index'))->name('dashboard');
 
 Route::get('dashboard', DashboardController::class)->name('dashboard.index');
+
+Route::get('agreement', [AgreementController::class, 'index'])->name('agreement.index');
 
 // Search
 Route::get('search', [SearchController::class, 'index'])->name('search');

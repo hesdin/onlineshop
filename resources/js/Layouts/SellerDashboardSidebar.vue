@@ -15,7 +15,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Box, CircleUserRound, LayoutDashboard, MessageCircle, Settings, ShoppingBag, Star, Users } from 'lucide-vue-next';
+import { Box, CircleUserRound, FileText, LayoutDashboard, MessageCircle, Settings, ShoppingBag, Star, Users } from 'lucide-vue-next';
 import DocumentProgressTracker from '@/components/DocumentProgressTracker.vue';
 
 const page = usePage();
@@ -40,6 +40,7 @@ const navMain = [
   { title: 'Chat', href: '/seller/chats', icon: MessageCircle },
   { title: 'Promo Saya', href: '/seller/promo-codes', icon: ShoppingBag },
   { title: 'Settings', href: '/seller/settings', icon: Settings },
+  { title: 'Agreement', href: '/seller/agreement', icon: FileText },
 ];
 
 const isActive = (href: string) => currentUrl.value === href || currentUrl.value.startsWith(href);
